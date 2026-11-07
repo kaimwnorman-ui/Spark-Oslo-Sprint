@@ -3,7 +3,8 @@
 // only live AI is the device's. Checks: the "on this laptop" pill shows; the player's words never go
 // to /creature or /bars; bars move for good teaching and not for off-topic text; a right "when" tap
 // turns green; the hidden misreading comes out on Check it and a correction fixes it; the round
-// reaches its end. Skips (exit 0) without Opera + WebAI.
+// reaches its end. Skips (exit 0) without Opera + WebAI. `-- --round sove` plays another demo round
+// (Norwegian here) from a plan built from its own lesson.
 import { spawn, execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -12,8 +13,38 @@ import { DIST, ROOT } from './lib.mjs';
 import { launchOpera, operaMissing } from './opera.mjs';
 import { readFileSync } from 'node:fs';
 import { contentWords, stem } from '../shared/words.ts';
+import { misreadIdeaIds } from '../shared/round.ts';
 
 const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
+
+// --round <id>: any demo round (default tides). Tides keeps its hand-written lines; other rounds get
+// a plan built from their own lesson, in their language.
+const ROUND = process.argv.includes('--round') ? process.argv[process.argv.indexOf('--round') + 1] : 'tides';
+const round = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', `${ROUND}.json`), 'utf8'));
+const NB = round.lesson.language === 'nb' || round.lesson.language === 'nn';
+const ideaOf = (id) => round.lesson.ideas.find((i) => i.id === id);
+const held = misreadIdeaIds(round.lesson.ideas.map((i) => i.id), round.seed);
+const free = round.lesson.ideas.filter((i) => !held.includes(i.id));
+const plan =
+  ROUND === 'tides'
+    ? {
+        good: { id: 'i2', text: 'There are two bulges because the Moon pulls the near water harder than the Earth and the far water least, so water piles up on both sides.' },
+        when: { id: 'i2', index: 1 },
+        off: { id: 'i4', text: 'My cat likes to sleep in the sun all afternoon and eats fish for dinner.' },
+        misread: { id: 'i1', say: 'The difference in pull is that the Moon pulls the near side of Earth more strongly than the far side.', fix: 'No, it is not one big slurp like a straw. The Moon pulls the near water a bit more than the far water, and that difference stretches the sea.' },
+      }
+    : {
+        good: { id: free[0].id, text: free[0].modelAnswer },
+        when: { id: free[0].id, index: free[0].whenOptions.findIndex((o) => o.right) },
+        off: { id: free[1].id, text: NB ? 'Katten min liker å ligge i sola hele ettermiddagen og spiser fisk til middag.' : 'My cat likes to sleep in the sun all afternoon and eats fish for dinner.' },
+        misread: {
+          id: held[0],
+          // A plain first Say with no denial in it, so Blot quietly keeps its misreading (rule 3).
+          say: NB ? `«${ideaOf(held[0]).name}» er en av hovedideene på siden, og den skal jeg lære deg nå.` : `"${ideaOf(held[0]).name}" is one of the main ideas on this page, and I will teach it to you now.`,
+          fix: (NB ? 'Nei, det stemmer ikke. ' : 'No, that is not right. ') + ideaOf(held[0]).modelAnswer,
+        },
+      };
+const inLanguage = (text) => (NB ? /[æøå]|\b(og|er|det|jeg|som|en|ikke)\b/i.test(text) : true);
 const missing = operaMissing();
 if (missing) {
   console.log(`smoke:opera skipped: ${missing}`);
@@ -81,7 +112,7 @@ try {
     await busyDone();
   };
 
-  await page.goto(`chrome-extension://${EXTENSION_ID}/game.html?demo=tides&live=1&teach=180`);
+  await page.goto(`chrome-extension://${EXTENSION_ID}/game.html?demo=${ROUND}&live=1&teach=180`);
   await page.locator('#btn-transform').waitFor();
   await page.waitForTimeout(800);
   await page.click('#btn-transform');
@@ -94,44 +125,43 @@ try {
   } else {
     checks.push([true, `the pill says "${(await page.textContent('#device-note'))?.trim()}"`]);
 
-    await say('i2', 'say', 'There are two bulges because the Moon pulls the near water harder than the Earth and the far water least, so water piles up on both sides.');
+    await say(plan.good.id, 'say', plan.good.text);
     const reply = await bubble();
     log(`Blot: ${reply}`);
-    checks.push([reply.length > 0 && !/[<>*#]/.test(reply), 'Blot answers on the device, in plain words']);
-    const good = await settledBar('i2');
+    checks.push([reply.length > 0 && !/[<>*#]/.test(reply) && inLanguage(reply), `Blot answers on the device, in plain words${NB ? ', in Norwegian' : ''}`]);
+    const good = await settledBar(plan.good.id);
     checks.push([good >= 30, `a good explanation fills its bar (${good}%)`]);
-    await shot('01-teach');
+    await shot(`${ROUND === 'tides' ? '' : ROUND + '-'}01-teach`);
 
-    await page.click('.idea[data-id="i2"]');
+    await page.click(`.idea[data-id="${plan.when.id}"]`);
     await page.click('.move[data-move="when"]');
-    await page.click('.when-option[data-index="1"]');
+    await page.click(`.when-option[data-index="${plan.when.index}"]`);
     await busyDone();
-    checks.push([(await page.getAttribute('.when-option[data-index="1"]', 'class'))?.includes('right') === true, 'a right "when" tap turns green (from /reveal)']);
+    checks.push([(await page.getAttribute(`.when-option[data-index="${plan.when.index}"]`, 'class'))?.includes('right') === true, 'a right "when" tap turns green (from /reveal)']);
     log(`Blot: ${await bubble()}`);
 
-    await say('i4', 'say', 'My cat likes to sleep in the sun all afternoon and eats fish for dinner.');
-    const off = await settledBar('i4');
+    await say(plan.off.id, 'say', plan.off.text);
+    const off = await settledBar(plan.off.id);
     checks.push([off <= 15, `off-topic text barely moves its bar (${off}%)`]);
 
-    // i1 is one of the two ideas Blot quietly misreads in this round (seed 1107).
-    await say('i1', 'say', 'The difference in pull is that the Moon pulls the near side of Earth more strongly than the far side.');
-    await page.click('.idea[data-id="i1"]');
+    // One of the two ideas Blot quietly misreads in this round (from its seed).
+    await say(plan.misread.id, 'say', plan.misread.say);
+    await page.click(`.idea[data-id="${plan.misread.id}"]`);
     await page.click('.move[data-move="check"]');
     await busyDone();
     const check = await bubble();
     log(`Blot (Check it): ${check}`);
     // Blot words the misreading its own way each time: compare with the round's misreading text.
-    const misread = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', 'tides.json'), 'utf8')).lesson.ideas.find((i) => i.id === 'i1').misread;
-    const shared = new Set(contentWords(misread).map(stem));
+    const shared = new Set(contentWords(ideaOf(plan.misread.id).misread).map(stem));
     const overlap = new Set(contentWords(check).map(stem).filter((w) => shared.has(w))).size;
     checks.push([overlap >= 2 && /\?\s*$/.test(check), `Check it brings out the hidden misreading as a question (${overlap} words shared with it)`]);
-    await shot('02-check');
+    await shot(`${ROUND === 'tides' ? '' : ROUND + '-'}02-check`);
     await page.click('#btn-check-no');
     await page.waitForTimeout(400);
-    await page.fill('#teach-input', 'No, it is not one big slurp like a straw. The Moon pulls the near water a bit more than the far water, and that difference stretches the sea.');
+    await page.fill('#teach-input', plan.misread.fix);
     await page.click('#btn-send');
     await busyDone();
-    const fixed = await settledBar('i1');
+    const fixed = await settledBar(plan.misread.id);
     checks.push([fixed >= 30, `the correction fills the bar (${fixed}%)`]);
     log(`Blot: ${await bubble()}`);
 
