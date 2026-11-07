@@ -403,7 +403,8 @@ model, ms, tokens; never the text.
   round with Blot on the device: the pill, no `/creature` or `/bars` requests, bars move for good
   teaching and not for off-topic text, a right tap turns green, the misreading flow, the monster's
   taunt, the end. `--round <id>` plays any demo round from a plan built from its lesson (checked in
-  Norwegian on `sove`: Blot, Check it and the taunt all in Norwegian).
+  Norwegian on `sove`: Blot, Check it and the taunt all in Norwegian); `--entry` starts from the page
+  through the extension in Opera (the action, the Shadow-DOM overlay, the hand-off to the game tab).
 - `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
   `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
   a bare statement of the idea stays ≤ 40; good explanations ≥ 58; no reply falls back to the

@@ -4,7 +4,8 @@
 // to /creature or /bars; bars move for good teaching and not for off-topic text; a right "when" tap
 // turns green; the hidden misreading comes out on Check it and a correction fixes it; the round
 // reaches its end. Skips (exit 0) without Opera + WebAI. `-- --round sove` plays another demo round
-// (Norwegian here) from a plan built from its own lesson.
+// (Norwegian here) from a plan built from its own lesson; `-- --entry` starts from the page through
+// the extension itself (the toolbar action, the overlay, the hand-off to the game tab).
 import { spawn, execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -20,6 +21,8 @@ const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
 // --round <id>: any demo round (default tides). Tides keeps its hand-written lines; other rounds get
 // a plan built from their own lesson, in their language.
 const ROUND = process.argv.includes('--round') ? process.argv[process.argv.indexOf('--round') + 1] : 'tides';
+/** --entry: start from the page through the extension (overlay, hand-off) instead of opening game.html. */
+const ENTRY = process.argv.includes('--entry');
 const round = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', `${ROUND}.json`), 'utf8'));
 const NB = round.lesson.language === 'nb' || round.lesson.language === 'nn';
 const ideaOf = (id) => round.lesson.ideas.find((i) => i.id === id);
@@ -79,17 +82,23 @@ let failed = false;
 let skipped = null;
 const context = await launchOpera(chromium, DIST);
 try {
-  const page = await context.newPage();
-  page.on('console', (m) => {
-    // Opera logs these itself while its AI service starts; they are not ours.
-    if (m.type() === 'error' && !/service is not running/i.test(m.text())) errors.push(m.text().slice(0, 160));
-    // The device engine says when it falls back to the server, and why.
-    if (/^Spark:/.test(m.text())) log(m.text().slice(0, 200));
-  });
-  page.on('request', (r) => {
-    const u = new URL(r.url());
-    if (u.origin === SERVER_URL && r.method() === 'POST') routes.push(u.pathname);
-  });
+  /** Console errors, the engine's own notes, and which server routes the game calls. */
+  const watch = (p) => {
+    p.on('console', (m) => {
+      // Opera logs these itself while its AI service starts; they are not ours. Only the game tab
+      // counts (as in smoke:ext): the test page itself has no favicon.
+      if (m.type() === 'error' && p.url().startsWith('chrome-extension://') && !/service is not running/i.test(m.text())) errors.push(m.text().slice(0, 160));
+      // The device engine says when it falls back to the server, and why.
+      if (/^Spark:/.test(m.text())) log(m.text().slice(0, 200));
+    });
+    p.on('request', (r) => {
+      const u = new URL(r.url());
+      if (u.origin === SERVER_URL && r.method() === 'POST') routes.push(u.pathname);
+    });
+  };
+  // With --entry the game tab replaces this page after the hand-off.
+  let page = await context.newPage();
+  watch(page);
   const shot = (name) => page.screenshot({ path: path.join(SHOTS, `opera-${name}.png`) });
   const busyDone = async () => {
     await page.waitForTimeout(80);
@@ -112,10 +121,36 @@ try {
     await busyDone();
   };
 
-  await page.goto(`chrome-extension://${EXTENSION_ID}/game.html?demo=${ROUND}&live=1&teach=180`);
-  await page.locator('#btn-transform').waitFor();
-  await page.waitForTimeout(800);
-  await page.click('#btn-transform');
+  if (ENTRY) {
+    // The real entry: the page, the toolbar action (Playwright can't click the toolbar; the worker
+    // exposes the same function), the overlay on the page, then the game tab.
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker', { timeout: 15_000 }));
+    checks.push([new URL(worker.url()).host === EXTENSION_ID, 'the extension loaded in Opera with its fixed ID']);
+    await page.goto(`${SERVER_URL}/pages/${ROUND}.html`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(500);
+    const pageUrl = page.url();
+    const gameTab = context.waitForEvent('page', { predicate: (p) => p.url().includes('game.html?round='), timeout: 30_000 });
+    await worker.evaluate(async (url) => {
+      const tabs = await chrome.tabs.query({});
+      const tab = tabs.find((t) => t.url === url) ?? tabs.find((t) => t.url?.startsWith(url.split('#')[0]));
+      await globalThis.sparkTransform(tab.id);
+    }, pageUrl);
+    const overlay = await page.locator('[data-spark-overlay]').waitFor({ state: 'attached', timeout: 10_000 }).then(() => true, () => false);
+    checks.push([overlay, 'the overlay lifts the page’s words in Opera']);
+    page = await gameTab;
+    watch(page);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    checks.push([true, 'the hand-off opened the game tab']);
+    // The checks take longer than the usual 2:00 of teaching: the same round, with more time.
+    await page.goto(`${page.url()}&teach=180`);
+    // The page tab stays behind (as for a player); close it so the run leaves one tab.
+    for (const p of context.pages()) if (p !== page) await p.close().catch(() => {});
+  } else {
+    await page.goto(`chrome-extension://${EXTENSION_ID}/game.html?demo=${ROUND}&live=1&teach=180`);
+    await page.locator('#btn-transform').waitFor();
+    await page.waitForTimeout(800);
+    await page.click('#btn-transform');
+  }
   await page.locator('#btn-teach:not(.hidden)').waitFor({ timeout: 30_000 });
   await page.click('#btn-teach');
   await page.locator('#screen-teach').waitFor({ timeout: 30_000 });
