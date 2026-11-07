@@ -69,12 +69,15 @@ async function run(input: EvalInput, checks: Record<string, (reply: string) => s
   for (const c of input.blot) {
     const transcript: TranscriptEntry[] = (c.req.said ?? []).map((text) => ({ ideaId: c.req.ideaId, move: 'say', text }));
     const ts = performance.now();
-    let first = 0;
+    // The first piece is Blot's opener (shown at once); the second is the model's first words.
+    const times: number[] = [];
     let reply = '';
     for await (const piece of engine.creature({ ...c.req, transcript })) {
-      if (!first) first = Math.round(performance.now() - ts);
+      if (times.length < 2) times.push(Math.round(performance.now() - ts));
       reply += piece;
     }
+    const first = times[1] ?? times[0] ?? 0;
+    const shown = times[0] ?? 0;
     const problems = [];
     if (reply.includes(FELL_BACK)) problems.push('fell back');
     if (!reply.trim()) problems.push('empty');
@@ -82,13 +85,14 @@ async function run(input: EvalInput, checks: Record<string, (reply: string) => s
     if (/[<>*#]/.test(reply)) problems.push('markup');
     const extra = checks[c.label]?.(reply);
     if (extra) problems.push(extra);
-    blot.push({ label: c.label, reply: reply.trim(), first, ms: Math.round(performance.now() - ts), problem: problems.join(', ') || null });
+    blot.push({ label: c.label, reply: reply.trim(), first, shown, ms: Math.round(performance.now() - ts), problem: problems.join(', ') || null });
   }
   return {
     openMs,
     warmMs,
     barsMedianMs: median(scores.map((s) => s.ms)),
     blotFirstMedianMs: median(blot.map((b) => b.first)),
+    blotShownMedianMs: median(blot.map((b) => b.shown)),
     scores,
     blot,
   };

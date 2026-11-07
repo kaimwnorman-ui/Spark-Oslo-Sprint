@@ -63,6 +63,8 @@ export interface BlotTaskOptions {
   whenText?: string;
   /** Was the tapped situation right? Unknown offline. */
   whenRight?: boolean;
+  /** Words already shown as the reply's start (see blotStarter): the model writes only the rest. */
+  starter?: string;
 }
 
 const RIGHT_Q: Record<DeviceLanguage, string> = { en: 'Right?', nb: 'Stemmer det?', nn: 'Stemmer det?' };
@@ -74,6 +76,12 @@ function lowerFirst(text: string): string {
 
 /** The one prompt for one Blot reply. Null when the device cannot do it (the server should). */
 export function blotTask(event: BlotEvent, o: BlotTaskOptions): string | null {
+  const task = blotTaskBody(event, o);
+  if (!task || !o.starter) return task;
+  return `${task}\nYour reply begins with "${o.starter}" (already said). Write only what comes after it; do not repeat it.`;
+}
+
+function blotTaskBody(event: BlotEvent, o: BlotTaskOptions): string | null {
   const lang = deviceLanguage(o.language);
   const name = `"${o.ideaName}"`;
   const last = o.coach.at(-1);
@@ -109,6 +117,47 @@ export function blotTask(event: BlotEvent, o: BlotTaskOptions): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * A short, in-character opener shown the moment Blot starts to reply, while the model writes the
+ * rest (its first sentence takes ~0.8 s on Apple's model; the opener takes none). `turn` rotates
+ * through the choices so Blot doesn't say the same word every time.
+ */
+const STARTERS: Record<DeviceLanguage, Record<'taught' | 'fix' | 'whenRight' | 'whenWrong' | 'whenUnsure' | 'check' | 'askWhy', string[]>> = {
+  en: { taught: ['Ooh!', 'Whoa!', 'Aha!', 'Oh!', 'Wow!'], fix: ['Ohhh!', 'Aha!'], whenRight: ['Yes!', 'Ooh!'], whenWrong: ['Hmm…'], whenUnsure: ['Okay!'], check: ['So…'], askWhy: ['But WHY'] },
+  nb: { taught: ['Å!', 'Oi!', 'Aha!', 'Wow!'], fix: ['Åååh!', 'Aha!'], whenRight: ['Ja!', 'Å!'], whenWrong: ['Hmm…'], whenUnsure: ['Greit!'], check: ['Så…'], askWhy: ['Men HVORFOR'] },
+  nn: { taught: ['Å!', 'Oi!', 'Aha!', 'Wow!'], fix: ['Åååh!', 'Aha!'], whenRight: ['Ja!', 'Å!'], whenWrong: ['Hmm…'], whenUnsure: ['Greitt!'], check: ['Så…'], askWhy: ['Men KVIFOR'] },
+};
+
+export function blotStarter(event: BlotEvent, language: Language, whenRight: boolean | undefined, turn: number): string {
+  const s = STARTERS[deviceLanguage(language)];
+  const list =
+    event === 'fix' ? s.fix
+    : event === 'check' ? s.check
+    : event === 'askWhy' ? s.askWhy
+    : event === 'when' ? (whenRight === true ? s.whenRight : whenRight === false ? s.whenWrong : s.whenUnsure)
+    : s.taught;
+  return list[Math.abs(turn) % list.length]!;
+}
+
+const letters = (text: string) => text.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+/** The model said the opener again anyway ("But WHY does…" after "But WHY"): drop it. */
+export function stripStarter(text: string, starter: string): string {
+  const words = letters(starter).split(' ').filter(Boolean);
+  if (!words.length) return text;
+  const lead = (ws: string[]) => new RegExp(`^\\s*["“]?${ws.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s\\p{P}]+')}(?!\\p{L})[\\s\\p{P}]*`, 'iu');
+  const out = text.replace(lead(words), '');
+  // "But WHY" then "Why does…": the last word alone counts as a repeat too.
+  return out === text && words.length > 1 ? text.replace(lead(words.slice(-1)), '') : out;
+}
+
+/** Could this still be the start of the opener repeated? Then wait for more before showing it. */
+export function mayBeStarter(text: string, starter: string): boolean {
+  const said = letters(text);
+  const core = letters(starter);
+  return said.length > 0 && said.length < core.length && core.startsWith(said);
 }
 
 /**

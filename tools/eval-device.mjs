@@ -87,7 +87,7 @@ try {
     console.log(`eval:device skipped: ${out.skipped}`);
   } else {
     console.log(`eval:device (${cases.round}): model ready in ${out.openMs} ms, warm in ${out.warmMs} ms`);
-    console.log(`  live bars: median ${out.barsMedianMs} ms   Blot's first words: median ${out.blotFirstMedianMs} ms\n`);
+    console.log(`  live bars: median ${out.barsMedianMs} ms   Blot reacts: median ${out.blotShownMedianMs} ms   the model's first words: median ${out.blotFirstMedianMs} ms\n`);
     for (const s of out.scores) {
       if (s.problem) failed++;
       console.log(`${s.problem ? 'FAIL' : 'ok  '} bar  ${s.label.padEnd(22)} ${String(s.raw).padStart(3)} (want ${s.want})  ${s.ms} ms${s.problem ? '  ← ' + s.problem : ''}`);

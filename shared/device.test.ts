@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotSystem, blotTask, checkPrompt, confirmTopic, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotStarter, blotSystem, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -171,4 +171,19 @@ test('"another idea" is checked against the idea names the player actually used'
   assert.equal(confirmTopic('other', 4, en, 2, 'Two bulges and spring tides'), 'other', 'names both: the judge decides');
   assert.equal(confirmTopic('this', 2, en, 2, spring), 'this');
   assert.equal(confirmTopic('none', 0, en, 2, spring), 'none');
+});
+
+test('Blot openers: shown at once, rotated, in the page language; a repeat from the model is dropped', () => {
+  assert.equal(blotStarter('say', 'en', undefined, 0), 'Ooh!');
+  assert.notEqual(blotStarter('say', 'en', undefined, 0), blotStarter('say', 'en', undefined, 1));
+  assert.equal(blotStarter('askWhy', 'nb', undefined, 7), 'Men HVORFOR');
+  assert.equal(blotStarter('when', 'en', false, 0), 'Hmm…');
+  assert.match(blotTask('say', { language: 'en', ideaName: 'X', coach: ['a b c d e f'], belief: 'right', starter: 'Ooh!' })!, /begins with "Ooh!" \(already said\)/);
+  assert.equal(stripStarter('But WHY does the sea move?', 'But WHY'), 'does the sea move?');
+  assert.equal(stripStarter('Why does the sea move?', 'But WHY'), 'does the sea move?');
+  assert.equal(stripStarter('Ooh! A noodle.', 'Ooh!'), 'A noodle.');
+  assert.equal(stripStarter('Wowza, a noodle.', 'Wow!'), 'Wowza, a noodle.', 'only whole words');
+  assert.equal(stripStarter('Men hvorfor sover vi?', 'Men HVORFOR'), 'sover vi?');
+  assert.ok(mayBeStarter('But', 'But WHY'));
+  assert.equal(mayBeStarter('But WHY does', 'But WHY'), false);
 });

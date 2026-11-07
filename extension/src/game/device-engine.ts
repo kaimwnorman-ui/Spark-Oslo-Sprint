@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotTask, checkPrompt, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotStarter, blotTask, checkPrompt, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -29,6 +29,8 @@ export class DeviceEngine implements RoundEngine {
   private readonly held: Set<string>;
   private readonly whenCache = new Map<string, boolean>();
   private readonly misreadCache = new Map<string, string | null>();
+  /** Rotates Blot's openers. */
+  private turn = 0;
   /** The device model, once it is ready (null before, or when it never starts). */
   private ai: DeviceAi | null = null;
   private readonly pageText: string;
@@ -99,39 +101,47 @@ export class DeviceEngine implements RoundEngine {
     const idea = this.idea(req.ideaId);
     const coach = req.transcript.filter((e) => e.ideaId === req.ideaId && e.text).map((e) => e.text!);
     const tap = typeof req.tap === 'number' ? req.tap : undefined;
+    const whenRight = req.event === 'when' && tap !== undefined ? await this.whenRight(req.ideaId, tap) : undefined;
+    const starter = blotStarter(req.event, this.language, whenRight, this.turn++);
     const task = blotTask(req.event, {
       language: this.language,
       ideaName: idea.name,
       coach,
       belief: req.belief,
       whenText: tap !== undefined ? idea.whenOptions[tap]?.text : undefined,
-      whenRight: req.event === 'when' && tap !== undefined ? await this.whenRight(req.ideaId, tap) : undefined,
+      whenRight,
       misread: req.event === 'check' && req.belief === 'misread' ? await this.misread(req.ideaId) : undefined,
+      starter,
     });
     if (task) {
+      // Blot reacts at once with a short opener; the model writes the rest (~0.8 s to its first
+      // sentence). The model's text is cleaned as a whole, and a repeated opener is dropped.
+      const opener = `${starter} `;
+      yield opener;
       const stop = new AbortController();
       let heard = '';
-      let said = '';
+      let rest = '';
       try {
         for await (const piece of ai.blot(task, stop.signal)) {
-          // Clean the whole reply so far, then show only what is new (a tag can span pieces).
           heard += piece;
-          const clean = cleanReply(heard);
-          if (!clean.startsWith(said) || clean.length === said.length) continue;
-          const delta = clean.slice(said.length);
-          said = clean;
+          const cleaned = cleanReply(heard);
+          if (mayBeStarter(cleaned, starter)) continue;
+          const clean = stripStarter(cleaned, starter);
+          if (!clean.startsWith(rest) || clean.length === rest.length) continue;
+          const delta = clean.slice(rest.length);
+          rest = clean;
           yield delta;
-          if (wordTotal(said) >= MAX_WORDS) {
+          if (wordTotal(opener + rest) >= MAX_WORDS) {
             stop.abort();
             break;
           }
         }
       } catch (err) {
-        // Half a reply is still a reply; nothing at all goes to the fallback below.
-        if (said.trim()) return;
+        // Half a reply is still a reply; only the opener goes on with the fallback below.
+        if (rest.trim()) return;
         console.info('Spark: on-device Blot failed, asking the server.', err instanceof Error ? err.message : err);
       }
-      if (said.trim()) return;
+      if (rest.trim()) return;
     }
     yield* this.inner.creature(req);
   }
