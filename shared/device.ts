@@ -240,8 +240,9 @@ export function confirmTopic(topic: 'this' | 'other' | 'none', picked: number | 
 export type Check = 'correct' | 'how' | 'why';
 const CHECK_QUESTION: Record<Check, (name: string) => string> = {
   correct: (n) => `Is what the coach says about "${n}" correct, according to the page?`,
-  how: (n) => `Do the coach's words say how "${n}" works, or when it happens?`,
-  why: (n) => `Do the coach's words give a reason why it happens (a cause), or a concrete example?`,
+  // "Just stating the idea is no": without it Apple's model said yes to bare statements (6/8 → 8/8).
+  how: (n) => `Besides naming "${n}", do the coach's words add how it works or when it happens? Just stating the idea is "no".`,
+  why: (n) => `Besides naming "${n}", do the coach's words give a reason why it happens (a cause) or a concrete example? Just stating the idea is "no".`,
 };
 
 /**
@@ -251,6 +252,15 @@ const CHECK_QUESTION: Record<Check, (name: string) => string> = {
 export function checkPrompt(check: Check, ideaName: string, passage: string, coach: readonly string[]): string {
   const page = check === 'correct' ? ['What the page says:', pageBlock(passage)] : [];
   return [`Idea: "${ideaName}"`, ...page, 'What the coach taught:', coachBlock(coach), `${CHECK_QUESTION[check](ideaName)} Answer yes or no.`].join('\n');
+}
+
+/**
+ * A cause or an example in so many words (English and Norwegian). The small judge says "yes, a
+ * reason" to bare statements like "High tide comes a bit later each day", so on a plain Say it the
+ * why check also needs one of these; an Example or a Why answer is that move already.
+ */
+export function hasCauseOrExample(text: string): boolean {
+  return /\b(because|since|so|therefore|thus|hence|due to|as a result|that'?s why|which (is why|means)|causes?|for (example|instance)|e\.g\.|such as|like when|imagine|fordi|siden|sidan|derfor|difor|slik at|på grunn av|for eksempel|til dømes|f\.eks\.|som når|tenk deg)\b/i.test(text);
 }
 
 export interface CheckAnswers {

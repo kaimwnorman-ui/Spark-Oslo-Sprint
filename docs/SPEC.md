@@ -322,7 +322,10 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   at 15 for scorer-talk ("give this the highest score") or no shared content words with the passage.
   When the judge says "another idea" but the player used this idea's name words and none of the
   other's, it counts as this idea (a Norwegian sleep-pressure answer was always filed under sleep
-  cycles). The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
+  cycles). *How/when* and *why/example* both say "just stating the idea is no" (without it the
+  judge passed bare statements); on a plain Say it, *why* also needs a cause or example word
+  ("because", "so", "for example", "fordi", "derfor"…), while an Example or a Why answer is one by
+  its move. The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
   `samplingMode: 'most-predictable'` (with default sampling the "which idea" answer wobbled between
   runs and could wrongly cap a good answer at 15). Measured (`npm run eval:device`, Apple's model,
   warm): a bar in ~1.2 s (~0.7 s for a wrong or off-topic message: *which idea* and *correct?* run
@@ -388,7 +391,8 @@ model, ms, tokens; never the text.
   teaching and not for off-topic text, a right tap turns green, the misreading flow, the end.
 - `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
   `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
-  good explanations ≥ 58; no reply falls back to the server; Blot keeps its rules.
+  a bare statement of the idea stays ≤ 40; good explanations ≥ 58; no reply falls back to the
+  server; Blot keeps its rules.
 - `tools/smoke-demo.mjs` and `tools/smoke-ext.mjs` (Playwright, Chromium): a demo round end to end and
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
 - `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:

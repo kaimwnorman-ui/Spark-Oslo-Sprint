@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotStarter, blotTask, checkPrompt, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotStarter, blotTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -157,10 +157,13 @@ export class DeviceEngine implements RoundEngine {
     const whenRight = last?.move === 'when' && typeof last.tap === 'number' ? await this.whenRight(ideaId, last.tap) : undefined;
     let raw = 0;
     for (const e of mine) if (e.move === 'when' && typeof e.tap === 'number' && this.whenCache.get(`${ideaId}:${e.tap}`) === true) raw = WHEN_TAP_RAW;
-    const typed = mine.filter((e) => e.text && e.move !== 'same' && e.move !== 'dontknow').map((e) => e.text!);
+    const typedEntries = mine.filter((e) => e.text && e.move !== 'same' && e.move !== 'dontknow');
+    const typed = typedEntries.map((e) => e.text!);
     if (!typed.length) return { raw, contradictsMisread: false, whenRight };
+    // An Example or an answer to Blot's "but WHY?" is a why/example by its move.
+    const whyMove = typedEntries.some((e) => e.move === 'example' || e.move === 'why');
     try {
-      const [score, contradictsMisread] = await Promise.all([this.score(ai, ideaId, idea.name, typed), this.denies(ai, ideaId, typed.at(-1)!)]);
+      const [score, contradictsMisread] = await Promise.all([this.score(ai, ideaId, idea.name, typed, whyMove), this.denies(ai, ideaId, typed.at(-1)!)]);
       return { raw: Math.max(raw, score), contradictsMisread, whenRight };
     } catch (err) {
       console.info('Spark: on-device bars failed, asking the server.', err instanceof Error ? err.message : err);
@@ -173,7 +176,7 @@ export class DeviceEngine implements RoundEngine {
    * Raw 0–100 for one idea: which idea is this about? is it correct? how/when? why/example? Each a
    * one-word answer judged against the page's own words; code adds them up and applies the caps.
    */
-  private async score(ai: DeviceAi, ideaId: string, ideaName: string, typed: string[]): Promise<number> {
+  private async score(ai: DeviceAi, ideaId: string, ideaName: string, typed: string[], whyMove: boolean): Promise<number> {
     const coachText = typed.join(' ');
     const passage = pickPassage(this.pageText, ideaName, coachText);
     const names = this.lesson.ideas.map((i) => i.name);
@@ -190,7 +193,8 @@ export class DeviceEngine implements RoundEngine {
     const words = wordTotal(coachText);
     if (topic === 'none' || !correct) return guardRaw(rawFromChecks({ topic, correct, how: false, why: false, words }), coachText, ideaName, passage);
     // Stage 2: how or when, and why or an example.
-    const [how, why] = await Promise.all([yes('how'), yes('why')]);
+    const [how, whyAnswer] = await Promise.all([yes('how'), yes('why')]);
+    const why = whyAnswer && (whyMove || hasCauseOrExample(coachText));
     return guardRaw(rawFromChecks({ topic, correct, how, why, words }), coachText, ideaName, passage);
   }
 

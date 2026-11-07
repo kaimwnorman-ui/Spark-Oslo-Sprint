@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotStarter, blotSystem, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotStarter, blotSystem, hasCauseOrExample, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -186,4 +186,14 @@ test('Blot openers: shown at once, rotated, in the page language; a repeat from 
   assert.equal(stripStarter('Men hvorfor sover vi?', 'Men HVORFOR'), 'sover vi?');
   assert.ok(mayBeStarter('But', 'But WHY'));
   assert.equal(mayBeStarter('But WHY does', 'But WHY'), false);
+});
+
+test('a cause or an example in so many words (en, nb), not a bare statement', () => {
+  assert.equal(hasCauseOrExample('High tide comes a bit later each day.'), false);
+  assert.equal(hasCauseOrExample('There are two bulges of water.'), false);
+  assert.ok(hasCauseOrExample('It is later because the Moon moves along its orbit.'));
+  assert.ok(hasCauseOrExample('For example, at 9:00 today and 9:50 tomorrow.'));
+  assert.ok(hasCauseOrExample('The near water is pulled most, so it bulges.'));
+  assert.ok(hasCauseOrExample('Vi blir trøtte fordi adenosin hoper seg opp.'));
+  assert.ok(hasCauseOrExample('Adenosin ryddes bort, og derfor er det viktig.'));
 });
