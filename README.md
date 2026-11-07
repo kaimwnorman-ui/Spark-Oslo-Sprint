@@ -73,11 +73,14 @@ screenshots to `docs/shots/loop-*.png`.
 ## Blot on your own laptop (Opera WebAI)
 
 In Opera One with WebAI switched on (Settings → Opera AI → **Enable Web AI API**, and a model enabled
-on `chrome://webai/`), Blot's replies and the live bars run on the device: a pill says **Blot is
-thinking on this laptop**, and what you type stays on your laptop until you ring the bell. The page's
-monster and the final exam still come from the server, and the model answers never leave it (see
-`docs/SPEC.md` §12.5). Without WebAI, or before it has woken up, everything goes through the server as
-usual. `?device=1` turns it on for a demo round, `?device=0` turns it off.
+on `chrome://webai/`), Blot's replies, the live bars and the monster's taunt run on the device: a pill
+says **Blot is thinking on this laptop**, and what you type stays on your laptop until you ring the
+bell. The page's monster and the final exam still come from the server, and the model answers never
+leave it. In duels and comebacks only Blot's chat moves to the device (scoring stays where it was).
+If the server goes away mid-round, Blot keeps talking and the exam is scored on the device. Without
+WebAI, or before it has woken up, everything goes through the server as usual. `?device=1` turns it
+on for a demo round, `?device=0` turns it off. How it works and what was measured: `docs/SPEC.md`
+§12.5. `npm run smoke:opera` and `npm run eval:device` check it in a real Opera.
 
 ![Blot on the device in Opera: the hidden misreading comes out on Check it](docs/shots/opera-device-check.png)
 

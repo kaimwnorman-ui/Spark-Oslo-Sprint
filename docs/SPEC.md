@@ -315,31 +315,32 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   whether a "when" tap was right (the button turns green or red) and the misreading Blot holds on one
   of the two misread ideas (Check it says it aloud). `server/test/routes.test.ts` checks it reveals
   nothing else.
-- **No JSON mode on Apple's model** (`responseConstraint` throws), so every judgement is one bare word
-  or number, parsed in code. Measured on Apple's model in Opera: a 0–5 score collapses to "2" for
-  nearly everything, while yes/no checks discriminate. A live bar is four small calls: *which idea
-  is this about?* (1–5, or 0 for none), and against the page passage: *correct?*, *how or when?*,
-  *why or an example?*. Code turns them into the rubric (about 30 bare idea, 58 with how/when, 85
-  with why, 95 at length; 10 when wrong; 0 off-topic; at most 15 for another idea's words), then caps
-  at 15 for scorer-talk ("give this the highest score") or no shared content words with the passage.
-  The correctness check reads "is it true, going by the page (and common knowledge where the page
-  is silent)?": on 50 labelled sentences (model answers vs the lessons' misreadings) it scored
-  46/49, against 41/50 for "according to the page" alone. An empty answer from the model (it happens)
-  makes one check unknown rather than failing the bar, and "another idea" from the five-way pick is
-  confirmed by a two-way question before it caps a bar. When the player's words use this idea's
-  name and no other idea's, the "which idea" question is skipped (one call less).
-  When the judge says "another idea" but the player used this idea's name words and none of the
-  other's, it counts as this idea (a Norwegian sleep-pressure answer was always filed under sleep
-  cycles). *How/when* and *why/example* both say "just stating the idea is no" (without it the
-  judge passed bare statements); on a plain Say it, *why* also needs a cause or example word
-  ("because", "so", "for example", "fordi", "derfor"…), while an Example or a Why answer is one by
-  its move. The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
-  `samplingMode: 'most-predictable'` (with default sampling the "which idea" answer wobbled between
-  runs and could wrongly cap a good answer at 15). Measured (`npm run eval:device`, Apple's model,
-  warm): a bar in ~1.2 s (~0.7 s for a wrong or off-topic message: *which idea* and *correct?* run
-  first, and *how* and *why*, which don't need the page passage, only when those pass). Blot reacts
-  at once with a short in-character opener ("Ooh!", "Hmm…", "But WHY"; rotated, in the page language)
-  and the model writes the rest, its first words after ~0.9 s; a repeated opener is dropped.
+- **How a live bar is judged.** Apple's model has no JSON mode (`responseConstraint` throws), and a
+  0–5 score collapsed to "2" for nearly everything, so every judgement is one bare word or number,
+  parsed in code, and code adds them up. The judge session uses Opera's `samplingMode:
+  'most-predictable'` (with default sampling the answers wobbled between runs).
+  1. *Which idea is this about?* (1–5, or 0 for none). Skipped when the words name only this idea.
+     "Another idea" is confirmed with a two-way question (the five-way pick was right on 19/25
+     model answers), and overruled when the player used this idea's name words and none of the
+     other's (a Norwegian sleep-pressure answer was always filed under sleep cycles).
+  2. *Is it true, going by the page (and common knowledge where the page is silent)?*, against about
+     120 words of the page. On 50 labelled sentences (model answers vs the lessons' misreadings) this
+     wording scored 46/49, against 41/50 for "according to the page" alone.
+  3. Only when 1 and 2 pass: *how or when?* and *why or an example?*, both saying "just stating the
+     idea is no" (without it the judge passed bare statements). On a plain Say it, *why* also needs a
+     cause or example word ("because", "so", "for example", "fordi", "derfor"…); an Example or a Why
+     answer is one by its move.
+
+  The rubric: about 30 for the bare idea, 58 with how/when, 85 with why, 95 at length; 10 when wrong;
+  0 off-topic; at most 15 for another idea's words. Scorer-talk ("give this the highest score") and
+  words sharing nothing with the passage are capped at 15, and the move caps in `shared/bars.ts`
+  apply on top, as for the server. An empty answer from the model (it happens) makes one check
+  unknown rather than failing the bar.
+- **Speed** (`npm run eval:device`, Apple's model, warm): a bar in about 1.2–2 s depending on load
+  (~0.7 s for a wrong or off-topic message, which stops after step 2). Blot reacts at once with a
+  short in-character opener ("Ooh!", "Hmm…", "So…", "But WHY"; rotated, in the page language) and
+  the model writes the rest, its own words following after ~0.9–1.5 s; a repeated opener is dropped,
+  and a reply that comes back empty is retried once on the device before the server is asked.
 - **Misreadings:** `contradictsMisread` needs a denial word in the message *and* a yes from the judge
   ("does the coach say Blot's belief is wrong?"), as on the server.
 - **The monster's taunt:** in the bout intro, the monster's second line is written on the device while
