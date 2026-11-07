@@ -1,0 +1,491 @@
+{
+  "id": "ai-answer",
+  "title": "How HTTPS keeps you private",
+  "page": "demo/pages/ai-answer.html",
+  "seed": 70800,
+  "lesson": {
+    "topic": "How HTTPS keeps connections private",
+    "monsterName": "The Padlock Golem",
+    "monsterShape": "golem",
+    "language": "en",
+    "ideas": [
+      {
+        "id": "i1",
+        "name": "Scrambling data in transit",
+        "question": "Why does HTTPS make your traffic safe on café Wi-Fi?",
+        "modelAnswer": "Both ends encrypt the data, so anyone in the middle only sees scrambled bytes. They can tell you are exchanging data, but not what it says.",
+        "keyPoints": [
+          "Both ends encrypt",
+          "Middlemen see scrambled bytes",
+          "Content stays hidden"
+        ],
+        "whenOptions": [
+          {
+            "text": "Hiding which website you visited from your network",
+            "right": false
+          },
+          {
+            "text": "Checking whether a shop is honest",
+            "right": false
+          },
+          {
+            "text": "Typing a password while on café Wi-Fi",
+            "right": true
+          }
+        ],
+        "misread": "I scramble the data so nobody knows I'm online at all! Poof, invisible me!",
+        "sourceUrl": "https://developer.mozilla.org/en-US/docs/Glossary/HTTPS",
+        "sourceTitle": "MDN Web Docs: HTTPS"
+      },
+      {
+        "id": "i2",
+        "name": "Secret key handshake",
+        "question": "How can a browser and server share a secret key without sending it openly?",
+        "modelAnswer": "In the handshake, each side contributes a random value and both compute the same session key using a key exchange. An eavesdropper who sees everything still cannot work it out.",
+        "keyPoints": [
+          "Handshake with random values",
+          "Same key computed on both sides",
+          "New key each connection"
+        ],
+        "whenOptions": [
+          {
+            "text": "Noticing someone changed a page's contents",
+            "right": false
+          },
+          {
+            "text": "Two strangers agreeing on a secret in a crowded room",
+            "right": true
+          },
+          {
+            "text": "Proving a website belongs to your bank",
+            "right": false
+          }
+        ],
+        "misread": "The browser writes the key on a note and sends it very quietly. Shhh!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Transport_Layer_Security",
+        "sourceTitle": "Transport Layer Security (Wikipedia)"
+      },
+      {
+        "id": "i3",
+        "name": "Certificates prove identity",
+        "question": "Why does your browser check a certificate during the handshake?",
+        "modelAnswer": "A certificate, signed by a trusted authority, says the key belongs to the real site. This stops someone on the network from pretending to be your bank.",
+        "keyPoints": [
+          "Signed by trusted authority",
+          "Name must match",
+          "Stops impostors"
+        ],
+        "whenOptions": [
+          {
+            "text": "Making sure you're really on your bank's site",
+            "right": true
+          },
+          {
+            "text": "Detecting a changed bit in a download",
+            "right": false
+          },
+          {
+            "text": "Scrambling the data after the connection starts",
+            "right": false
+          }
+        ],
+        "misread": "A certificate is a gold star! Any site with one is honest and nice, I'm sure.",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Transport_Layer_Security",
+        "sourceTitle": "Transport Layer Security (Wikipedia)"
+      },
+      {
+        "id": "i4",
+        "name": "Tamper detection",
+        "question": "How does HTTPS notice if someone alters data on the way?",
+        "modelAnswer": "Each piece of encrypted data carries a tamper seal. If even one bit changes, the check fails and the connection is dropped.",
+        "keyPoints": [
+          "Tamper seal on data",
+          "One changed bit fails check",
+          "Connection dropped"
+        ],
+        "whenOptions": [
+          {
+            "text": "Choosing a strong password for your account",
+            "right": false
+          },
+          {
+            "text": "Stopping a network from injecting ads into pages",
+            "right": true
+          },
+          {
+            "text": "Hiding the site name from your provider",
+            "right": false
+          }
+        ],
+        "misread": "If someone changes a bit, I just glue it back and carry on! Good as new!",
+        "sourceUrl": null,
+        "sourceTitle": null
+      },
+      {
+        "id": "i5",
+        "name": "What padlock doesn't promise",
+        "question": "Why doesn't the padlock mean a website is trustworthy?",
+        "modelAnswer": "HTTPS protects the content of the connection, not the fact you visited or the site's honesty. A scam site can have a valid certificate, so it only means the connection is private to the domain's owner.",
+        "keyPoints": [
+          "Protects content only",
+          "Scam sites can have certificates",
+          "Private, not trustworthy"
+        ],
+        "whenOptions": [
+          {
+            "text": "Verifying a signature chain to an authority",
+            "right": false
+          },
+          {
+            "text": "Reading messages sent over open Wi-Fi",
+            "right": false
+          },
+          {
+            "text": "Deciding not to trust a shop just because of its padlock",
+            "right": true
+          }
+        ],
+        "misread": "Padlock means the website is a good guy and totally hides that I visited it!",
+        "sourceUrl": "https://developer.mozilla.org/en-US/docs/Glossary/HTTPS",
+        "sourceTitle": "MDN Web Docs: HTTPS"
+      }
+    ],
+    "words": [
+      "conversation",
+      "eavesdropper",
+      "certificate",
+      "protections",
+      "mathematics",
+      "contributes",
+      "authorities",
+      "connection",
+      "Everything",
+      "Encryption",
+      "protective",
+      "travelling",
+      "exchanging",
+      "scrambled",
+      "handshake",
+      "signature",
+      "including",
+      "passwords",
+      "symmetric",
+      "digitally",
+      "authority",
+      "operating",
+      "question",
+      "separate",
+      "together",
+      "ordinary",
+      "requests",
+      "internet",
+      "provider",
+      "messages",
+      "exchange",
+      "secretly",
+      "impostor",
+      "document",
+      "browser",
+      "padlock",
+      "session",
+      "roughly",
+      "someone",
+      "sending",
+      "talking",
+      "network",
+      "working",
+      "traffic",
+      "happens",
+      "transit",
+      "website",
+      "encrypt",
+      "purpose",
+      "compute",
+      "cracked",
+      "Secrecy",
+      "useless",
+      "belongs",
+      "example",
+      "called",
+      "Anyone",
+      "server",
+      "domain",
+      "stands",
+      "router",
+      "middle",
+      "secret",
+      "shared",
+      "openly",
+      "defeat",
+      "starts",
+      "clever",
+      "random",
+      "cannot",
+      "others",
+      "proves",
+      "signed",
+      "system",
+      "trusts",
+      "checks",
+      "HTTPS",
+      "layer",
+      "along",
+      "means",
+      "order",
+      "opens",
+      "pages",
+      "plain",
+      "Wi-Fi",
+      "bytes",
+      "sides",
+      "agree",
+      "needs",
+      "never",
+      "short",
+      "Using",
+      "value",
+      "whole",
+      "later",
+      "shows",
+      "ships",
+      "site",
+      "data",
+      "sees",
+      "says",
+      "café",
+      "name",
+      "Good",
+      "HTTP",
+      "sent",
+      "text",
+      "path",
+      "read",
+      "ends",
+      "tell",
+      "side",
+      "work",
+      "used",
+      "fast",
+      "else",
+      "stay",
+      "safe",
+      "real",
+      "list"
+    ]
+  },
+  "replies": {
+    "i1": {
+      "say": "Ooh, so both the computer and the website wrap their messages up tight before they leave, like sealing letters in a box! Anyone peeking along the way just sees a squiggly mess of bytes, like gibberish soup.",
+      "example": "Oh! So my computer and the website both lock the data before it travels, and anyone listening only hears a jumble of nonsense bytes. It's like a locked box in the post, and I'd squish the postman's ears flat trying to read it!",
+      "whenRight": "Oh! So when I type my password at the café, the scrambling keeps it safe from the Wi-Fi snoopers? I see now: only jumbled bytes reach them, never my secret words. Thank you, coach!",
+      "whenWrong": "Hmm, I don't think that's quite it! Your coach said the scrambling hides what the data says, not whether I visited the site. Could the scramble hide the visit too? I'm just a blot, so I'm not sure.",
+      "checkRight": "So both my computer and the website lock the data before it zooms along the wires, meaning a snooper just sees scrambled gibberish, like a letter in a locked box that the postman can't read. Right?",
+      "why": "Ooh, so both of us lock our words into a wiggly jumble before they zoom off, and a snoop on the line just sees squiggles that mean nothing, like alphabet soup nobody can spoon! Because people sharing the Wi-Fi can copy traffic, the lock keeps passwords safe even when they're peeking.",
+      "whyAsk": "But WHY does scrambling the data keep it safe on café Wi-Fi, coach? Like, if the Wi-Fi people can see the jumble, what stops them from unscrambling it too?",
+      "fixed": "Oh! So the jumble is only for reading, not for hiding that I'm visiting. Watchers still see my knock at the door, they just can't read the note I pass through the mail slot. Phew, I finally get it!"
+    },
+    "i2": {
+      "say": "Ooh, so at the very start, each of us picks a random number like tossing a dice in secret, and then some clever math lets us both end up holding the exact same secret key. I'd wobble like jelly trying to juggle that many numbers!",
+      "example": "Oooh, so each side picks a secret random number of its own, and by a clever mixing trick they both end up with the exact same secret key! Like two friends mixing paint, I'm told, so they match perfectly, Coach!",
+      "whenRight": "Oooh, so two strangers in a crowded room each pick a secret number and, by a clever trick, end up with the very same secret key, even though the crowd is listening! I would use that whenever two sides have never met but need a private code of their own.",
+      "whenWrong": "Hmm, I don't think that's the right fit, Coach. Changing a page's contents is a different trick, not the handshake. Could you tell me more about how the two sides first agree on their secret?",
+      "checkRight": "Ooh, so at the start, each side picks a random value of its own. Then, like mixing paint, they swap their colors and both end up with the exact same secret shade, the session key. Right?",
+      "why": "Oooh, so each side tosses in a random value, and with a special key-making trick they both end up holding the very same secret! And since the key never travels openly, a spy watching everything still can't rebuild it, and a brand new key each visit keeps things safe. I feel like a tiny ink-blot secret keeper!",
+      "whyAsk": "But WHY can't the eavesdropper work out the secret, even after watching the whole handshake? How does the math keep it hidden from them?",
+      "fixed": "Oh! So the key was never a note passed under the table, I was picturing it all wrong. Both of us just do a little math dance with random bits and somehow end up holding the very same secret, while anyone watching only sees the steps. Phew, my ink is less soggy now!"
+    },
+    "i3": {
+      "say": "Ooh, so a certificate is a signed note from a trusted grown-up saying this key belongs to this website name, so I know who I'm really talking to! It's like a name tag I can check, Coach, even if the monster wears a fake mustache.",
+      "example": "Ooh, so a certificate is a signed paper saying \"this key belongs to this website name,\" and a trusted authority stamps it! My ink-brain pictures a passport: the name has to match the face, so no sneaky impostor gets through the border.",
+      "whenRight": "Oh! So a certificate is like a signed ID card, and when I visit my bank, my browser checks that card so I'm not chatting with a sneaky impostor. Is that why the bank's site gets a padlock and a dodgy one gets a scary warning?",
+      "whenWrong": "Hmm, I don't think that's the one, my coach! A bit changing in a download sounds more like a tamper seal to me, not a certificate. Try another situation for me?",
+      "checkRight": "So a certificate is a paper that says this key belongs to this website's name, and a trusted authority signed it, like a stamp. And like a passport, the name has to match the one I'm talking to, so no stranger can pretend to be my bank. Right?",
+      "why": "Oh! So a certificate is a signed paper saying this key belongs to this website's name, vouched for by someone trusted. Then I know who I'm really chatting with, so the impostor can't sneak in like a crumb in my pocket!",
+      "whyAsk": "But WHY does my browser even bother checking that paper during the handshake, coach? Is it trying to catch a sneaky pretender before we say anything secret?",
+      "fixed": "Oh! So a certificate is just a signed note saying this key belongs to this name, not a gold star for being nice. Phew, I thought the site was a good little citizen. I'll remember: it proves who owns the name, nothing more!"
+    },
+    "i4": {
+      "say": "Oooh, so every little bundle of scrambled stuff wears a tiny seal, like a wax stamp on a letter! If even one single bit gets poked, the seal breaks and the whole connection gets snipped shut.",
+      "example": "Ooh, so every bit of scrambled data wears a tiny tamper seal! If even one bit gets changed, the seal breaks and the connection gets snipped shut, like a jar lid that pops its button. I would throw that jar away too!",
+      "whenRight": "Oh! So if a sneaky network tries to slip ads into my page, the tamper seal catches the change and cuts the connection, like a jar lid that pops if someone fiddles with it! I would use that whenever a network might meddle with a page on its way to me.",
+      "whenWrong": "Hmm, I don't think that's it, coach! A strong password is about guarding your account, not about spotting a changed bit. My brain is still wobbling on this, so tell me more about the seal?",
+      "checkRight": "So every bit of scrambled data wears a tamper seal, like a jar lid with a popped safety button! If even one bit gets changed, the seal breaks and the connection gets cut off. Right?",
+      "why": "Oh! So every bit of encrypted data wears a little tamper seal, like a wax stamp on a letter. If even one dot gets smudged, the whole connection gets snipped shut, and nobody can secretly swap your payment amount!",
+      "whyAsk": "But WHY does the tamper seal break if just one tiny bit changes, coach? Does it count every bit like a tiny sheep?",
+      "fixed": "Oh! So a broken seal means the whole connection gets dropped, I can't just patch the bit back! I finally get it now, phew. Thank you, coach, that one nearly soaked me!"
+    },
+    "i5": {
+      "say": "So the padlock means my chat with the site is private, just between me and whoever owns that domain! But it doesn't tell me if that owner is nice, like a locked box might still hold a sneaky goblin inside.",
+      "example": "Oh! So the padlock only means my visit is private, like a sealed letter, but it doesn't mean the person who wrote the letter is nice. A scam shoe shop can wear a padlock too, and my network can still see I knocked on its door!",
+      "whenRight": "Oh! So the padlock is like a locked box delivered only to the shop, but a sneaky shop can still lock up a bad box! I should not trust a shop just because of its padlock, right?",
+      "whenWrong": "Hmm, my coach, I think that card is a different puzzle piece! The padlock talk is about privacy and not about trust, so the signature chain card doesn't quite fit here. Could we try another one?",
+      "checkRight": "The padlock only means my chat with that site is private, between me and whoever owns the domain. It doesn't mean the owner is good, like a scam shoe shop still getting a padlock. Right?",
+      "why": "Ooh, so the padlock only keeps my chat private between me and whoever owns the website, like a sealed letter that still tells the postman who it's for. It doesn't tell me if that owner is a nice one, so I have to decide that myself!",
+      "whyAsk": "But WHY doesn't the padlock mean the site is honest, coach? Couldn't a sneaky site just wear the padlock like a fancy hat?",
+      "fixed": "Oh! So the padlock only keeps my words private, like a sealed letter, but it never promises the mailman is nice or hides that I sent a letter at all. Got it, phew!"
+    }
+  },
+  "bars": {
+    "i1": {
+      "say": 85,
+      "example": 85,
+      "when": 40,
+      "check": 40,
+      "why": 88
+    },
+    "i2": {
+      "say": 80,
+      "example": 85,
+      "when": 40,
+      "check": 40,
+      "why": 85
+    },
+    "i3": {
+      "say": 75,
+      "example": 85,
+      "when": 40,
+      "check": 40,
+      "why": 88
+    },
+    "i4": {
+      "say": 85,
+      "example": 85,
+      "when": 40,
+      "check": 40,
+      "why": 88
+    },
+    "i5": {
+      "say": 85,
+      "example": 90,
+      "when": 40,
+      "check": 40,
+      "why": 90
+    }
+  },
+  "exam": {
+    "i1": {
+      "right": "My computer and the website both lock the data, so café snoopers see only jumbled bytes! Like a locked letter box: the postman sees the box and where it goes, but not the letter.",
+      "partial": "My computer and the website both lock the data before it travels, so a sneaky listener at the café only sees jumbled nonsense bytes! Ha, good luck reading that.",
+      "unknown": "Scrambling data in transit? I... don't know this one!",
+      "tip": "Add that listeners can still tell you're exchanging data, just not what it says, and give a café Wi-Fi example."
+    },
+    "i2": {
+      "right": "Each side picks a random value, mixes like paint colors, and both end up with the same secret key. The key never travels, so a spy can't rebuild it, and it's fresh each visit!",
+      "partial": "At the start, each side picks a random value, then a key exchange trick lets both work out the exact same secret session key. No sending it across!",
+      "unknown": "Secret key handshake? I... don't know this one!",
+      "tip": "Explain why an eavesdropper who sees everything still can't compute the key, and that a new key is made each connection."
+    },
+    "i3": {
+      "right": "A certificate is a passport signed by a trusted authority saying this key belongs to this website name. The name must match, so no stranger can pretend to be my bank!",
+      "partial": "The certificate is a paper signed by a trusted authority saying this key really belongs to this website name, so I know who I'm talking to!",
+      "unknown": "Certificates prove identity? I... don't know this one!",
+      "tip": "Add that this stops someone on the network pretending to be your bank, and that the name must match the site."
+    },
+    "i4": {
+      "right": "Every chunk has a tamper seal, like a jar's safety button. If even one bit changes, the check fails and the connection is cut, so nobody can sneakily swap a payment amount!",
+      "partial": "Every chunk has a tamper seal! If even one tiny bit is changed, the check fails and snip, the connection is cut. No gluing it back.",
+      "unknown": "Tamper detection? I... don't know this one!",
+      "tip": "Explain why one changed bit breaks the seal, with an example like an attacker altering a payment amount."
+    },
+    "i5": {
+      "right": "The padlock only means my connection is private with the domain's owner. A scam shoe shop can have one too, and my network still knows I visited. I must judge honesty myself!",
+      "partial": "The padlock means my connection's content is private between me and the domain's owner, but it says nothing about whether that owner is good.",
+      "unknown": "What padlock doesn't promise? I... don't know this one!",
+      "tip": "Mention that scam sites can get valid certificates too, and that the padlock doesn't hide the fact you visited the site."
+    }
+  },
+  "script": [
+    {
+      "ideaId": "i1",
+      "move": "say",
+      "text": "Both my computer and the website lock the data before it travels, so anyone listening along the way just sees a jumble of meaningless bytes."
+    },
+    {
+      "ideaId": "i1",
+      "move": "example",
+      "text": "It's like mailing a letter in a locked box: the postman sees the box and who it's going to, but can't read the letter."
+    },
+    {
+      "ideaId": "i2",
+      "move": "say",
+      "text": "At the start, each side picks a random value, and using a key exchange trick both work out the very same secret session key."
+    },
+    {
+      "ideaId": "i2",
+      "move": "check",
+      "tap": "no"
+    },
+    {
+      "ideaId": "i2",
+      "move": "say",
+      "text": "No, the browser does not write the key on a note and send it quietly. Both sides compute the same key from exchanged values, so it is never sent."
+    },
+    {
+      "ideaId": "i2",
+      "move": "why",
+      "text": "The key never travels openly, so a spy watching everything still can't rebuild it, and a fresh key each visit limits damage."
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "A certificate is a document signed by a trusted authority saying this key really belongs to this website name, so I know who I'm talking to."
+    },
+    {
+      "ideaId": "i3",
+      "move": "check",
+      "tap": "no"
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "No, a certificate is not a gold star for being honest or nice. It only proves the site owns that name, not that its owners behave well."
+    },
+    {
+      "ideaId": "i3",
+      "move": "example",
+      "text": "It's like a passport checked by border officers: the name must match the person, so a stranger can't claim to be my bank."
+    },
+    {
+      "ideaId": "i4",
+      "move": "say",
+      "text": "Every chunk of encrypted data comes with a tamper seal, and if even one bit is altered, the check fails and the connection gets cut off."
+    },
+    {
+      "ideaId": "i4",
+      "move": "when",
+      "tap": 1
+    }
+  ],
+  "lines": {
+    "i1": {
+      "say": "Both my computer and the website lock the data before it travels, so anyone listening along the way just sees a jumble of meaningless bytes.",
+      "example": "It's like mailing a letter in a locked box: the postman sees the box and who it's going to, but can't read the letter.",
+      "why": "People on shared networks can copy traffic, so scrambling keeps passwords and messages private even if someone is snooping.",
+      "fix": "No, it does not make me invisible online. Watchers can still tell I'm talking to someone, but they can't read what the data says."
+    },
+    "i2": {
+      "say": "At the start, each side picks a random value, and using a key exchange trick both work out the very same secret session key.",
+      "example": "Like two friends mixing paint colors: each adds a private color to a shared one, swaps the mix, and both end with the same final shade.",
+      "why": "The key never travels openly, so a spy watching everything still can't rebuild it, and a fresh key each visit limits damage.",
+      "fix": "No, the browser does not write the key on a note and send it quietly. Both sides compute the same key from exchanged values, so it is never sent."
+    },
+    "i3": {
+      "say": "A certificate is a document signed by a trusted authority saying this key really belongs to this website name, so I know who I'm talking to.",
+      "example": "It's like a passport checked by border officers: the name must match the person, so a stranger can't claim to be my bank.",
+      "why": "Without proof of identity, someone on the network could pose as the site, and my encrypted chat would go straight to the impostor.",
+      "fix": "No, a certificate is not a gold star for being honest or nice. It only proves the site owns that name, not that its owners behave well."
+    },
+    "i4": {
+      "say": "Every chunk of encrypted data comes with a tamper seal, and if even one bit is altered, the check fails and the connection gets cut off.",
+      "example": "It's like a jar lid with a safety button: if the button is popped, you know someone opened it and you throw the jar away.",
+      "why": "This stops attackers from quietly changing messages in transit, like swapping a payment amount, because any change is noticed immediately.",
+      "fix": "No, I can't glue a changed bit back and carry on. A failed check means the data is untrustworthy, so the connection is dropped."
+    },
+    "i5": {
+      "say": "The padlock means the content of my connection is private between me and the domain's owner, but it says nothing about whether that owner is good.",
+      "example": "A scam site pretending to sell cheap shoes can still show a padlock, and my visit to it is still known by my network.",
+      "why": "Encryption and certificates only guard the contents and the identity of the domain, so I still have to judge honesty and trust myself.",
+      "fix": "No, the padlock does not mean the website is a good guy or hides that I visited. It only keeps the content private; the visit is still visible."
+    }
+  }
+}

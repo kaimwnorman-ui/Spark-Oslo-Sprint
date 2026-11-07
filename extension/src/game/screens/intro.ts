@@ -33,6 +33,15 @@ export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void 
       h('p', { class: 'pitch' }, 'Any page becomes a monster made of its words. Beat it by teaching Blot what the page means.'),
       primary('btn-play-demo', 'Play the demo', () => onDemo('tides')),
       h('p', { class: 'quiet-line' }, 'On any page: click the Spark button in your toolbar, or press Alt+Shift+B.'),
+      h(
+        'p',
+        { class: 'more-pages' },
+        'More pages: ',
+        ...[['pvalue', 'P-values'], ['solar', 'Solar panels'], ['sove', 'Søvn (norsk)'], ['ai-answer', 'An AI answer'], ['stage', 'Stage round']].flatMap(([id, label], i) => [
+          i ? ' · ' : '',
+          h('a', { href: `game.html?demo=${id}`, class: 'page-link' }, label!),
+        ]),
+      ),
     ),
     h('div', { class: 'home-blot' }, blot.el),
   );
@@ -246,11 +255,11 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
     sfx.tap();
     await wait(reduce ? 60 : 220);
   }
-  const blot = createBlot(150);
+  // Blot pops in, wide-eyed (no words here: the teach screen is where Blot talks).
+  const blot = createBlot(120);
   blot.setTraits(ctx.traits);
   blot.setPose('excited');
-  const say = h('div', { class: 'bubble forming-bubble' }, 'Whoa. That is a BIG one. Teach me how to beat it!');
-  root.append(h('div', { class: 'forming-blot' }, blot.el, say));
+  root.append(h('div', { class: 'forming-blot', 'aria-hidden': 'true' }, blot.el));
   sfx.question();
   teach.classList.remove('hidden');
   teach.focus();

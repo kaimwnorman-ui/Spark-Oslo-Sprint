@@ -32,13 +32,17 @@ export async function replayScreen(ctx: RoundCtx): Promise<'again' | 'home'> {
   });
 
   const weakIdea = ctx.lesson.ideas.find((i) => i.id === weakest);
+  // One page to go deeper (SPEC §10): the weakest idea's own link, or else the link of the
+  // weakest idea that has one. Every link comes from the page itself; no link at all means none.
+  const byScore = [...exam.results].sort((a, b) => a.score - b.score).map((r) => ctx.lesson.ideas.find((i) => i.id === r.id)!);
+  const linked = weakIdea?.sourceUrl ? weakIdea : byScore.find((i) => i?.sourceUrl);
   const deeper =
-    weakIdea?.sourceUrl
+    linked?.sourceUrl
       ? h(
           'div',
           { class: 'go-deeper', id: 'go-deeper' },
-          h('p', { class: 'card-kicker' }, `Weakest idea: ${weakIdea.name}`),
-          h('a', { class: 'deeper-link', href: weakIdea.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, `Go deeper: ${weakIdea.sourceTitle ?? new URL(weakIdea.sourceUrl).hostname} ↗`),
+          h('p', { class: 'card-kicker' }, linked === weakIdea ? `Weakest idea: ${weakIdea!.name}` : `Go deeper on ${linked.name}`),
+          h('a', { class: 'deeper-link', href: linked.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, `Go deeper: ${linked.sourceTitle ?? new URL(linked.sourceUrl).hostname} ↗`),
         )
       : h('div', { class: 'go-deeper', id: 'go-deeper' }, h('p', { class: 'card-kicker' }, `Weakest idea: ${weakIdea?.name ?? ''}`), h('p', { class: 'muted' }, 'This page had no link for it. Try searching it yourself!'));
 

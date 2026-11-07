@@ -226,6 +226,8 @@ export interface DemoRound {
   exam: Record<string, { right: string; partial: string; unknown: string; tip: string }>;
   /** The scripted player (smoke test, presenter autoplay). */
   script: TranscriptEntry[];
+  /** The scripted player's lines per idea (baked rounds). */
+  lines?: Record<string, { say: string; example: string; why: string; fix: string }>;
   /** Stage round: ideas already taught when the round starts. */
   pretaught?: TranscriptEntry[];
 }

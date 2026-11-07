@@ -1,0 +1,481 @@
+{
+  "id": "pvalue",
+  "title": "What a p-value tells you",
+  "page": "demo/pages/pvalue.html",
+  "seed": 58244,
+  "lesson": {
+    "topic": "What p-values tell you",
+    "monsterName": "The P-Value Spider",
+    "monsterShape": "spider",
+    "language": "en",
+    "ideas": [
+      {
+        "id": "i1",
+        "name": "Assume nothing happens",
+        "question": "What question does a p-value actually answer?",
+        "modelAnswer": "It assumes the null hypothesis, that nothing is going on. Then it gives the chance that luck alone would produce a difference at least as big as the one seen.",
+        "keyPoints": [
+          "assume null is true",
+          "chance of a gap this big",
+          "luck alone"
+        ],
+        "whenOptions": [
+          {
+            "text": "Counting how many tomatoes a bed produced",
+            "right": false
+          },
+          {
+            "text": "Checking if one plant bed grew heavier tomatoes by luck",
+            "right": true
+          },
+          {
+            "text": "Deciding which tomato variety tastes the nicest",
+            "right": false
+          }
+        ],
+        "misread": "A p-value is how many tomatoes the fertiliser made! Bigger number, bigger tomato, I'm sure!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/P-value",
+        "sourceTitle": "p-value"
+      },
+      {
+        "id": "i2",
+        "name": "Not chance of error",
+        "question": "Why is p = 0.03 not a 3 percent chance the fertiliser doesn't work?",
+        "modelAnswer": "The p-value is calculated by assuming the null hypothesis is true, so it cannot say how likely that hypothesis is. It only measures how surprising the data would be in a boring world.",
+        "keyPoints": [
+          "assumes null is true",
+          "surprise, not probability of null",
+          "needs other evidence"
+        ],
+        "whenOptions": [
+          {
+            "text": "Measuring how heavy a tomato is on a scale",
+            "right": false
+          },
+          {
+            "text": "Picking a threshold for a coin toss game",
+            "right": false
+          },
+          {
+            "text": "Doubting a sugar pill cure despite one small p-value",
+            "right": true
+          }
+        ],
+        "misread": "p is 0.03, so I'm 3 percent sure the fertiliser is a dud. Simple maths, I'm very smart!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/P-value",
+        "sourceTitle": "p-value"
+      },
+      {
+        "id": "i3",
+        "name": "The 0.05 line",
+        "question": "Why is 0.05 not a magic line for significance?",
+        "modelAnswer": "It is just a round-number habit from early twentieth century textbooks. A result at 0.049 is hardly different from one at 0.051, so researchers should report the full picture.",
+        "keyPoints": [
+          "historical habit",
+          "0.049 vs 0.051",
+          "report full picture"
+        ],
+        "whenOptions": [
+          {
+            "text": "Choosing a round number for a birthday party",
+            "right": false
+          },
+          {
+            "text": "Not dismissing a study because p was 0.051",
+            "right": true
+          },
+          {
+            "text": "Deciding if a bridge's measured length is exact",
+            "right": false
+          }
+        ],
+        "misread": "0.05 is a magic wall! Below it the fertiliser works, above it, poof, it never did anything.",
+        "sourceUrl": "https://www.amstat.org/asa/files/pdfs/p-valuestatement.pdf",
+        "sourceTitle": "American Statistical Association's statement on p-values"
+      },
+      {
+        "id": "i4",
+        "name": "Significant isn't important",
+        "question": "Why can a significant result still be unimportant?",
+        "modelAnswer": "Significant only means unlikely to be pure chance, not that the effect is big. With a huge sample, a tiny two-gram gain can give a tiny p-value, so effect size matters too.",
+        "keyPoints": [
+          "significant means not chance",
+          "big samples find tiny effects",
+          "check effect size"
+        ],
+        "whenOptions": [
+          {
+            "text": "Asking how much heavier tomatoes got, not just if",
+            "right": true
+          },
+          {
+            "text": "Guessing tomorrow's weather from today's",
+            "right": false
+          },
+          {
+            "text": "Checking if a headline came from a real study",
+            "right": false
+          }
+        ],
+        "misread": "Significant means super important! A two-gram tomato boost must be a gardening miracle!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Effect_size",
+        "sourceTitle": "effect size"
+      },
+      {
+        "id": "i5",
+        "name": "Many tests, lucky hits",
+        "question": "Why does testing many things make false findings likely?",
+        "modelAnswer": "Each test on a useless fertiliser has about a one in twenty chance of p < 0.05 by luck. Run many tests and report only the one that worked, and you get a headline built on a coin toss.",
+        "keyPoints": [
+          "one in twenty luck",
+          "many tests",
+          "report every test"
+        ],
+        "whenOptions": [
+          {
+            "text": "Doubting a study that tested twenty crops, showing one",
+            "right": true
+          },
+          {
+            "text": "Weighing a single tomato twice for accuracy",
+            "right": false
+          },
+          {
+            "text": "Trusting one planned test with its result fully reported",
+            "right": false
+          }
+        ],
+        "misread": "If I test twenty crops, the fertiliser gets twenty chances to be real. More tests, more truth!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Multiple_comparisons_problem",
+        "sourceTitle": "multiple comparisons problem"
+      }
+    ],
+    "words": [
+      "misunderstood",
+      "Understanding",
+      "significance",
+      "deliberately",
+      "significant",
+      "Statistical",
+      "imagination",
+      "probability",
+      "experiments",
+      "fertiliser",
+      "hypothesis",
+      "difference",
+      "surprising",
+      "assumption",
+      "fertilised",
+      "calculated",
+      "different",
+      "plausible",
+      "something",
+      "Explainer",
+      "announces",
+      "Somewhere",
+      "backwards",
+      "tomatoes",
+      "headline",
+      "assuming",
+      "question",
+      "unlikely",
+      "evidence",
+      "actually",
+      "measures",
+      "p-value",
+      "nothing",
+      "whether",
+      "doesn't",
+      "warning",
+      "Imagine",
+      "testing",
+      "heavier",
+      "exactly",
+      "produce",
+      "useless",
+      "written",
+      "numbers",
+      "science",
+      "average",
+      "precise",
+      "hundred",
+      "mistake",
+      "percent",
+      "matters",
+      "serious",
+      "illness",
+      "effect",
+      "chance",
+      "boring",
+      "report",
+      "number",
+      "likely",
+      "little",
+      "called",
+      "result",
+      "enough",
+      "sample",
+      "useful",
+      "twenty",
+      "minute",
+      "anyway",
+      "starts",
+      "larger",
+      "common",
+      "cannot",
+      "curing",
+      "weaker",
+      "study",
+      "small",
+      "often",
+      "world",
+      "tells",
+      "means",
+      "large",
+      "claim",
+      "found",
+      "doing",
+      "quiet",
+      "takes",
+      "Start",
+      "going",
+      "never",
+      "weigh",
+      "alone",
+      "least",
+      "wrong",
+      "begin",
+      "sugar",
+      "test",
+      "read",
+      "work",
+      "data",
+      "link",
+      "luck",
+      "null",
+      "tell",
+      "size",
+      "line",
+      "sure",
+      "Good",
+      "next",
+      "week",
+      "sits",
+      "used",
+      "idea",
+      "grow",
+      "come",
+      "vary",
+      "beds",
+      "asks",
+      "turn",
+      "true",
+      "pill"
+    ]
+  },
+  "replies": {
+    "i1": {
+      "say": "Ooh, so first we pretend the fertiliser is a dud, doing absolutely nothing, like a tomato sulking in the dark! Then the p-value counts how often plain luck could make tomatoes differ this much or more.",
+      "example": "Oooh, so first we pretend the fertiliser does absolutely nothing, like a tomato sitting in a dark cupboard! Then we ask how often plain luck alone would make a gap that big between the plants. Luck, the sneaky little gardener, does all the work!",
+      "whenRight": "Oh! So we pretend the fertiliser is a useless lump, then ask how often luck alone would make tomatoes this heavy. I'd use it whenever I wonder if one bed just got lucky, like a tomato that rolled into a sunny spot!",
+      "whenWrong": "Hmm, counting tomatoes sounds like a different sort of puzzle to me! I don't think that goes with \"assume nothing happens\" yet. Could you tell me again how that boring starting idea fits in?",
+      "checkRight": "Ooh, so first we pretend the fertiliser does nothing, like a tomato that just sits there doing absolutely nothing! Then we ask how often plain luck would make a gap that big between the plants. Right?",
+      "why": "Oh! So we pretend the fertiliser does absolutely nothing, like a tomato that naps all day. Then we ask how often plain luck alone would make a gap this big. I think that is the p-value, and I am very proud of myself for remembering it!",
+      "whyAsk": "But WHY do we pretend the fertiliser does nothing? If I start by guessing it works, wouldn't the p-value just agree with me?",
+      "fixed": "Oh! So it is not how big the tomatoes get, it is how often plain luck would make a gap this big. I was squishing the wrong thing. Thank you, coach, I finally see it now!"
+    },
+    "i2": {
+      "say": "Oh! So the p-value is not a \"how likely is the fertiliser a dud\" number, it is more like how surprised my tomatoes would be if the fertiliser did nothing at all. I'd only be squinting at a surprised tomato, not a guilty one!",
+      "example": "Oh! So the p-value isn't a chance I'm wrong, it's just how weird my tomato data would look if the fertiliser did nothing at all. Like a squeaky floorboard in an empty house, but it doesn't tell me who's sneaking around!",
+      "whenRight": "Ooh, so the p-value is a surprise meter, not a \"how wrong am I\" meter! I would use it when a sugar pill cure shows one small p-value, because a surprising fluke is still more believable than a miracle.",
+      "whenWrong": "Hmm, weighing a tomato on a scale doesn't feel like the same idea to me. I'm still a bit muddled, though, so could you tell me more about the surprise part again?",
+      "checkRight": "Ooh, so the p-value is not a chance that I am wrong! It only tells me how surprising my tomato data would be if the fertiliser did nothing. A tiny ink blot like me is definitely not a 97 percent sure fertiliser. Right?",
+      "why": "Oooh, so the p-value is not a guess about whether the fertiliser is a dud! It just tells me how odd our tomato numbers would look if the fertiliser did nothing at all. And it can't tell me how likely the do-nothing idea is, because it assumed that idea from the start, like a pancake judging its own flip.",
+      "whyAsk": "But WHY is a p of 0.03 not a 3 percent chance the fertiliser is a dud? Does the number just get stuck to the wrong side of the sentence, like a sock on a cat?",
+      "fixed": "Oh! So the p-value is not my chance of being wrong, it is just how surprising the tomatoes would be if the fertiliser did nothing. I was squishing two different questions into one blot. Thank you, coach, I feel much less smudged now!"
+    },
+    "i3": {
+      "say": "Oooh, so the 0.05 line is just a habit people picked up, like a favourite mug! Nothing magic about it. And a result just above it and one just below are pretty much the same, like two tomatoes that are almost exactly the same weight.",
+      "example": "Ooh, so the 0.05 line is just a handy habit, like a number someone drew on a wall for fun! A result at 0.049 and one at 0.051 are practically twins, even though one gets cheered and the other gets ignored. Silly, isn't it?",
+      "whenRight": "Oh! So p = 0.051 and p = 0.049 are almost the same, and 0.05 is just a habit, not a magic wall. So I should not toss out a study just because it missed the line by a whisker, right? I would use that when a study lands at 0.051 and everyone wants to ignore it!",
+      "whenWrong": "Hmm, a birthday party? My coach says 0.05 is only a habit, so I don't think picking a round number for a party is the same thing, Coach. I'm not sure how they fit together!",
+      "checkRight": "The 0.05 line is just a habit, not a magic wall! My coach says a p of 0.049 and 0.051 are almost the same, so one shouldn't get cheered while the other gets ignored, like two wobbly tomatoes on either side of a fence. Right?",
+      "why": "Oh! So 0.05 is just a habit, like a round number that stuck around. A p of 0.049 and 0.051 are practically twins, like two tomatoes of nearly the same weight. And the line has no secret magic to tell real from fake, which is a shame, because I was hoping it had a little wand.",
+      "whyAsk": "But WHY do people treat 0.05 like a magic line, when a result at 0.049 and one at 0.051 are basically the same? Did it just stick around by accident?",
+      "fixed": "Oh! So 0.05 is just a round number people got used to, like a bedtime habit, not a magic wall. I was treating it like a fence, but it's more like a sock drawer label. Now I see: we should report all the results, not just the ones that squeak under the line!"
+    },
+    "i4": {
+      "say": "Ooh, so \"significant\" just means the effect probably isn't pure luck, like a sneeze that's too loud to ignore! But it doesn't tell me how BIG the effect is, so I have to look at the size too, not just the sparkly word.",
+      "example": "Ooh, so \"significant\" just means the effect is probably not pure luck, but it doesn't say how big the effect is! Like weighing ten thousand tomatoes: a tiny two-gram boost can look impressive on paper, yet no gardener would ever notice it. I'm a blot, so I notice everything, but even I can't spot two grams!",
+      "whenRight": "Oooh, so significant just means probably not luck, and it does not mean big! Like when tomatoes get heavier, I should ask HOW MUCH heavier, not just if they did. A tiny tomato win still counts as a win, yes?",
+      "whenWrong": "Hmm, I don't think weather guessing is the same thing, coach! My ink can't see how it fits the \"significant isn't important\" idea. Could you show me another situation where a result is real but too small to matter?",
+      "checkRight": "Oooh, so \"significant\" just means the gap probably isn't pure luck, like a sneaky ghost ruled out! But it doesn't say the gap is big, so I have to check how big it is. Like two extra grams on a tomato: no gardener would notice that, even if it's a real gap. Right?",
+      "why": "Ooh, so \"significant\" just means the result probably isn't pure luck, like a coin that keeps landing the same way! But it doesn't say the effect is big or useful. I'd have to measure how big it actually is, like weighing each tomato.",
+      "whyAsk": "But WHY does a huge sample make a tiny, boring effect look significant? Does bigness make the luck go away, or just make it harder to hide?",
+      "fixed": "Oh! So \"significant\" just means \"probably not luck,\" not \"wow, big deal\"! I was picturing a tiny tomato suddenly becoming a giant one. Now I get it: check the size too, not only the sparkly label!"
+    },
+    "i5": {
+      "say": "Oh! So if I poke a useless fertiliser at lots of plants, one in twenty pokes might look like it works, just by luck. And the more plants I poke, the more lucky sparkles I get, like a blot full of confetti!",
+      "example": "Oooh, so if I test a fertiliser that does nothing, about one test in twenty might look like a winner by pure luck! And the more tests I run, the more lucky winners sneak in, so if I only show the one that glowed, I'm basically waving a shiny coin at everyone.",
+      "whenRight": "Ooh, a lucky blot! So if you test twenty crops with a useless fertiliser, one might look special just by chance, like a spot that wandered onto the page! That's why a study testing twenty crops and showing just one should make me squint, my coach says.",
+      "whenWrong": "Hmm, weighing one tomato twice doesn't feel like my lucky hits idea to me! My coach said lots of tests bring more chances for a fluke, and that tomato weighing doesn't really fit that. I'm not sure what to make of it yet, so could you tell me more?",
+      "checkRight": "Ooh, so if I test a fertiliser that does nothing, each test has about a one in twenty chance of looking like a winner by pure luck. Test twenty crops and one will probably shine for no reason, like a sock that finds its way into the washing machine. Right?",
+      "why": "Ooh, so if I poke a useless fertiliser lots of times, about one poke in twenty might look like a winner just by luck! The more pokes I take, the more lucky winners pop up, like a bag of marbles where I keep pulling out a shiny one by chance.",
+      "whyAsk": "But WHY does testing lots of crops make a lucky hit more likely? If one test only has a one in twenty chance, shouldn't more tests just be more tests, not more lucky ones?",
+      "fixed": "Oh! So the fertiliser isn't getting more tries to be real, luck is getting more tries to fool us. I was picturing the poor fertiliser running laps, but it's really the coin doing the cheating. I get it now, and I have to report every single test, even the sad ones!"
+    }
+  },
+  "bars": {
+    "i1": {
+      "say": 92,
+      "example": 88,
+      "when": 40,
+      "check": 40,
+      "why": 88
+    },
+    "i2": {
+      "say": 92,
+      "example": 55,
+      "when": 40,
+      "check": 40,
+      "why": 62
+    },
+    "i3": {
+      "say": 90,
+      "example": 55,
+      "when": 40,
+      "check": 40,
+      "why": 62
+    },
+    "i4": {
+      "say": 92,
+      "example": 88,
+      "when": 40,
+      "check": 40,
+      "why": 62
+    },
+    "i5": {
+      "say": 90,
+      "example": 55,
+      "when": 40,
+      "check": 40,
+      "why": 62
+    }
+  },
+  "exam": {
+    "i1": {
+      "right": "First I pretend the fertiliser does nothing at all! Then the p-value says how often plain luck would make a tomato gap this big or bigger, like a 50-gram one.",
+      "partial": "First we pretend the fertiliser is a total slacker that does nothing. Then the p-value says how often plain luck would make a tomato gap this big or bigger. Sneaky luck!",
+      "unknown": "Assume nothing happens? I... don't know this one!",
+      "tip": "Add a concrete example, like a specific tomato weight difference and what a small p-value would mean for it."
+    },
+    "i2": {
+      "right": "Because the sum starts by pretending nothing happens, so it can't also tell me if that pretending is true! p = 0.03 just means my plants were surprising in a boring world.",
+      "partial": "p = 0.03 doesn't mean 3% chance the fertiliser is a dud! It only tells how surprising my tomatoes would be if the fertiliser did nothing.",
+      "unknown": "Not chance of error? I... don't know this one!",
+      "tip": "Explain why: the p-value is computed by assuming the null is true, so it can't measure that hypothesis's probability, and other evidence is needed."
+    },
+    "i3": {
+      "right": "0.05 is just a round number old textbooks liked! A garden at 0.049 and one at 0.051 tell nearly the same story, so the line has no magic.",
+      "partial": "0.05 is just a handy habit, not a magic wall. Results just above and just below it are about equally strong, so the line isn't special.",
+      "unknown": "The 0.05 line? I... don't know this one!",
+      "tip": "Give the 0.049 vs 0.051 example, mention where the habit came from, and say researchers should report the full picture."
+    },
+    "i4": {
+      "right": "Significant only means probably not luck! Weigh ten thousand tomatoes and a teeny two-gram boost can look significant, but no gardener cares. I must check how big the effect is.",
+      "partial": "Significant just means probably not luck. It doesn't mean big or useful, so I must check how big the effect is before cheering!",
+      "unknown": "Significant isn't important? I... don't know this one!",
+      "tip": "Explain that huge samples can make tiny effects, like a two-gram gain, significant."
+    },
+    "i5": {
+      "right": "Each test on a useless fertiliser has about a one in twenty lucky chance! Test twenty crops, one looks great, and showing only that one is a coin-toss headline.",
+      "partial": "Each test on a useless fertiliser has about a one-in-twenty chance of looking significant by luck, so lots of tests means a lucky fake win gets more likely!",
+      "unknown": "Many tests, lucky hits? I... don't know this one!",
+      "tip": "Add that reporting only the winning test is misleading, so every test should be reported."
+    }
+  },
+  "script": [
+    {
+      "ideaId": "i1",
+      "move": "say",
+      "text": "We first pretend the fertiliser does nothing at all. Then the p-value tells us how often luck alone would give a tomato difference this large or larger."
+    },
+    {
+      "ideaId": "i1",
+      "move": "example",
+      "text": "If treated and untreated plants differ by 50 grams, p asks how often random plant variation alone would create a gap that big."
+    },
+    {
+      "ideaId": "i2",
+      "move": "say",
+      "text": "The p-value does not tell us how likely the fertiliser is a dud. It only shows how surprising our data would be if the fertiliser did nothing."
+    },
+    {
+      "ideaId": "i2",
+      "move": "why",
+      "text": "The calculation starts by assuming nothing is going on, so it cannot also measure the chance that this assumption is true."
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "The 0.05 cutoff is just a convenient habit, not a natural boundary. Results close on either side of it are basically equal in strength."
+    },
+    {
+      "ideaId": "i3",
+      "move": "check",
+      "tap": "no"
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "No, 0.05 is not a magic wall where the fertiliser suddenly works or fails. It is a round-number habit, so we should report all the results."
+    },
+    {
+      "ideaId": "i3",
+      "move": "example",
+      "text": "One garden study gets p of 0.049 and another gets 0.051; they tell nearly the same story, yet one gets called a success."
+    },
+    {
+      "ideaId": "i4",
+      "move": "say",
+      "text": "A significant result means the effect is probably not just luck. It does not say the effect is large or useful, so we must look at its size."
+    },
+    {
+      "ideaId": "i4",
+      "move": "when",
+      "tap": 0
+    }
+  ],
+  "lines": {
+    "i1": {
+      "say": "We first pretend the fertiliser does nothing at all. Then the p-value tells us how often luck alone would give a tomato difference this large or larger.",
+      "example": "If treated and untreated plants differ by 50 grams, p asks how often random plant variation alone would create a gap that big.",
+      "why": "We need a boring baseline to compare against, so we can judge whether our result looks unusual or just ordinary luck.",
+      "fix": "No, it is not the size of the tomatoes or the fertiliser's effect. It is the chance of seeing a gap this big if only luck were at work."
+    },
+    "i2": {
+      "say": "The p-value does not tell us how likely the fertiliser is a dud. It only shows how surprising our data would be if the fertiliser did nothing.",
+      "example": "With p of 0.03, the plants grew oddly well for a no-effect world, but that does not make the fertiliser 97 percent likely to work.",
+      "why": "The calculation starts by assuming nothing is going on, so it cannot also measure the chance that this assumption is true.",
+      "fix": "No, it is not a 3 percent chance that the fertiliser is a dud. It is how surprising the data would be if the fertiliser did nothing."
+    },
+    "i3": {
+      "say": "The 0.05 cutoff is just a convenient habit, not a natural boundary. Results close on either side of it are basically equal in strength.",
+      "example": "One garden study gets p of 0.049 and another gets 0.051; they tell nearly the same story, yet one gets called a success.",
+      "why": "Early textbooks picked a round number and people kept using it, so the line has no deep power to separate real from fake.",
+      "fix": "No, 0.05 is not a magic wall where the fertiliser suddenly works or fails. It is a round-number habit, so we should report all the results."
+    },
+    "i4": {
+      "say": "A significant result means the effect is probably not just luck. It does not say the effect is large or useful, so we must look at its size.",
+      "example": "Weigh ten thousand tomatoes and a two-gram boost can look significant, yet no gardener would notice or pay extra for it.",
+      "why": "Big samples can detect very small differences, so a tiny p-value can come from an effect that is real but trivial.",
+      "fix": "No, significant does not mean important or miraculous. It only means unlikely to be chance, so we also check how big the effect is."
+    },
+    "i5": {
+      "say": "Every test on a useless fertiliser has roughly a one in twenty chance of looking significant by luck. More tests make a lucky false hit more likely.",
+      "example": "Test twenty crops with a fertiliser that does nothing, and one will probably look great; showing only that crop would mislead everyone.",
+      "why": "Chances of luck add up across tests, so picking the winner out of many produces a result that is really just a coin toss.",
+      "fix": "No, more tests do not give the fertiliser more chances to be real. They give luck more chances to fool us, so every test must be reported."
+    }
+  }
+}

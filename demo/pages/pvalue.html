@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>What a p-value actually tells you · Plain Numbers</title>
+    <style>
+      body { margin: 0; background: #fdfdfb; color: #1f2328; font: 18px/1.65 'Iowan Old Style', Georgia, serif; }
+      nav { display: flex; gap: 22px; align-items: center; padding: 14px 32px; background: #2d2a4a; color: #fff; font: 600 15px/1 system-ui, sans-serif; }
+      nav strong { font-size: 18px; margin-right: 14px; }
+      nav a { color: #d9d4ff; text-decoration: none; }
+      main { max-width: 720px; margin: 0 auto; padding: 40px 24px 64px; }
+      h1 { font-size: 40px; line-height: 1.15; margin: 0 0 8px; }
+      .byline { color: #555; font: 15px/1.4 system-ui, sans-serif; margin-bottom: 28px; }
+      h2 { font-size: 24px; margin: 34px 0 8px; }
+      a { color: #4b3fd0; }
+      footer { border-top: 1px solid #ddd; padding: 24px 32px; color: #555; font: 14px/1.5 system-ui, sans-serif; background: #f2f1f8; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <strong>Plain Numbers</strong>
+      <a href="#">Statistics</a>
+      <a href="#">Data</a>
+      <a href="#">Newsletter</a>
+    </nav>
+    <main>
+      <article>
+        <h1>What a p-value actually tells you (and what it doesn't)</h1>
+        <p class="byline">Explainer · 7 minute read</p>
+
+        <p>
+          Every week a headline announces that a study "found a significant link" between two things. Somewhere in that
+          study sits a small number, often written as p &lt; 0.05, doing a lot of quiet work. The p-value is one of the
+          most used and most misunderstood numbers in science. Understanding it takes one idea, one warning and a little
+          imagination.
+        </p>
+
+        <h2>Start by assuming nothing is going on</h2>
+        <p>
+          Imagine testing whether a new fertiliser makes tomatoes heavier. You grow one bed with it and one without, and
+          the fertilised tomatoes come out a little heavier on average. Is that the fertiliser, or just luck? Tomatoes vary
+          anyway, so two beds will never weigh exactly the same.
+        </p>
+        <p>
+          A test starts from a deliberately boring assumption, called the null hypothesis: the fertiliser does nothing,
+          and any difference is chance. Then it asks a precise question. If the fertiliser really did nothing, how often
+          would chance alone produce a difference at least as big as the one we saw? That probability is the
+          <a href="https://en.wikipedia.org/wiki/P-value">p-value</a>. A p-value of 0.03 means that in a world where the
+          fertiliser is useless, a gap this large or larger would turn up in about three experiments out of a hundred.
+        </p>
+
+        <h2>The warning: it is not the chance you are wrong</h2>
+        <p>
+          The most common mistake is to read p = 0.03 as "there is a 3 percent chance the fertiliser doesn't work". That
+          is backwards. The p-value is calculated by assuming the null hypothesis is true, so it cannot also tell you how
+          likely that hypothesis is. It measures how surprising your data would be in a boring world, not how likely the
+          boring world is.
+        </p>
+        <p>
+          The difference matters. If a claim was unlikely to begin with, such as a sugar pill curing a serious illness,
+          a small p-value from one study is far weaker evidence than it sounds, because a surprising fluke is still more
+          believable than a miracle. Judging how likely a hypothesis is needs more than one number: earlier evidence, the
+          size of the study and a sensible mechanism all count.
+        </p>
+
+        <h2>Why 0.05, and why it is not magic</h2>
+        <p>
+          Many fields call a result "statistically significant" when p falls below 0.05. There is nothing special about
+          that line. It is a habit that grew out of early twentieth century textbooks, a convenient round number that
+          stuck. A result with p = 0.049 is not meaningfully different from one with p = 0.051, yet the first is often
+          celebrated and the second ignored. In 2016 the
+          <a href="https://www.amstat.org/asa/files/pdfs/p-valuestatement.pdf">American Statistical Association's statement on p-values</a>
+          warned against exactly this kind of bright-line thinking, and asked researchers to report the full picture
+          instead of a yes or no.
+        </p>
+
+        <h2>Significant is not the same as important</h2>
+        <p>
+          "Significant" in statistics only means "unlikely to be pure chance". It says nothing about whether the effect
+          is big enough to care about. With a huge sample, a fertiliser that adds two grams to a two-hundred-gram tomato
+          can produce a tiny p-value: the effect is real, but no gardener would notice it. With a small sample, a genuinely
+          large effect can fail to reach significance because there is too much noise to be sure.
+        </p>
+        <p>
+          That is why careful studies report the <a href="https://en.wikipedia.org/wiki/Effect_size">effect size</a>,
+          how big the difference is, together with a range of plausible values, and not just whether p crossed a line. The
+          question "is there an effect?" is less useful than "how big is the effect, and how sure are we?"
+        </p>
+
+        <h2>Test enough things and something will "work"</h2>
+        <p>
+          If you run one test on a useless fertiliser, you have about a one in twenty chance of getting p &lt; 0.05 by
+          luck. Now imagine testing it on tomatoes, peppers, beans, lettuce and twenty other crops. Even if it does nothing
+          at all, it would be surprising if none of them came out "significant". Report only that one crop, and you have
+          a headline built on a coin toss.
+        </p>
+        <p>
+          This is the <a href="https://en.wikipedia.org/wiki/Multiple_comparisons_problem">multiple comparisons problem</a>,
+          and it has a darker cousin: trying different analyses, subgroups or stopping points until something dips below
+          0.05, sometimes called p-hacking. Good practice is to decide the analysis before seeing the data, report every
+          test you ran, and adjust the threshold when many tests are made at once.
+        </p>
+
+        <h2>How to read the next headline</h2>
+        <p>
+          When you see "a significant link", ask four quick questions. Significant compared with what boring assumption?
+          How big is the effect in plain units? How many things did they test? And was the claim plausible before this
+          study? A p-value is a useful smoke alarm: it tells you the data would be surprising if nothing were happening.
+          It does not tell you where the fire is, how big it is, or whether someone was waving a match under the
+          detector. For a deeper treatment, the encyclopedia page on
+          <a href="https://en.wikipedia.org/wiki/Statistical_significance">statistical significance</a> is a good next step.
+        </p>
+      </article>
+    </main>
+    <footer>Plain Numbers explains the numbers behind the news. Written by curious people, checked by grumpy statisticians.</footer>
+  </body>
+</html>

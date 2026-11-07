@@ -52,7 +52,10 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   const started = performance.now();
   const exam = ctx.engine.examine(ctx.transcript, held).then(
     (r) => ({ ok: true as const, r }),
-    () => ({ ok: false as const }),
+    (err) => {
+      ctx.onEngineError?.(err);
+      return { ok: false as const };
+    },
   );
   const timeout = new Promise<{ ok: false }>((r) => setTimeout(() => r({ ok: false }), EXAMINER_WAIT_MS));
   const topic = ctx.lesson.topic.toLowerCase();

@@ -7,8 +7,10 @@ import { createApp } from '../src/app.ts';
 import { buildRoutes } from '../src/routes.ts';
 import { loadSettings } from '../src/settings.ts';
 import { CLIENT_TOKEN } from '../../shared/config.ts';
+import type { DemoRound } from '../../shared/types.ts';
 
 const pageText = readFileSync(new URL('../../demo/pages/tides.html', import.meta.url), 'utf8').replace(/<[^>]+>/g, ' ');
+const tides = JSON.parse(readFileSync(new URL('../../demo/rounds/tides.json', import.meta.url), 'utf8')) as DemoRound;
 
 async function withStub(fn: (post: (path: string, body: unknown) => Promise<Response>) => Promise<void>) {
   const settings = loadSettings({ AI_STUB: '1' });
@@ -41,9 +43,9 @@ test('AI_STUB: extract returns a sealed lesson; the other routes answer from it'
 
     const cr = await post('/creature', { lessonId: lesson.lessonId, ideaId: 'i2', event: 'say', belief: 'right', transcript: [] });
     assert.equal(cr.status, 200);
-    assert.match(await cr.text(), /bulge/i);
+    assert.equal(await cr.text(), tides.replies.i2!.say, 'Blot answers with the canned reply');
 
-    const transcript = [{ ideaId: 'i2', move: 'say', text: 'There are two bulges of water, one toward the Moon and one on the far side.' }];
+    const transcript = [{ ideaId: 'i2', move: 'say', text: tides.lines?.i2?.say ?? 'There are two bulges of water, one toward the Moon and one on the far side.' }];
     const bars = await (await post('/bars', { lessonId: lesson.lessonId, ideaId: 'i2', transcript })).json();
     assert.equal(bars.bars.length, 5);
     assert.ok(bars.bars.find((b: { id: string }) => b.id === 'i2').value > 0);

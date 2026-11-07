@@ -36,7 +36,7 @@ type Panel =
   | { kind: 'card' };
 
 export function teachScreen(ctx: RoundCtx): Promise<void> {
-  const { lesson, lines, engine } = ctx;
+  const { lesson, lines } = ctx;
   const root = showScreen('teach', { home: ctx.onHome });
   const windows = sourceWindows(ctx.pageText);
   const progress = ctx.progress;
@@ -161,7 +161,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   }
   async function refreshBars(id: string) {
     try {
-      const reply = await engine.bars(id, ctx.transcript);
+      const reply = await ctx.engine.bars(id, ctx.transcript);
       bump(id, 'answers');
       const p = progress[id]!;
       p.raw = Math.max(p.raw, reply.raw);
@@ -171,7 +171,8 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
         paintBars(id);
       }
       return reply;
-    } catch {
+    } catch (err) {
+      ctx.onEngineError?.(err);
       return null;
     }
   }
@@ -185,7 +186,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     let text = '';
     try {
       text = await bubble.stream(
-        engine.creature({ ideaId, event, text: extra.text, tap: typeof extra.tap === 'number' ? extra.tap : undefined, belief: progress[ideaId]!.belief, transcript: ctx.transcript.filter((e) => e.ideaId === ideaId) }),
+        ctx.engine.creature({ ideaId, event, text: extra.text, tap: typeof extra.tap === 'number' ? extra.tap : undefined, belief: progress[ideaId]!.belief, transcript: ctx.transcript.filter((e) => e.ideaId === ideaId) }),
       );
     } catch (err) {
       // The server failed: Blot still reacts, and the round goes on (M7 switches to offline mode).
@@ -422,6 +423,8 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
         panel = { kind: 'move', move: 'example' };
         renderPanel();
       }
+      // Now that Blot has it right, it wonders why (if it has not asked yet).
+      if (p.belief === 'right') maybeAskWhy(id);
     } finally {
       setBusy(false);
     }

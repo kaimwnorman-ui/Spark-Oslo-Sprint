@@ -118,3 +118,9 @@ export function inkSwirl(label: string): HTMLElement {
     h('p', null, label),
   );
 }
+
+/** One small "offline mode" line (SPEC §13): shown once the round runs without the AI. */
+export function showOfflineNote(text: string): void {
+  if (document.getElementById('offline-note')) return;
+  document.body.append(h('div', { id: 'offline-note', class: 'offline-note', role: 'status' }, text));
+}

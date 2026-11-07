@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How does HTTPS keep my connection private? · Chat</title>
+    <style>
+      body { margin: 0; background: #f6f6f4; color: #1d1d1f; font: 17px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      header.app { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e3e3e0; font-weight: 700; }
+      header.app nav { display: flex; gap: 18px; font-weight: 500; }
+      header.app nav a { color: #555; text-decoration: none; }
+      main { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+      .msg { display: flex; gap: 14px; margin: 18px 0; }
+      .avatar { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 system-ui; color: #fff; }
+      .you .avatar { background: #6b7280; }
+      .ai .avatar { background: #c2410c; }
+      .bubble { background: #fff; border: 1px solid #e3e3e0; border-radius: 14px; padding: 14px 18px; }
+      .you .bubble { background: #eef2ff; border-color: #dbe1ff; }
+      .bubble p { margin: 0 0 12px; }
+      .bubble p:last-child { margin: 0; }
+      .bubble h3 { font-size: 17px; margin: 18px 0 6px; }
+      .sources { font-size: 15px; color: #555; }
+      a { color: #b45309; }
+      footer { text-align: center; color: #777; font-size: 14px; padding: 18px; }
+      .composer { position: sticky; bottom: 0; padding: 14px 20px; background: #f6f6f4; }
+      .composer div { max-width: 760px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-radius: 14px; padding: 12px 16px; color: #999; }
+    </style>
+  </head>
+  <body>
+    <header class="app">
+      <span>Chat</span>
+      <nav><a href="#">New chat</a><a href="#">History</a><a href="#">Settings</a></nav>
+    </header>
+    <main>
+      <div class="msg you">
+        <div class="avatar">You</div>
+        <div class="bubble"><p>How does HTTPS actually keep my connection private? I see the padlock but I don't know what it does.</p></div>
+      </div>
+      <div class="msg ai">
+        <div class="avatar">AI</div>
+        <article class="bubble">
+          <p>
+            Good question: the padlock stands for a few separate protections working together. HTTPS is ordinary web
+            traffic (HTTP) sent through a protective layer called TLS. Here is what that layer does, roughly in the order it
+            happens when your browser opens a site.
+          </p>
+          <h3>1. Everything is scrambled in transit</h3>
+          <p>
+            Without HTTPS, the requests and pages travelling between your browser and the website are plain text. Anyone on
+            the path, such as the café Wi-Fi, your internet provider or a router along the way, could read them, including
+            passwords and messages. With HTTPS, both ends encrypt the data, so someone in the middle only sees scrambled
+            bytes. They can tell that you are exchanging data, and roughly how much, but not what it says.
+          </p>
+          <h3>2. The two sides agree on a secret without ever sending it</h3>
+          <p>
+            Encryption needs a shared key, but your browser and the server have never met. Sending the key openly would
+            defeat the purpose. So the connection starts with a short conversation called the handshake. Using clever
+            mathematics (a key exchange), each side contributes a random value and both compute the same session key, while
+            an eavesdropper who sees the whole conversation still cannot work it out. That session key is then used for fast
+            symmetric encryption of everything else. A new key is made for each connection, so even if one session were
+            cracked later, others would stay safe.
+          </p>
+          <h3>3. A certificate proves you are talking to the real site</h3>
+          <p>
+            Secrecy is useless if you are secretly talking to an impostor. During the handshake, the server shows a
+            certificate: a document that says "this key belongs to example.com", digitally signed by a certificate
+            authority. Your browser or operating system ships with a list of authorities it trusts and checks the signature
+            chain back to one of them. If the name does not match or the signature is wrong, you get a full-page warning
+            instead of a padlock. This is what stops someone on the café network from pretending to be your bank.
+          </p>
+          <h3>4. Tampering is detected</h3>
+          <p>
+            Every piece of encrypted data also carries a kind of tamper seal. If anyone changes even one bit along the way,
+            the check fails and the connection is dropped. That means nobody can quietly inject ads, malware or altered
+            numbers into the page you receive.
+          </p>
+          <h3>What HTTPS does not hide</h3>
+          <p>
+            HTTPS protects the content, not the fact that you visited. The name of the site you connect to is usually still
+            visible to your network, and the site itself of course sees everything you send it. The padlock also says
+            nothing about whether a site is honest: a scam site can have a perfectly valid certificate. It means "this
+            connection is private and goes to whoever owns this domain", not "this domain is trustworthy".
+          </p>
+          <p class="sources">
+            Sources: <a href="https://developer.mozilla.org/en-US/docs/Glossary/HTTPS">MDN Web Docs: HTTPS</a> ·
+            <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">Transport Layer Security (Wikipedia)</a>
+          </p>
+        </article>
+      </div>
+    </main>
+    <div class="composer"><div>Ask a follow-up…</div></div>
+    <footer>AI answers can contain mistakes. Check important information.</footer>
+  </body>
+</html>

@@ -8,6 +8,9 @@
 //   --live       through the server with AI_STUB=1 (the M5 checks: all five moves, the misreading
 //                reveal, "I don't know", pause and resume)
 //   --real       through the server with the real AI: bars move within 1 s, the round reaches the exam
+//   --blocked    network-blocked: Playwright aborts every request to the server, so the round runs
+//                offline from the canned round
+//   --drop       the server is cut off after three moves: the round fails over mid-teaching
 //   --headed     watch it
 // kie.ai is always blocked: the game never needs it at runtime.
 import { chromium } from 'playwright';
@@ -24,7 +27,10 @@ const reduced = process.argv.includes('--reduced');
 /** Teach nothing: Blot must lose, and the escape screen must offer a rematch. */
 const lose = process.argv.includes('--lose');
 const real = process.argv.includes('--real');
-const live = real || process.argv.includes('--live');
+/** --blocked: the server URL is cut off from the start; --drop: cut off after three moves. */
+const blocked = process.argv.includes('--blocked');
+const drop = process.argv.includes('--drop');
+const live = real || blocked || drop || process.argv.includes('--live');
 const SERVER = 'http://localhost:8787';
 const roundId = process.env.SMOKE_ROUND ?? 'tides';
 const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
@@ -51,10 +57,12 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, red
 const errors = [];
 await page.route(/kie\.ai/, (route) => route.abort());
 if (noArt) await page.route(/\/assets\/[^/]+\.webp$/, (route) => route.abort());
+const cutServer = () => page.route('http://localhost:8787/**', (route) => route.abort());
+if (blocked) await cutServer();
 page.on('console', (msg) => {
   if (msg.type() !== 'error') return;
   // Blocked art is expected in --no-art mode; anything else is a real error.
-  if (noArt && /Failed to load resource/.test(msg.text())) return;
+  if ((noArt || blocked || drop) && /Failed to load resource/.test(msg.text())) return;
   errors.push(msg.text());
 });
 page.on('pageerror', (err) => errors.push(err.message));
@@ -178,7 +186,7 @@ try {
   await page.click('#btn-teach');
   await page.locator('#screen-teach').waitFor({ timeout: 30_000 });
   await shot('04-teach-start');
-  if (live) await dontKnowPauseResume();
+  if (live && !blocked && !drop) await dontKnowPauseResume();
   let played = 0;
   for (const entry of lose ? [] : round.script) {
     let ok = false;
@@ -190,6 +198,10 @@ try {
     if (!ok) break;
     played++;
     if (played === 3) await shot('05-teach-check');
+    if (played === 3 && drop) {
+      await cutServer();
+      log('server cut off');
+    }
     if (entry.move === 'why') await shot('06-teach-why');
   }
   log(`taught ${played}/${round.script.length} scripted moves`);
@@ -223,6 +235,11 @@ try {
   const won = (await page.locator('#screen-eat').count()) > 0;
   const boutInfo = await page.evaluate(() => window.__bout);
   log(`bout: ${boutInfo?.ideas.map((i) => `${i.id}=${i.score}/${i.belief}`).join(' ')} → ${boutInfo?.outcome}${boutInfo?.knockout ? ' (K.O.)' : ''}`);
+  if (roundId === 'stage' && !lose) {
+    // Stage round: four ideas arrive taught; the juror teaches the fifth and lands the knockout.
+    const pre = boutInfo?.ideas.slice(0, 4).every((i) => i.score >= 40);
+    checks.push([pre && boutInfo?.outcome === 'win' && boutInfo.knockout, 'stage round: four ideas pre-taught, the fifth taught live, Blot wins by K.O.']);
+  }
   if (won) {
     await page.waitForTimeout(fast ? 200 : 1200);
     await shot('10-eating');
@@ -275,14 +292,17 @@ try {
   const pageLinks = round.lesson.ideas.map((i) => i.sourceUrl).filter(Boolean);
   const hrefs = await page.$$eval('#screen-replay a', (as) => as.map((a) => a.href));
   checks.push([hrefs.length === 1 && pageLinks.includes(hrefs[0]), `one link in the replay, from the page (${hrefs[0] ?? 'none'})`]);
-  if (live && !lose) {
+  if (blocked || drop) {
+    checks.push([(await page.locator('#offline-note').count()) === 1, 'the round finished in offline mode, with one small "offline mode" line']);
+  }
+  if (live && !lose && !blocked && !drop) {
     const moves = new Set(round.script.map((e) => e.move));
     checks.push([['say', 'example', 'when', 'check', 'why'].every((m) => moves.has(m)), `all five moves driven (${[...moves].join(', ')})`]);
     // Check it ✗ on a misread idea: Blot explained its wrong belief first (stub: the misread itself; real AI: its own words).
     const reveal = misreadReveals.find((r) => r.said.length > 10);
     checks.push([!!reveal && (real || reveal.said.includes(reveal.misread.slice(0, 20))), `the misreading reveal: "${(reveal?.said ?? '').slice(0, 70)}…"`]);
   }
-  if (live) {
+  if (live && !blocked && !drop) {
     const worst = Math.max(...barTimes);
     const sorted = [...realBarTimes].sort((a, b) => a - b);
     const p50 = sorted[Math.floor(sorted.length / 2)] ?? 0;
