@@ -5,9 +5,13 @@
 //   --fast       run everything near-instantly (skips the timing checks)
 //   --no-art     block the generated art too: the placeholders must carry the demo
 //   --reduced    emulate prefers-reduced-motion
+//   --live       through the server with AI_STUB=1 (the M5 checks: all five moves, the misreading
+//                reveal, "I don't know", pause and resume)
+//   --real       through the server with the real AI: bars move within 1 s, the round reaches the exam
 //   --headed     watch it
 // kie.ai is always blocked: the game never needs it at runtime.
 import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ROOT, DIST } from './lib.mjs';
@@ -19,12 +23,29 @@ const noArt = process.argv.includes('--no-art');
 const reduced = process.argv.includes('--reduced');
 /** Teach nothing: Blot must lose, and the escape screen must offer a rematch. */
 const lose = process.argv.includes('--lose');
+const real = process.argv.includes('--real');
+const live = real || process.argv.includes('--live');
+const SERVER = 'http://localhost:8787';
 const roundId = process.env.SMOKE_ROUND ?? 'tides';
 const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
 mkdirSync(SHOTS, { recursive: true });
 const round = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', `${roundId}.json`), 'utf8'));
 
 const server = await serveDir(DIST);
+
+// --live / --real: the Spark server on :8787 (stubbed, or with the real AI).
+let api = null;
+if (live) {
+  const up = await fetch(`${SERVER}/health`).then((r) => r.ok, () => false);
+  if (up) {
+    console.error('smoke:demo --live needs port 8787 free. Stop the running server and try again.');
+    process.exit(1);
+  }
+  const env = { ...process.env, PORT: '8787', AI_STUB: real ? '0' : '1' };
+  api = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server/src/main.ts'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  api.stdout.on('data', (d) => process.env.SMOKE_VERBOSE && process.stdout.write(d));
+  for (let i = 0; i < 50 && !(await fetch(`${SERVER}/health`).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 200));
+}
 const browser = await chromium.launch({ headless: !headed });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
 const errors = [];
@@ -52,6 +73,53 @@ async function blotDone() {
 }
 const teaching = async () => (await page.locator('#screen-teach').count()) > 0;
 
+const barTimes = [];
+const realBarTimes = [];
+/** An idea's counters: instant ink ticks and real live-bars answers (set by the teach screen). */
+const counters = (id) => page.evaluate((i) => {
+  const el = document.querySelector(`.idea[data-id="${i}"]`);
+  return { ticks: Number(el?.dataset.ticks ?? 0), answers: Number(el?.dataset.answers ?? 0) };
+}, id);
+/** Sends the message and times the bar's feedback: the instant ink tick, then the live-bars answer. */
+async function sendTimed(ideaId) {
+  const before = await counters(ideaId);
+  const t0 = Date.now();
+  await page.click('#btn-send');
+  const until = (key) => page.waitForFunction(([i, k, n]) => Number(document.querySelector(`.idea[data-id="${i}"]`)?.dataset[k] ?? 0) > n, [ideaId, key, before[key]], { timeout: 10_000 }).then(() => Date.now() - t0, () => 10_000);
+  barTimes.push(await until('ticks'));
+  void until('answers').then((ms) => realBarTimes.push(ms));
+}
+
+/** "I don't know" on a why → source card; hiding the tab pauses the round; coming back resumes it. */
+async function dontKnowPauseResume() {
+  await page.click('.idea[data-id="i5"]');
+  await page.fill('#teach-input', 'Coastlines decide how big the tides get, a funnel bay makes them much bigger.');
+  await sendTimed('i5');
+  await blotDone();
+  await page.locator('#question').waitFor({ timeout: 12_000 });
+  await blotDone();
+  await page.click('#btn-dontknow');
+  await page.locator('#source-card').waitFor({ timeout: 5000 });
+  await shot('05b-source-card');
+  checks.push([true, '"I don\'t know" shows a source card']);
+  const setHidden = (hidden) =>
+    page.evaluate((h) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, hidden);
+  await setHidden(true);
+  const t1 = await page.textContent('#timer');
+  await page.waitForTimeout(2200);
+  const t2 = await page.textContent('#timer');
+  const paused = (await page.locator('#timer.paused').count()) === 1;
+  checks.push([paused && t1 === t2, `hiding the tab pauses the round (timer ${t1} → ${t2})`]);
+  await setHidden(false);
+  await page.waitForFunction(() => /why/i.test(document.querySelector('.teach-bubble')?.textContent ?? ''), null, { timeout: 5000 });
+  const resumed = (await page.locator('#question').count()) === 1 && (await page.locator('#timer.paused').count()) === 0;
+  checks.push([resumed, 'coming back resumes it, and Blot asks "so, why?"']);
+}
+
 async function play(entry) {
   if (!(await teaching())) return false;
   const { ideaId, move } = entry;
@@ -59,7 +127,7 @@ async function play(entry) {
     await page.locator('#question').waitFor({ timeout: 10_000 });
     await blotDone();
     await page.fill('#teach-input', entry.text);
-    await page.click('#btn-send');
+    await sendTimed(ideaId);
     await blotDone();
     return true;
   }
@@ -70,13 +138,16 @@ async function play(entry) {
   }
   if (move === 'say' || move === 'example') {
     await page.fill('#teach-input', entry.text);
-    await page.click('#btn-send');
+    await sendTimed(ideaId);
     await blotDone();
   } else if (move === 'when') {
     await page.click(`.when-option[data-index="${entry.tap}"]`);
     await blotDone();
   } else if (move === 'check') {
-    await page.locator('#btn-check-yes').waitFor({ timeout: 10_000 });
+    await page.locator('#btn-check-yes').waitFor({ timeout: 15_000 });
+    const said = (await page.textContent('.teach-bubble')) ?? '';
+    const idea = round.lesson.ideas.find((i) => i.id === ideaId);
+    if (entry.tap === 'no') misreadReveals.push({ ideaId, said, misread: idea.misread });
     await page.click(entry.tap === 'yes' ? '#btn-check-yes' : '#btn-check-no');
     await page.waitForTimeout(fast ? 50 : 400);
   }
@@ -85,9 +156,11 @@ async function play(entry) {
 
 let failed = false;
 const checks = [];
+const misreadReveals = [];
 try {
   const started = Date.now();
-  await page.goto(`${server.url}/game.html?demo=${roundId}${fast ? '&fast=1' : ''}`);
+  const query = `demo=${roundId}${fast ? '&fast=1' : ''}${live ? '&live=1&teach=150' : ''}`;
+  await page.goto(`${server.url}/game.html?${query}`);
   await page.locator('#btn-transform').waitFor();
   await page.waitForTimeout(800);
   await shot('01-page');
@@ -102,8 +175,9 @@ try {
   log('monster formed');
 
   await page.click('#btn-teach');
-  await page.locator('#screen-teach').waitFor();
+  await page.locator('#screen-teach').waitFor({ timeout: 30_000 });
   await shot('04-teach-start');
+  if (live) await dontKnowPauseResume();
   let played = 0;
   for (const entry of lose ? [] : round.script) {
     let ok = false;
@@ -120,9 +194,13 @@ try {
   log(`taught ${played}/${round.script.length} scripted moves`);
   await shot('07-teach-end');
   if (await teaching()) {
+    // Two presses within 3 s ring the bell. The armed bell pulses, so the second click must not
+    // wait for it to stand still (Playwright would wait past the 3 s window).
     await page.click('#btn-bell');
     await page.waitForTimeout(300);
-    await page.click('#btn-bell');
+    await page.click('#btn-bell', { force: true });
+    await page.locator('#screen-exam').waitFor({ timeout: 5000 });
+    checks.push([true, 'the two-press bell ends teaching']);
   }
 
   await page.locator('#screen-exam').waitFor({ timeout: 60_000 });
@@ -170,6 +248,22 @@ try {
   checks.push([errors.length === 0, `no console errors${errors.length ? `: ${errors.join(' | ')}` : ''}`]);
   const rows = await page.locator('.replay-row').count();
   checks.push([rows === 5, `five replay rows (${rows})`]);
+  if (live && !lose) {
+    const moves = new Set(round.script.map((e) => e.move));
+    checks.push([['say', 'example', 'when', 'check', 'why'].every((m) => moves.has(m)), `all five moves driven (${[...moves].join(', ')})`]);
+    // Check it ✗ on a misread idea: Blot explained its wrong belief first (stub: the misread itself; real AI: its own words).
+    const reveal = misreadReveals.find((r) => r.said.length > 10);
+    checks.push([!!reveal && (real || reveal.said.includes(reveal.misread.slice(0, 20))), `the misreading reveal: "${(reveal?.said ?? '').slice(0, 70)}…"`]);
+  }
+  if (live) {
+    const worst = Math.max(...barTimes);
+    const sorted = [...realBarTimes].sort((a, b) => a - b);
+    const p50 = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    checks.push([barTimes.length >= 5 && worst <= 1000, `bars moved within 1 s of each sentence (worst ${worst} ms over ${barTimes.length}; live-bars answer p50 ${p50} ms after the 800 ms debounce)`]);
+  }
+  if (real) {
+    checks.push([screens.includes('exam') && screens.includes('bout'), 'the real round reached the exam']);
+  }
   if (!fast) {
     const gaps = await page.evaluate(() => {
       const frames = window.__frames;
@@ -196,6 +290,7 @@ try {
 } finally {
   await browser.close();
   await server.close();
+  api?.kill();
 }
 for (const [ok, text] of checks) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${text}`);

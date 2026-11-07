@@ -32,6 +32,7 @@ type Panel =
   | { kind: 'confirm' }
   | { kind: 'fix' }
   | { kind: 'why' }
+  | { kind: 'whenq' }
   | { kind: 'card' };
 
 export function teachScreen(ctx: RoundCtx): Promise<void> {
@@ -131,12 +132,18 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   paintBars();
 
   function provisional(id: string) {
-    // Instant feedback before the live bars answer (SPEC §7 rule 6).
+    // Instant feedback before the live bars answer (SPEC §7 rule 6): a +ink tick and a flash.
     const p = progress[id]!;
     const cap = capFor(p.moves);
     p.value = Math.min(cap, Math.max(p.value, p.value + 6));
     paintBars(id);
+    bump(id, 'ticks');
     sfx.ink();
+  }
+  /** Counters the smoke test reads: instant ticks and real live-bars answers per idea. */
+  function bump(id: string, key: 'ticks' | 'answers') {
+    const btn = ideaButtons.get(id);
+    if (btn) btn.dataset[key] = String(Number(btn.dataset[key] ?? 0) + 1);
   }
 
   const barTimers = new Map<string, number>();
@@ -155,6 +162,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   async function refreshBars(id: string) {
     try {
       const reply = await engine.bars(id, ctx.transcript);
+      bump(id, 'answers');
       const p = progress[id]!;
       p.raw = Math.max(p.raw, reply.raw);
       const next = barValue(p.moves, p.raw);
@@ -174,9 +182,17 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   }
   async function blotSays(ideaId: string, event: CreatureEvent, extra: Partial<TranscriptEntry> = {}) {
     pose('listening');
-    const text = await bubble.stream(
-      engine.creature({ ideaId, event, text: extra.text, tap: typeof extra.tap === 'number' ? extra.tap : undefined, belief: progress[ideaId]!.belief, transcript: ctx.transcript.filter((e) => e.ideaId === ideaId) }),
-    );
+    let text = '';
+    try {
+      text = await bubble.stream(
+        engine.creature({ ideaId, event, text: extra.text, tap: typeof extra.tap === 'number' ? extra.tap : undefined, belief: progress[ideaId]!.belief, transcript: ctx.transcript.filter((e) => e.ideaId === ideaId) }),
+      );
+    } catch (err) {
+      // The server failed: Blot still reacts, and the round goes on (M7 switches to offline mode).
+      ctx.onEngineError?.(err);
+      text = lines.gotIt;
+      bubble.set(text);
+    }
     pose(event === 'check' ? 'idle' : 'excited', 1400);
     pose('idle');
     return text;
@@ -235,6 +251,18 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
       );
     } else if (panel.kind === 'fix') {
       panelEl.append(h('p', { class: 'panel-prompt' }, `Tell Blot what "${current.name}" really is.`), composer('say', (text) => void submitFix(text)));
+    } else if (panel.kind === 'whenq') {
+      panelEl.append(
+        h('div', { class: 'question', id: 'question' }, h('p', { class: 'panel-prompt' }, `Blot asked: when would I use "${current.name}"? Tap one.`)),
+        h(
+          'div',
+          { class: 'options' },
+          ...current.whenOptions.map((o, i) =>
+            h('button', { class: 'when-option', 'data-index': String(i), onclick: (e: Event) => tapWhen(i, e.currentTarget as HTMLButtonElement) }, o.text),
+          ),
+        ),
+        h('button', { class: 'quiet', id: 'btn-dontknow', onclick: () => { panel = { kind: 'move', move: 'say' }; renderPanel(); } }, 'I don’t know'),
+      );
     } else if (panel.kind === 'why') {
       panelEl.append(
         h('div', { class: 'question', id: 'question' }, h('p', { class: 'panel-prompt' }, 'Blot asked you why.'), composer('why', (text) => void submitWhyAnswer(text))),
@@ -367,6 +395,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
       } else {
         if (p.belief === 'none') p.belief = 'right';
         await blotSays(id, counted as CreatureEvent, { text: rawText });
+        maybeAskWhen(id);
       }
       void scheduleBars(id);
     } finally {
@@ -460,6 +489,23 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     const wait = Math.max(1200, lastQuestionAt + QUESTION_GAP_MS - performance.now());
     clearTimeout(questionTimer);
     questionTimer = window.setTimeout(() => void askWhy(id), wait);
+  }
+
+  /** "When would I use X?" (3 taps), once per idea, after a typed message and never right after another question. */
+  function maybeAskWhen(id: string) {
+    const p = progress[id]!;
+    if (p.moves.includes('when') || p.askedWhen) return;
+    const wait = Math.max(1500, lastQuestionAt + QUESTION_GAP_MS - performance.now());
+    clearTimeout(questionTimer);
+    questionTimer = window.setTimeout(() => {
+      if (finished || selected !== id || busy || panel.kind !== 'move') return;
+      p.askedWhen = true;
+      lastQuestionAt = performance.now();
+      sfx.question();
+      blotLine(lines.whenQuestion(idea(id).name), 'listening');
+      panel = { kind: 'whenq' };
+      renderPanel();
+    }, wait);
   }
 
   async function askWhy(id: string) {

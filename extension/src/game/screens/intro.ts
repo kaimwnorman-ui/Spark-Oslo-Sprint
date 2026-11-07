@@ -1,6 +1,6 @@
 // Home, the demo page, and the words-to-monster set piece (SPEC §2.1).
 import { CHALLENGE_HOOK, PRODUCT_NAME } from '../../../../shared/config.ts';
-import type { Trait, WordBox } from '../../../../shared/types.ts';
+import type { PageCapture, Trait, WordBox } from '../../../../shared/types.ts';
 import { capturePage } from '../../capture.ts';
 import { ease, mark, recordFrame, reducedMotion, tween, wait } from '../anim.ts';
 import { createBlot } from '../blot.ts';
@@ -58,7 +58,7 @@ function takeMonster(ctx: RoundCtx) {
 }
 
 /** The demo page, as the player would see it in a tab, with one big button. */
-export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: string; frame: HTMLIFrameElement }> {
+export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: string; frame: HTMLIFrameElement; capture: PageCapture }> {
   const root = showScreen('page', { home: null });
   const frame = h('iframe', { class: 'page-frame', src: ctx.pageSrc!, title: 'The page' });
   const button = primary('btn-transform', 'Turn into a monster');
@@ -88,7 +88,7 @@ export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: str
       const offset = frame.getBoundingClientRect();
       const boxes = cap.boxes.map((b) => ({ ...b, x: b.x + offset.left, y: b.y + offset.top }));
       blot.destroy();
-      resolve({ boxes, text: cap.text, frame });
+      resolve({ boxes, text: cap.text, frame, capture: cap });
     });
   });
 }

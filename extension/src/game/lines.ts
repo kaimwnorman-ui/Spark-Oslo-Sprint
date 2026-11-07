@@ -22,6 +22,9 @@ const en = {
   ko: 'K.O.!',
   escaped: 'The monster escaped with the page!',
   rematch: (name: string) => `Teach me ${name} and let's try again!`,
+  whenQuestion: (name: string) => `Ooh! But when would I use "${name}"?`,
+  offline: 'Offline mode: Blot is playing from the demo round.',
+  expired: 'This round expired. Play it again!',
 };
 
 const nb: typeof en = {
@@ -44,6 +47,9 @@ const nb: typeof en = {
   ko: 'K.O.!',
   escaped: 'Monsteret stakk av med siden!',
   rematch: (name: string) => `Lær meg ${name}, så prøver vi igjen!`,
+  whenQuestion: (name: string) => `Å! Men når skulle jeg brukt «${name}»?`,
+  offline: 'Frakoblet: Blot spiller fra demorunden.',
+  expired: 'Runden er utløpt. Spill den på nytt!',
 };
 
 export type Lines = typeof en;

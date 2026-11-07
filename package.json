@@ -21,7 +21,8 @@
     "smoke:ext": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-ext.mjs",
     "assets:gen": "node tools/assets-gen.mjs",
     "models:check": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/check-models.ts",
-    "demo:bake": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/demo-bake.ts"
+    "demo:bake": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/demo-bake.ts",
+    "measure": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/measure.ts"
   },
   "devDependencies": {
     "@types/chrome": "0.3.7",

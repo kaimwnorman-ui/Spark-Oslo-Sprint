@@ -13,6 +13,7 @@ export interface IdeaProgress {
   belief: TeachBelief;
   said: boolean;
   asked: boolean;
+  askedWhen?: boolean;
 }
 
 export interface RoundCtx {
@@ -44,6 +45,8 @@ export interface RoundCtx {
   focus: string | null;
   onHome: () => void;
   onPlayAgain: () => void;
+  /** Called when the server fails mid-round (M7: switch to offline mode). */
+  onEngineError?: (err: unknown) => void;
 }
 
 export function newProgress(lesson: SealedLesson): Record<string, IdeaProgress> {

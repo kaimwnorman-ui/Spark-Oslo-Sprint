@@ -7,6 +7,8 @@ export interface Settings {
   /** AI_STUB=1: every AI route answers from demo/ fixtures. */
   stub: boolean;
   models: Record<Role, string>;
+  /** output_config.effort per role (SPEC §12: low; the examiner may need medium on Sonnet). */
+  efforts: Record<Role, 'low' | 'medium' | 'high'>;
   keys: ServerKeys;
   clientToken: string;
   /** Allow http://localhost:* origins (dev and smoke tests). Off when NODE_ENV=production. */
@@ -14,6 +16,8 @@ export interface Settings {
 }
 
 type Env = Record<string, string | undefined>;
+
+const effort = (v: string | undefined): 'low' | 'medium' | 'high' => (v === 'medium' || v === 'high' ? v : 'low');
 
 export function loadSettings(env: Env): Settings {
   const pick = (name: string, fallback: string) => env[name]?.trim() || fallback;
@@ -25,6 +29,12 @@ export function loadSettings(env: Env): Settings {
       creature: pick('MODEL_CREATURE', DEFAULT_MODELS.creature),
       bars: pick('MODEL_BARS', DEFAULT_MODELS.bars),
       examiner: pick('MODEL_EXAMINER', DEFAULT_MODELS.examiner),
+    },
+    efforts: {
+      extractor: effort(env.EFFORT_EXTRACTOR),
+      creature: effort(env.EFFORT_CREATURE),
+      bars: effort(env.EFFORT_BARS),
+      examiner: effort(env.EFFORT_EXAMINER),
     },
     keys: resolveKeys(env),
     clientToken: pick('SPARK_CLIENT_TOKEN', CLIENT_TOKEN),

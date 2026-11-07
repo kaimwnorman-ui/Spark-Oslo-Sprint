@@ -1,7 +1,7 @@
 // Spark's game tab: home, demo rounds (?demo=tides) and, from M3, rounds from real pages.
-import { DEMO_SPEED, DEMO_TEACH_SECONDS, MONSTER_WORDS, TEACH_SECONDS, TRAITS_WORN } from '../../../shared/config.ts';
+import { CLIENT_TOKEN, DEMO_SPEED, DEMO_TEACH_SECONDS, MONSTER_WORDS, SERVER_URL, TEACH_SECONDS, TRAITS_WORN } from '../../../shared/config.ts';
 import { misreadIdeaIds, monsterInk } from '../../../shared/round.ts';
-import type { RoundHandoff, Trait } from '../../../shared/types.ts';
+import type { RoundHandoff, SealedLesson, Trait } from '../../../shared/types.ts';
 import { distinctiveWords } from '../../../shared/words.ts';
 import { ServerEngine } from './server-engine.ts';
 import { setSpeed } from './anim.ts';
@@ -20,6 +20,10 @@ import { replayScreen } from './screens/replay.ts';
 const params = new URLSearchParams(location.search);
 /** Tests only: run the whole round near-instantly. */
 const FAST = params.has('fast');
+/** Demo page, but through the server (real AI, or AI_STUB). */
+const LIVE = params.get('live') === '1';
+/** Optional teaching time in seconds (presenters, tests). */
+const TEACH = Math.min(300, Math.max(20, Number(params.get('teach')) || 0)) || null;
 
 const goHome = () => {
   location.href = 'game.html';
@@ -79,15 +83,28 @@ async function playRound(ctx: RoundCtx): Promise<void> {
 
 async function playDemo(id: string): Promise<void> {
   const round = await loadDemoRound(id);
-  const engine = new DemoEngine(round);
+  const demoEngine = new DemoEngine(round);
   setSpeed(FAST ? 12 : DEMO_SPEED);
   const firstRound = !(await getLocal('played', false));
-  const ctx = baseCtx(engine, await wornTraits(), firstRound, FAST ? 30 : DEMO_TEACH_SECONDS);
+  const ctx = baseCtx(demoEngine, await wornTraits(), firstRound, TEACH ?? (FAST ? 30 : DEMO_TEACH_SECONDS));
   ctx.demo = round;
   ctx.fullLesson = round.lesson;
   ctx.pageSrc = round.page;
-  const { boxes, text, frame } = await pageScreen(ctx);
+  const { boxes, text, frame, capture } = await pageScreen(ctx);
   ctx.pageText = text;
+  if (LIVE) {
+    // ?live=1: the same demo page, but the lesson and Blot come from the server (real AI or AI_STUB).
+    const server = (await getLocal<string>('serverUrl', '')) || SERVER_URL;
+    const res = await fetch(`${server}/extract`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-spark': CLIENT_TOKEN },
+      body: JSON.stringify({ capture: { url: new URL(round.page, location.href).href, title: capture.title, text: capture.text, links: capture.links, source: 'page' } }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `The server answered ${res.status}.`);
+    const data = (await res.json()) as { lesson: SealedLesson; seed: number; offline: boolean };
+    const live = baseCtx(new ServerEngine(server, data.lesson, data.seed, data.offline), ctx.traits, firstRound, ctx.teachSeconds);
+    Object.assign(ctx, { engine: live.engine, lesson: live.lesson, misreads: live.misreads, progress: live.progress, monster: { ...live.monster, words: ctx.monster.words }, fullLesson: null });
+  }
   await formingScreen(ctx, boxes, frame);
   await setLocal('played', true);
   await playRound(ctx);
@@ -100,7 +117,7 @@ async function playLive(id: string): Promise<void> {
   const engine = new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline);
   setSpeed(1);
   const firstRound = !(await getLocal('played', false));
-  const ctx = baseCtx(engine, await wornTraits(), firstRound, TEACH_SECONDS);
+  const ctx = baseCtx(engine, await wornTraits(), firstRound, TEACH ?? TEACH_SECONDS);
   ctx.capture = handoff.capture;
   ctx.pageText = handoff.capture.text;
   // The monster's texture is the page's own words (SPEC §6), whatever the server returned.

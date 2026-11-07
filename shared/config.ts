@@ -13,8 +13,11 @@ export const EXTENSION_ID = 'mfkcdmkiehbhmcacmhmgofpcojipgknf';
 export const CLIENT_TOKEN = 'spark-oslo-2026';
 
 // ---- AI roles (SPEC §12); the server reads MODEL_* from env and falls back to these ----
+// Measured on tides.html, 5 calls per role (npm run measure): the Opus extractor's p50 was
+// 13.8 s (target 12 s), so the extractor uses the Sonnet the claude-api skill names (p50 9.9 s,
+// same prompt). The Opus examiner's p50 was 6.3 s (target 20 s), so it stays on Opus.
 export const DEFAULT_MODELS = {
-  extractor: 'claude-opus-5-5',
+  extractor: 'claude-sonnet-5-5',
   creature: 'claude-haiku-5-5',
   bars: 'claude-haiku-5-5',
   examiner: 'claude-opus-5-5',
