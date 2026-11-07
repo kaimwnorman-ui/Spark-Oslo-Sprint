@@ -9,19 +9,19 @@ import { h } from '../dom.ts';
 import { MonsterView } from '../monster.ts';
 import { sfx } from '../sound.ts';
 import { primary, showScreen, removeScreen, inkSwirl } from '../ui.ts';
-import { assetUrl } from '../assets.ts';
+import { assetBackground, assetImg } from '../assets.ts';
 
 export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void {
   const root = showScreen('home');
   const blot = createBlot(200);
   blot.setTraits(traits);
   blot.setPose('excited');
-  root.style.backgroundImage = `url(${assetUrl('title')})`;
+  root.style.backgroundImage = assetBackground('title');
   root.append(
     h(
       'div',
       { class: 'home-card' },
-      h('img', { class: 'logo-img', src: assetUrl('logo'), alt: '' }),
+      assetImg('logo', 'logo-img'),
       h('h1', { class: 'logo' }, PRODUCT_NAME),
       CHALLENGE_HOOK ? h('p', { class: 'tagline' }, CHALLENGE_HOOK) : null,
       h('p', { class: 'pitch' }, 'Any page becomes a monster made of its words. Beat it by teaching Blot what the page means.'),
@@ -30,6 +30,25 @@ export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void 
     ),
     h('div', { class: 'home-blot' }, blot.el),
   );
+}
+
+// The monster is built ahead of time (while the player reads the page), so the click is instant.
+let prepared: { key: string; monster: MonsterView; monsterW: number; monsterH: number } | null = null;
+const sizeKey = (ctx: RoundCtx) => `${ctx.monster.name}:${innerWidth}x${innerHeight}`;
+
+export function prepareMonster(ctx: RoundCtx): void {
+  const monsterW = Math.min(820, innerWidth * 0.66);
+  const monsterH = monsterW / 1.6;
+  const monster = new MonsterView(ctx.monster.shape, ctx.monster.words, ctx.monster.color, monsterW, monsterH);
+  monster.targets(300);
+  prepared = { key: sizeKey(ctx), monster, monsterW, monsterH };
+}
+
+function takeMonster(ctx: RoundCtx) {
+  if (!prepared || prepared.key !== sizeKey(ctx)) prepareMonster(ctx);
+  const p = prepared!;
+  prepared = null;
+  return p;
 }
 
 /** The demo page, as the player would see it in a tab, with one big button. */
@@ -51,8 +70,11 @@ export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: str
   );
   return new Promise((resolve) => {
     const ready = new Promise<void>((r) => frame.addEventListener('load', () => r(), { once: true }));
+    void ready.then(() => setTimeout(() => prepareMonster(ctx), 300));
     button.addEventListener('click', async () => {
       button.disabled = true;
+      sfx.tap();
+      root.querySelector('.spark-dock')?.classList.add('gone');
       await ready;
       const doc = frame.contentDocument!;
       const win = frame.contentWindow!;
@@ -71,13 +93,10 @@ export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: str
  */
 export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTMLIFrameElement | null): Promise<void> {
   const root = showScreen('forming', { overlay: !!frame, home: ctx.onHome });
-  mark('forming-start');
   const reduce = reducedMotion();
   const W = innerWidth;
   const H = innerHeight;
-  const monsterW = Math.min(820, W * 0.66);
-  const monsterH = monsterW / 1.6;
-  const monster = new MonsterView(ctx.monster.shape, ctx.monster.words, ctx.monster.color, monsterW, monsterH);
+  const { monster, monsterW, monsterH } = takeMonster(ctx);
   const mx = (W - monsterW) / 2;
   const my = Math.max(70, (H - monsterH) / 2 - 30);
   monster.canvas.style.left = `${mx}px`;
@@ -127,10 +146,26 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
   };
   raf = requestAnimationFrame(drawMonster);
 
+  // An ink cloud gathers where the monster will be (drawn once, then just faded in).
+  const cloud = document.createElement('canvas');
+  const cloudR = Math.round(monsterW * 0.6);
+  cloud.width = cloud.height = cloudR * 2;
+  const cloudG = cloud.getContext('2d')!;
+  const grad = cloudG.createRadialGradient(cloudR, cloudR, 10, cloudR, cloudR, cloudR);
+  grad.addColorStop(0, `${ctx.monster.color}55`);
+  grad.addColorStop(1, `${ctx.monster.color}00`);
+  cloudG.fillStyle = grad;
+  cloudG.fillRect(0, 0, cloudR * 2, cloudR * 2);
   const drawFlying = (p: number, lift: number) => {
     g.clearRect(0, 0, W, H);
+    if (p > 0) {
+      g.globalAlpha = Math.min(1, p * 1.6) * wordsAlpha;
+      g.drawImage(cloud, cx - cloudR, cy - cloudR);
+    }
     g.globalAlpha = wordsAlpha;
     g.textBaseline = 'top';
+    let font = '';
+    let fill = '';
     flying.forEach((b, i) => {
       const t = targets[i % targets.length]!;
       const delay = (i % 40) / 40 * 0.25;
@@ -147,28 +182,40 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
       const r = r0 + (r1 - r0) * e + Math.sin(e * Math.PI) * 60;
       const x = reduce ? t.x : cx + Math.cos(a) * r;
       const y = reduce ? t.y : cy + Math.sin(a) * r;
-      const size = b.size + (11 - b.size) * e;
-      g.save();
+      const lifted = 1 + 0.25 * lift * (1 - e);
+      // Whole-pixel sizes so the font only changes when it must (setting it is costly).
+      const size = Math.round((b.size + (12 - b.size) * e) * lifted);
+      const nextFont = `${e > 0.5 ? 700 : 400} ${size}px Georgia, serif`;
+      if (nextFont !== font) g.font = font = nextFont;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.translate(x, y);
       g.rotate(t.angle * e + Math.sin(e * Math.PI) * 0.6);
-      g.font = `${e > 0.5 ? 700 : 400} ${size.toFixed(1)}px Georgia, serif`;
-      g.fillStyle = e > 0.6 ? ctx.monster.color : '#222';
+      if (lift > 0 && e < 0.3) {
+        if (fill !== 'shadow') g.fillStyle = fill = 'rgba(29,26,47,0.18)';
+        g.fillText(b.text, 3 * lift, 5 * lift);
+      }
+      const color = e > 0.6 ? ctx.monster.color : '#222';
+      if (fill !== color) g.fillStyle = fill = color;
       g.fillText(b.text, 0, 0);
-      g.restore();
     });
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  // 1. Lift (the page dims, words rise).
+  // 1. Lift (the page dims, words rise off it).
+  mark('forming-start');
   sfx.whoosh();
   if (frame) frame.classList.add('dim');
-  if (!reduce) await tween(500, (t) => drawFlying(0, t), ease.outBack);
+  if (!reduce) await tween(520, (t) => drawFlying(0, t), ease.outBack);
+  covers.classList.add('fade');
   // 2. Swirl into the silhouette.
   await tween(reduce ? 300 : 2100, (t) => {
     drawFlying(t, 1);
     monsterAlpha = Math.max(0, (t - 0.55) / 0.45) * 0.9;
   }, ease.linear);
   status.remove();
-  if (frame) removeScreen('page');
+  // Hide the page now (cheap); remove it once the set piece is over.
+  const pageScreen = document.getElementById('screen-page');
+  if (pageScreen) pageScreen.style.visibility = 'hidden';
   covers.remove();
   // 3. Reveal: name, then body, then the five attacks.
   monsterAlpha = 1;
@@ -188,10 +235,18 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
     sfx.tap();
     await wait(reduce ? 60 : 220);
   }
+  const blot = createBlot(150);
+  blot.setTraits(ctx.traits);
+  blot.setPose('excited');
+  const say = h('div', { class: 'bubble forming-bubble' }, 'Whoa. That is a BIG one. Teach me how to beat it!');
+  root.append(h('div', { class: 'forming-blot' }, blot.el, say));
+  sfx.question();
   teach.classList.remove('hidden');
   teach.focus();
+  if (frame) setTimeout(() => removeScreen('page'), 50);
   await new Promise<void>((resolve) => teach.addEventListener('click', () => resolve(), { once: true }));
   cancelAnimationFrame(raf);
+  blot.destroy();
 }
 
 /** A forming screen for live mode while the server builds the lesson (M3+). */

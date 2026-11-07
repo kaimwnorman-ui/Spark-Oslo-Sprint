@@ -33,7 +33,7 @@ const ASSETS = [
     size: [1600, 900],
     model: 'google/nano-banana',
     input: { aspect_ratio: '16:9', output_format: 'png' },
-    prompt: `Top-down view of a blank open notebook page with faint blue ruled lines and a thin red margin line, lying on a dark wooden desk at night, lit by a warm desk lamp from the top left so the centre of the page glows softly and the edges fall into shadow. A few tiny ink splatters near the corners. Calm, cosy, lots of empty space in the middle for a game to be drawn on top. Painterly digital illustration. ${NO_TEXT}`,
+    prompt: `A single blank notebook page seen from directly above, filling the entire frame edge to edge: warm off-white paper with faint blue ruled lines and a thin red margin line near the left edge. A desk lamp out of frame at the top left casts a soft warm glow across the page; the corners fall into a gentle, light vignette but stay clearly paper. A few tiny ink splatters near the corners. Bright, calm, cosy, lots of clean space for a game to be drawn on top. Painterly digital illustration. ${NO_TEXT}`,
     placeholder: arenaSvg,
   },
   {

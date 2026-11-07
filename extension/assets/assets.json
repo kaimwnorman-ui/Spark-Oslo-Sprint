@@ -1,7 +1,7 @@
 {
-  "arena": "arena.svg",
-  "title": "title.svg",
+  "arena": "arena.webp",
+  "title": "title.webp",
   "logo": "logo.webp",
-  "ink": "ink.svg",
-  "glow": "glow.svg"
+  "ink": "ink.webp",
+  "glow": "glow.webp"
 }

@@ -49,9 +49,13 @@ declare global {
 }
 window.__frames = [];
 window.__marks = {};
+let lastFrame = -1;
+/** Called by every animation loop; one entry per painted frame (loops share a timestamp). */
 export function recordFrame(now: number): void {
+  if (now === lastFrame) return;
+  lastFrame = now;
   const frames = window.__frames;
-  if (frames.length < 20000) frames.push(now);
+  if (frames.length < 60000) frames.push(now);
 }
 /** Named timestamps for the smoke test (e.g. monster formed, bout start/end). */
 export function mark(name: string): void {

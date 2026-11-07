@@ -206,8 +206,11 @@ export class MonsterView {
   private dpr = 1;
   private readonly born = performance.now();
   private readonly seed: number;
+  /** Face left (towards Blot): the body is mirrored, the words stay readable. */
+  private readonly mirror: boolean;
 
-  constructor(shape: MonsterShape, words: string[], color: string, width: number, height: number) {
+  constructor(shape: MonsterShape, words: string[], color: string, width: number, height: number, facing: 'left' | 'right' = 'right') {
+    this.mirror = facing === 'left';
     this.def = SHAPES[shape] ?? SHAPES.serpent;
     this.words = words.length ? words : ['?'];
     this.color = color;
@@ -218,7 +221,14 @@ export class MonsterView {
   }
 
   /** Unit coordinates to canvas CSS pixels. */
-  u = (x: number, y: number): [number, number] => [this.ox + x * this.scale, this.oy + y * this.scale];
+  u = (x: number, y: number): [number, number] => [this.ox + (this.mirror ? UW - x : x) * this.scale, this.oy + y * this.scale];
+
+  /** Flow angle at a canvas point, mirrored with the body. */
+  private flowAt(px: number, py: number): number {
+    const ux = (px - this.ox) / this.scale;
+    const uy = (py - this.oy) / this.scale;
+    return this.mirror ? -this.def.flow(UW - ux, uy) : this.def.flow(ux, uy);
+  }
 
   resize(width: number, height: number): void {
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -260,7 +270,7 @@ export class MonsterView {
       ellipse: (x, y, rx, ry, rot = 0) => {
         const [px, py] = this.u(x, y);
         mg.beginPath();
-        mg.ellipse(px, py, rx * s, ry * s, rot, 0, Math.PI * 2);
+        mg.ellipse(px, py, rx * s, ry * s, this.mirror ? -rot : rot, 0, Math.PI * 2);
         mg.fill();
       },
       poly: (points) => {
@@ -322,14 +332,12 @@ export class MonsterView {
         const size = base * (0.78 + 0.5 * next());
         tg.font = `${next() > 0.7 ? 800 : 600} ${size.toFixed(1)}px var(--font-text, system-ui), system-ui, sans-serif`;
         const w = tg.measureText(word).width;
-        const ux = (x - this.ox) / s;
-        const uy = (y - this.oy) / s;
-        const angle = this.def.flow(ux, uy);
+        const angle = this.flowAt(x, y);
         tg.save();
         tg.translate(x, y);
         tg.rotate(angle);
         const tint = next();
-        tg.fillStyle = tint > 0.86 ? '#fff' : tint > 0.55 ? lighten(this.color, 0.55) : lighten(this.color, 0.25);
+        tg.fillStyle = tint > 0.8 ? '#fff' : tint > 0.45 ? lighten(this.color, 0.7) : lighten(this.color, 0.42);
         tg.fillText(word, 0, 0);
         tg.restore();
         x += w + size * 0.45;
@@ -342,8 +350,17 @@ export class MonsterView {
     this.texture = tex;
   }
 
+  private targetCache: TargetPoint[] | null = null;
+
   /** Points inside the silhouette (for the words to fly to). */
   targets(count: number): TargetPoint[] {
+    if (this.targetCache && this.targetCache.length >= count) return this.targetCache.slice(0, count);
+    const out = this.sampleTargets(count);
+    this.targetCache = out;
+    return out;
+  }
+
+  private sampleTargets(count: number): TargetPoint[] {
     const g = this.mask.getContext('2d')!;
     const { width, height } = this.mask;
     const data = g.getImageData(0, 0, width, height).data;
@@ -356,7 +373,7 @@ export class MonsterView {
       if (data[(py * width + px) * 4 + 3]! > 128) {
         const x = px / this.dpr;
         const y = py / this.dpr;
-        out.push({ x, y, angle: this.def.flow((x - this.ox) / this.scale, (y - this.oy) / this.scale) });
+        out.push({ x, y, angle: this.flowAt(x, y) });
       }
     }
     return out;

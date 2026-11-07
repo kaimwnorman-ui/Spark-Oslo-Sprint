@@ -66,9 +66,11 @@ export class Effects {
     if (this.reduce) count = Math.min(count, 12);
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
-      const v = 3 + Math.random() * 11;
+      const v = 2 + Math.random() * 7;
       const text = i % 2 === 0 ? words[i % Math.max(1, words.length)] : undefined;
-      this.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 0, max: 900 + Math.random() * 700, size: text ? 14 + Math.random() * 10 : 6 + Math.random() * 14, color: i % 5 === 0 ? '#ffd34d' : color, text, spin: (Math.random() - 0.5) * 0.3, angle: 0, gravity: 0.16 });
+      // Light inks so the burst reads on the dimmed K.O. screen as well as on paper.
+      const tint = text ? (i % 3 === 0 ? '#ffffff' : '#ffd34d') : i % 5 === 0 ? '#ff7a1a' : color;
+      this.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 0, max: 900 + Math.random() * 700, size: text ? 16 + Math.random() * 12 : 6 + Math.random() * 14, color: tint, text, spin: (Math.random() - 0.5) * 0.3, angle: 0, gravity: 0.16 });
     }
   }
 

@@ -3,7 +3,10 @@
 // rings the bell, watches the bout, and checks: the screens appear in order, no console errors,
 // and the set pieces' timing (SPEC §2, M2). A 1280x720 screenshot per screen goes to docs/shots/.
 //   --fast       run everything near-instantly (skips the timing checks)
+//   --no-art     block the generated art too: the placeholders must carry the demo
+//   --reduced    emulate prefers-reduced-motion
 //   --headed     watch it
+// kie.ai is always blocked: the game never needs it at runtime.
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,18 +15,29 @@ import { serveDir } from './serve.mjs';
 
 const fast = process.argv.includes('--fast');
 const headed = process.argv.includes('--headed');
+const noArt = process.argv.includes('--no-art');
+const reduced = process.argv.includes('--reduced');
+/** Teach nothing: Blot must lose, and the escape screen must offer a rematch. */
+const lose = process.argv.includes('--lose');
 const roundId = process.env.SMOKE_ROUND ?? 'tides';
-const SHOTS = path.join(ROOT, 'docs', 'shots');
+const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
 mkdirSync(SHOTS, { recursive: true });
 const round = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', `${roundId}.json`), 'utf8'));
 
 const server = await serveDir(DIST);
 const browser = await chromium.launch({ headless: !headed });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
 const errors = [];
-page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()));
+await page.route(/kie\.ai/, (route) => route.abort());
+if (noArt) await page.route(/\/assets\/[^/]+\.webp$/, (route) => route.abort());
+page.on('console', (msg) => {
+  if (msg.type() !== 'error') return;
+  // Blocked art is expected in --no-art mode; anything else is a real error.
+  if (noArt && /Failed to load resource/.test(msg.text())) return;
+  errors.push(msg.text());
+});
 page.on('pageerror', (err) => errors.push(err.message));
-const shot = (name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
+const shot = (name) => page.screenshot({ path: path.join(SHOTS, `${lose ? 'lose-' : ''}${name}.png`) });
 const log = (...a) => console.log('  ·', ...a);
 
 async function blotDone() {
@@ -91,7 +105,7 @@ try {
   await page.locator('#screen-teach').waitFor();
   await shot('04-teach-start');
   let played = 0;
-  for (const entry of round.script) {
+  for (const entry of lose ? [] : round.script) {
     let ok = false;
     try {
       ok = await play(entry);
@@ -120,6 +134,12 @@ try {
   await shot('09-bout');
   log('bout');
 
+  // The K.O. (if the bout ends in one), then eating or the escape.
+  const ko = await page.locator('.ko-glow.show').waitFor({ timeout: 60_000 }).then(() => true, () => false);
+  if (ko) {
+    await page.waitForTimeout(fast ? 50 : 500);
+    await shot('09b-ko');
+  }
   await page.locator('#screen-eat, #screen-lose').first().waitFor({ timeout: 120_000 });
   const won = (await page.locator('#screen-eat').count()) > 0;
   if (won) {
@@ -134,8 +154,10 @@ try {
     await page.waitForTimeout(fast ? 200 : 2500);
     await shot('10-escape');
     log('lost: the monster escaped');
+    checks.push([(await page.locator('#btn-rematch').count()) === 1, 'the escape screen offers a rematch']);
     await page.click('#btn-see-replay');
   }
+  if (lose) checks.push([!won, 'teaching nothing loses']);
   await page.locator('#screen-replay').waitFor({ timeout: 20_000 });
   await page.waitForTimeout(400);
   await shot('12-replay');
@@ -149,6 +171,19 @@ try {
   const rows = await page.locator('.replay-row').count();
   checks.push([rows === 5, `five replay rows (${rows})`]);
   if (!fast) {
+    const gaps = await page.evaluate(() => {
+      const frames = window.__frames;
+      const m = window.__marks;
+      const worst = (a, b) => {
+        const xs = frames.filter((t) => t >= a && t <= b);
+        let gap = 0;
+        for (let i = 1; i < xs.length; i++) gap = Math.max(gap, xs[i] - xs[i - 1]);
+        return { gap: Math.round(gap), frames: xs.length };
+      };
+      return { forming: worst(m['forming-start'], m['monster-formed']), bout: worst(m['bout-start'], m['bout-end']) };
+    });
+    checks.push([gaps.forming.gap <= 100 && gaps.forming.frames > (reduced ? 5 : 30), `words-to-monster: worst frame ${gaps.forming.gap} ms over ${gaps.forming.frames} frames (≤ 100 ms)`]);
+    checks.push([gaps.bout.gap <= 100 && gaps.bout.frames > 300, `bout: worst frame ${gaps.bout.gap} ms over ${gaps.bout.frames} frames (≤ 100 ms)`]);
     const formed = (marks['monster-formed'] - marks['forming-start']) / 1000;
     checks.push([formed <= 6, `monster formed in ${formed.toFixed(1)} s (≤ 6 s)`]);
     const bout = (marks['bout-end'] - marks['bout-start']) / 1000;

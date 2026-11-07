@@ -10,7 +10,7 @@ export async function replayScreen(ctx: RoundCtx): Promise<'again' | 'home'> {
   const exam = ctx.exam!;
   const weakest = weakestIdeaId(exam);
   const outcome = ctx.bout?.outcome === 'win' ? 'Blot won!' : ctx.bout?.outcome === 'draw' ? 'A draw.' : 'The monster got away.';
-  const blot = createBlot(120);
+  const blot = createBlot(84);
   blot.setTraits(ctx.traits);
   blot.setPose(ctx.bout?.outcome === 'win' ? 'proud' : 'idle');
 
@@ -19,14 +19,16 @@ export async function replayScreen(ctx: RoundCtx): Promise<'again' | 'home'> {
     const said = ctx.transcript.filter((e) => e.ideaId === idea.id && e.text).map((e) => e.text!);
     const model = r?.modelAnswer ?? ctx.fullLesson?.ideas.find((i) => i.id === idea.id)?.modelAnswer ?? '';
     const belief = r?.belief ?? 'unknown';
-    return h(
-      'article',
-      { class: `replay-row belief-${belief}${idea.id === weakest ? ' weakest' : ''}`, 'data-id': idea.id },
+    const row = h(
+      'button',
+      { class: `replay-row belief-${belief}${idea.id === weakest ? ' weakest' : ''}`, 'data-id': idea.id, 'aria-expanded': 'false', title: 'Show all' },
       h('header', null, h('h3', null, idea.name), h('span', { class: 'score' }, `${r?.score ?? 0}`)),
-      h('div', { class: 'col said' }, h('p', { class: 'col-label' }, 'What you said'), said.length ? h('p', null, said.join(' · ')) : h('p', { class: 'muted' }, 'Nothing yet.')),
-      h('div', { class: 'col believed' }, h('p', { class: 'col-label' }, 'What Blot believed'), h('p', null, r?.creatureAnswer || '…')),
-      h('div', { class: 'col stronger' }, h('p', { class: 'col-label' }, 'Stronger'), h('p', null, model), r?.tip ? h('p', { class: 'tip' }, `Tip: ${r.tip}`) : null),
+      h('div', { class: 'col said' }, said.length ? h('p', { class: 'clamp' }, said.join(' · ')) : h('p', { class: 'muted' }, 'Nothing yet.')),
+      h('div', { class: 'col believed' }, h('p', { class: 'clamp' }, r?.creatureAnswer || '…')),
+      h('div', { class: 'col stronger' }, h('p', { class: 'clamp' }, model), r?.tip ? h('p', { class: 'tip' }, `Tip: ${r.tip}`) : null),
     );
+    row.addEventListener('click', () => row.setAttribute('aria-expanded', String(row.getAttribute('aria-expanded') !== 'true')));
+    return row;
   });
 
   const weakIdea = ctx.lesson.ideas.find((i) => i.id === weakest);
@@ -47,7 +49,12 @@ export async function replayScreen(ctx: RoundCtx): Promise<'again' | 'home'> {
       h('div', { class: 'replay-blot' }, blot.el),
       h('div', null, h('p', { class: 'card-kicker' }, ctx.provisional ? 'Replay (provisional scores)' : 'Replay'), h('h1', null, outcome), h('p', null, `${ctx.monster.name} · ${ctx.lesson.topic}`)),
     ),
-    h('div', { class: 'replay-rows' }, ...rows),
+    h(
+      'div',
+      { class: 'replay-rows' },
+      h('div', { class: 'replay-cols', 'aria-hidden': 'true' }, h('span', null, 'Idea'), h('span', null, 'What you said'), h('span', null, 'What Blot believed'), h('span', null, 'Stronger (tap a row for more)')),
+      ...rows,
+    ),
     h('footer', { class: 'replay-foot' }, deeper, h('div', { class: 'replay-actions' }, secondary('btn-home', 'Home'), primary('btn-play-again', 'Play again'))),
   );
   document.getElementById('btn-play-again')!.focus();
