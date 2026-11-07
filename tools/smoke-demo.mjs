@@ -159,7 +159,8 @@ const checks = [];
 const misreadReveals = [];
 try {
   const started = Date.now();
-  const query = `demo=${roundId}${fast ? '&fast=1' : ''}${live ? '&live=1&teach=150' : ''}`;
+  // The scripted player needs ~50 s; the demo's 45 s timer is for people, so the smoke gives it more.
+  const query = `demo=${roundId}${fast ? '&fast=1' : ''}${live ? '&live=1&teach=150' : '&teach=90'}`;
   await page.goto(`${server.url}/game.html?${query}`);
   await page.locator('#btn-transform').waitFor();
   await page.waitForTimeout(800);
@@ -220,6 +221,8 @@ try {
   }
   await page.locator('#screen-eat, #screen-lose').first().waitFor({ timeout: 120_000 });
   const won = (await page.locator('#screen-eat').count()) > 0;
+  const boutInfo = await page.evaluate(() => window.__bout);
+  log(`bout: ${boutInfo?.ideas.map((i) => `${i.id}=${i.score}/${i.belief}`).join(' ')} → ${boutInfo?.outcome}${boutInfo?.knockout ? ' (K.O.)' : ''}`);
   if (won) {
     await page.waitForTimeout(fast ? 200 : 1200);
     await shot('10-eating');
@@ -227,27 +230,51 @@ try {
     await page.waitForTimeout(300);
     await shot('11-trait');
     log('won: Blot ate the monster');
+    // M6: the trait is shown, worn and stored.
+    const traitName = (await page.textContent('#trait-name').catch(() => '')) ?? '';
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('spark:traits') ?? '[]'));
+    const worn = await page.locator('.eat-blot .trait').count();
+    checks.push([!!traitName && stored.length >= 1 && worn >= 1, `a trait after the win: "${traitName}" (stored ${stored.length}, worn ${worn})`]);
     await page.click('#btn-replay');
   } else {
     await page.waitForTimeout(fast ? 200 : 2500);
     await shot('10-escape');
     log('lost: the monster escaped');
     checks.push([(await page.locator('#btn-rematch').count()) === 1, 'the escape screen offers a rematch']);
-    await page.click('#btn-see-replay');
+    if (lose) {
+      // The rematch really starts: teaching again, on the weakest idea.
+      await page.click('#btn-rematch');
+      await page.locator('#screen-teach').waitFor({ timeout: 10_000 });
+      const focused = await page.locator('.idea[aria-pressed="true"]').count();
+      await shot('10b-rematch');
+      checks.push([focused === 1, 'the rematch opens teaching on the weakest idea']);
+      await page.click('#btn-bell');
+      await page.waitForTimeout(300);
+      await page.click('#btn-bell', { force: true });
+      await page.locator('#screen-lose, #screen-eat').first().waitFor({ timeout: 120_000 });
+    }
+    if ((await page.locator('#btn-see-replay').count()) > 0) await page.click('#btn-see-replay');
+    else await page.click('#btn-replay');
   }
   if (lose) checks.push([!won, 'teaching nothing loses']);
   await page.locator('#screen-replay').waitFor({ timeout: 20_000 });
   await page.waitForTimeout(400);
   await shot('12-replay');
   log(`replay (${((Date.now() - started) / 1000).toFixed(0)} s in total)`);
-
   // ---- checks ----
   const { screens, marks } = await page.evaluate(() => ({ screens: window.__screens, marks: window.__marks }));
-  const expected = ['page', 'forming', 'teach', 'exam', 'bout', won ? 'eat' : 'lose', 'replay'];
+  const finale = won ? 'eat' : 'lose';
+  const expected = lose
+    ? ['page', 'forming', 'teach', 'exam', 'bout', 'lose', 'teach', 'exam', 'bout', finale, 'replay'] // with the rematch
+    : ['page', 'forming', 'teach', 'exam', 'bout', finale, 'replay'];
   checks.push([JSON.stringify(screens) === JSON.stringify(expected), `screens in order: ${screens.join(' → ')}`]);
   checks.push([errors.length === 0, `no console errors${errors.length ? `: ${errors.join(' | ')}` : ''}`]);
   const rows = await page.locator('.replay-row').count();
   checks.push([rows === 5, `five replay rows (${rows})`]);
+  // M6: one go-deeper link, and it is one of the page's own links.
+  const pageLinks = round.lesson.ideas.map((i) => i.sourceUrl).filter(Boolean);
+  const hrefs = await page.$$eval('#screen-replay a', (as) => as.map((a) => a.href));
+  checks.push([hrefs.length === 1 && pageLinks.includes(hrefs[0]), `one link in the replay, from the page (${hrefs[0] ?? 'none'})`]);
   if (live && !lose) {
     const moves = new Set(round.script.map((e) => e.move));
     checks.push([['say', 'example', 'when', 'check', 'why'].every((m) => moves.has(m)), `all five moves driven (${[...moves].join(', ')})`]);
@@ -283,6 +310,16 @@ try {
     const bout = (marks['bout-end'] - marks['bout-start']) / 1000;
     checks.push([bout >= 30 && bout <= 45, `bout lasted ${bout.toFixed(1)} s at demo speed (30–45 s)`]);
   }
+  // M6: play again: the next round's Blot wears the trait it earned.
+  if (won && !live) {
+    await page.click('#btn-play-again');
+    await page.locator('#btn-transform').waitFor({ timeout: 15_000 });
+    await page.waitForTimeout(600);
+    const wornNext = await page.locator('.dock-blot .trait').count();
+    await shot('13-second-run');
+    checks.push([wornNext >= 1, `the next round's Blot wears the earned trait (${wornNext})`]);
+  }
+
 } catch (err) {
   failed = true;
   console.error(`smoke:demo FAILED: ${err.message}`);

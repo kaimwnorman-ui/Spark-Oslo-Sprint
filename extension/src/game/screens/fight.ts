@@ -84,6 +84,8 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
   const ideas = boutIdeas(ctx.lesson.ideas, exam);
   const result = simulateBout(ideas, (ctx.engine.seed + ctx.attempt * 7919) >>> 0);
   ctx.bout = result;
+  // For the smoke test's log: what the bout was given and how it ended.
+  (window as unknown as Record<string, unknown>).__bout = { ideas, outcome: result.outcome, knockout: result.knockout, exchanges: result.exchanges.length };
   const root = showScreen('bout', { home: null });
   root.style.backgroundImage = assetBackground('arena');
   const reduce = reducedMotion();
@@ -416,12 +418,13 @@ export async function loseScreen(ctx: RoundCtx): Promise<'rematch' | 'replay'> {
     monsterBox.style.transform = `translateX(${x * 60}vw) rotate(${x * 8}deg)`;
     monsterBox.style.opacity = String(1 - x * 0.8);
   }, ease.inCubic);
-  await wait(900);
-  bubble.set(ctx.lines.rematch(weakName));
-  const choice = await new Promise<'rematch' | 'replay'>((resolve) => {
+  // The buttons work from the moment they appear (no dead clicks during the animation).
+  const chosen = new Promise<'rematch' | 'replay'>((resolve) => {
     document.getElementById('btn-rematch')!.addEventListener('click', () => resolve('rematch'), { once: true });
     document.getElementById('btn-see-replay')!.addEventListener('click', () => resolve('replay'), { once: true });
   });
+  void wait(900).then(() => bubble.set(ctx.lines.rematch(weakName)));
+  const choice = await chosen;
   ctx.focus = weakest;
   cancelAnimationFrame(raf);
   blot.destroy();
