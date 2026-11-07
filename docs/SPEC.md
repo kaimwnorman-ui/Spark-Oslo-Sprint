@@ -79,6 +79,26 @@ Exit rules: at most one source card per idea, only after a gap is exposed; the r
 - **Don't** make Blot round, pink and puffy (a famous game's mascot eats enemies and gains their
   abilities; Blot is an ink blot with a drip, not a ball).
 
+## 4.1 Ease of use (DECIDED; as important as the 60-second demo)
+
+The jury must feel, within seconds, "this is easy, fun and clever". A first-time player needs no
+explanation from us.
+
+- **Two-second rule:** every screen is understood at a glance; the next step is obvious.
+- **One primary action per screen:** big, high-contrast, clearly labelled with a verb ("Turn into a
+  monster", "Teach Blot", "Ring the bell", "Play again"). Secondary actions are visibly quieter.
+- **Few controls at once:** show only what the current step needs; reveal the rest when it's needed.
+- **Plain words:** short labels, no jargon, no internal terms (no "extractor", "examiner", "seed").
+- **Clear hierarchy and space:** one focal point per screen, generous spacing, large tap targets
+  (≥ 44 px), nothing smaller than 16 px.
+- **Instant feedback:** every click and keystroke visibly responds within 100 ms; loading states are
+  playful (ink swirling), never a blank screen or a bare spinner; errors say what to do next.
+- **No dead ends:** every screen has a clear way forward and back (Home, Play again, Rematch).
+- **Learn by doing:** the first-round hint (§7.8) and Blot's own lines teach the controls; no manuals,
+  no walls of tooltips, no multi-step tutorial.
+- **Keyboard friendly:** Enter sends, Esc closes, focus is visible.
+- **Rule of thumb:** when in doubt, remove a control rather than add an explanation.
+
 ## 5. Blot, the creature (DEFAULT)
 
 An ink blot from somewhere that knows **nothing** about our world. Curious, literal, funny, devoted to
@@ -183,7 +203,7 @@ none). "Play again" and "Home".
 ## 12. AI design (DECIDED roles; models DEFAULT, measured)
 
 All calls go through **our server** with `@anthropic-ai/sdk` (TypeScript). The extension never holds
-the key. The client is built from `resolveKeys(process.env)` in `server/src/env.ts`: key from
+the key. The client is created from `resolveKeys(process.env)` in `server/src/env.ts`: key from
 `ANTHROPIC_API_KEY`, else `SPARK_ANTHROPIC_API_KEY`; `baseURL` always `https://api.anthropic.com`
 (never the inherited `ANTHROPIC_BASE_URL`). Load the `claude-api` skill before writing any of this, and follow it over this file where
 they differ.
@@ -315,7 +335,8 @@ model, ms, tokens; never the text.
 
 ## 16. Definition of done
 
-- A stranger goes from a real article to a finished round in under two minutes, unaided.
+- A stranger goes from a real article to a finished round in under two minutes, unaided, and never
+  wonders what to click next (§4.1).
 - Teaching nothing loses; teaching three ideas well usually wins; pasting the page can't reach
   Signature.
 - The words-to-monster, bout and eating moments read from the back of a room at 1280×720, with no

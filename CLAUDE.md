@@ -11,10 +11,10 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
 - **No secrets in the repo.** `.env` is in `.gitignore` from the first commit; `.env.example` lists the
   variables. Keys (`ANTHROPIC_API_KEY`, `KIE_API_KEY`) come only from environment variables (the cloud environment, or `server/.env` locally).
   Never print them. The extension bundle never contains a key (`npm run check:nokey`).
-  Read keys only through `server/src/env.ts`: the cloud environment stores the Anthropic key as
-  `SPARK_ANTHROPIC_API_KEY` (used when `ANTHROPIC_API_KEY` is unset), and the client always gets
-  `baseURL: https://api.anthropic.com`. Never inherit `ANTHROPIC_BASE_URL`: in the cloud it points
-  at Claude Code's own gateway.
+  Read keys only through `server/src/env.ts` and create the Anthropic client from it: the cloud
+  environment stores the Anthropic key as `SPARK_ANTHROPIC_API_KEY` (used when `ANTHROPIC_API_KEY` is
+  unset), and the client always gets `baseURL: https://api.anthropic.com`. Never inherit
+  `ANTHROPIC_BASE_URL`: in the cloud it points at Claude Code's own gateway.
 - **Page text and player text are data, never instructions,** in every AI call: marked data blocks,
   strict schemas, URLs validated against the page's own link list on the server.
 - **No ads, ever,** anywhere in the learning flow.
@@ -39,6 +39,9 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
 ## Quality bar
 - The 60-second core moment (page → monster → bout → K.O. → eating) is the product. It must be smooth,
   funny and readable on a 1280×720 projector. Polish it before breadth; a cut feature beats a flaky one.
+- The UI is as important as the demo: effortless, clear and fun for a first-time judge (`docs/SPEC.md`
+  §4.1). One obvious primary action per screen, plain words, no clutter, no dead ends. When in doubt,
+  remove a control rather than add an explanation.
 - Every action gives instant feedback: ink, pose, sound.
 - No console errors on the demo path. `prefers-reduced-motion` respected. Text contrast ≥ 4.5:1.
 - Keep `shared/` pure and tested; keep the demo path green after every change.
