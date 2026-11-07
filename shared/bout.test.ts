@@ -70,3 +70,24 @@ test('target: five at 70 win ≥ 95%', () => {
 test('target: five at 40 (taps only) lose ≥ 70%', () => {
   assert.ok(rates([40, 40, 40, 40, 40]).lose >= 60);
 });
+
+test('power-ups: an Ink refill adds HP, Double ink doubles only the first hit', () => {
+  const plain = simulateBout(ideas([60, 60, 60, 60, 60]), 11);
+  const boosted = simulateBout(ideas([60, 60, 60, 60, 60]), 11, undefined, { bonusHp: 20, doubleFirstHit: true });
+  assert.equal(boosted.startHp, 120);
+  assert.equal(plain.startHp, 100);
+  const firstHit = boosted.exchanges.findIndex((x) => x.kind === 'hit' && x.dealt > 0);
+  assert.equal(boosted.exchanges[firstHit]!.doubled, true);
+  assert.equal(boosted.exchanges[firstHit]!.dealt, plain.exchanges[firstHit]!.dealt * 2);
+  assert.equal(boosted.exchanges.filter((x) => x.doubled).length, 1);
+});
+
+test('power-ups help: three ideas at 70 win more often with both', () => {
+  let plain = 0;
+  let boosted = 0;
+  for (let seed = 1; seed <= 1000; seed++) {
+    if (simulateBout(ideas([70, 70, 70, 0, 0]), seed).outcome === 'win') plain++;
+    if (simulateBout(ideas([70, 70, 70, 0, 0]), seed, undefined, { bonusHp: 20, doubleFirstHit: true }).outcome === 'win') boosted++;
+  }
+  assert.ok(boosted > plain + 100, `plain ${plain}, boosted ${boosted}`);
+});

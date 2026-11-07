@@ -117,6 +117,12 @@ export interface TranscriptEntry {
   text?: string;
   /** Tapped option index (when) or answer (check, same). */
   tap?: number | 'yes' | 'no';
+  /** Client-only notes for the player's insights (never sent to the AI). */
+  pasted?: boolean;
+  /** ✓ on an explanation Blot had wrong. */
+  fooled?: boolean;
+  /** ✗ that caught Blot holding a misreading. */
+  caught?: boolean;
 }
 
 /**
@@ -153,6 +159,10 @@ export interface ExamItem {
   tip: string;
   /** Revealed only after teaching, for the replay's "stronger" column. */
   modelAnswer?: string;
+  /** The hidden question, revealed after teaching (Blot asks it again later). */
+  question?: string;
+  /** Revealed after teaching, for grading later recalls offline. */
+  keyPoints?: string[];
 }
 
 /** Examiner output (SPEC §12.3). */
@@ -182,6 +192,8 @@ export interface BoutExchange {
   blotHp: number;
   monsterHp: number;
   suddenDeath: boolean;
+  /** A Double ink power-up doubled this hit. */
+  doubled?: boolean;
 }
 
 export interface BoutResult {
@@ -191,12 +203,15 @@ export interface BoutResult {
   knockout: boolean;
   blotHp: number;
   monsterHp: number;
+  /** Blot's starting HP (100, more with an Ink refill). */
+  startHp: number;
 }
 
 // ---------------------------------------------------------------- traits
 
 export type TraitKind = 'horn' | 'fin' | 'tail' | 'spikes';
-export type TraitLook = 'wobbly' | 'solid' | 'shining';
+/** How a trait looks. 'faded' is only ever shown, never stored: a memory nobody refreshed (shared/memory.ts). */
+export type TraitLook = 'wobbly' | 'solid' | 'shining' | 'faded';
 
 export interface Trait {
   kind: TraitKind;
@@ -209,6 +224,8 @@ export interface Trait {
   ideaName: string;
   score: number;
   at: number;
+  /** The memory card this trait belongs to: its look fades with the card (shared/memory.ts). */
+  cardId?: string;
 }
 
 // ---------------------------------------------------------------- demo rounds (demo/rounds/*.json)

@@ -37,7 +37,7 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
 - `npm install` at the root installs everything. `npm run dev`: server on http://localhost:8787 and
   the extension build in watch mode (`extension/dist/`, load unpacked). `npm run build`: release build.
   `npm test`: unit tests (node:test). `npm run check`: typecheck + tests + check:nokey.
-  `npm run smoke:demo`, `npm run smoke:ext`: Playwright smokes. `npm run assets:gen`: KIE art.
+  `npm run smoke:demo`, `npm run smoke:ext`, `npm run smoke:loop`: Playwright smokes. `npm run assets:gen`: KIE art.
   `npm run demo:bake`: canned rounds from the real AI. `AI_STUB=1`: every route answers from `demo/`.
 
 ## Quality bar

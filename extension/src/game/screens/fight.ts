@@ -1,5 +1,6 @@
 // The exam (masked by the monster's taunt), the bout, eating and the escape.
 import { EXAMINER_WAIT_MS, TRAITS_WORN } from '../../../../shared/config.ts';
+import { REFILL_HP } from '../../../../shared/memory.ts';
 import { simulateBout } from '../../../../shared/bout.ts';
 import { boutIdeas, chooseTrait, finalBelief, weakestIdeaId } from '../../../../shared/round.ts';
 import type { BoutExchange, ExamResult } from '../../../../shared/types.ts';
@@ -11,7 +12,7 @@ import { h } from '../dom.ts';
 import { Effects } from '../effects.ts';
 import { MonsterView } from '../monster.ts';
 import { sfx } from '../sound.ts';
-import { getLocal, setLocal } from '../storage.ts';
+import { addTrait } from '../memory-store.ts';
 import { Bubble, inkSwirl, primary, secondary, showScreen } from '../ui.ts';
 
 /** Live bars as a stand-in exam when the examiner is too slow (marked provisional). */
@@ -29,21 +30,26 @@ function provisionalExam(ctx: RoundCtx): ExamResult {
 export async function examScreen(ctx: RoundCtx): Promise<void> {
   const root = showScreen('exam', { home: ctx.onHome });
   root.style.backgroundImage = assetBackground('arena');
-  const monster = new MonsterView(ctx.monster.shape, ctx.monster.words, ctx.monster.color, 640, 400, 'left');
-  const taunt = new Bubble('taunt');
+  // In a duel the friend's Blot does the taunting; otherwise the page's monster does.
+  const duel = ctx.kind === 'duel' ? ctx.duel : null;
+  const monster = duel ? null : new MonsterView(ctx.monster.shape, ctx.monster.words, ctx.monster.color, 640, 400, 'left');
+  const rival = duel ? createBlot(230) : null;
+  rival?.el.classList.add('rival');
+  rival?.setPose('proud');
+  const taunt = new Bubble(duel ? 'taunt rival-taunt' : 'taunt');
   const blot = createBlot(170);
   blot.setTraits(ctx.traits);
   blot.setPose('listening');
   const blotBubble = new Bubble('blot-small');
   root.append(
-    h('div', { class: 'exam-monster' }, taunt.el, monster.canvas),
+    h('div', { class: 'exam-monster' }, taunt.el, monster?.canvas ?? h('div', { class: 'mirror' }, rival!.el)),
     h('div', { class: 'exam-blot' }, blotBubble.el, blot.el),
     h('div', { class: 'exam-status' }, inkSwirl('Blot is getting ready…')),
   );
   let raf = 0;
   const loop = (now: number) => {
     recordFrame(now);
-    monster.draw(now, { glow: 0.5 });
+    monster?.draw(now, { glow: 0.5 });
     raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
@@ -59,13 +65,25 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   );
   const timeout = new Promise<{ ok: false }>((r) => setTimeout(() => r({ ok: false }), EXAMINER_WAIT_MS));
   const topic = ctx.lesson.topic.toLowerCase();
-  taunt.set(`I am ${ctx.monster.name}! Nobody understands ${topic}. Nobody!`);
+  taunt.set(duel ? `I’m ${duel.name}’s Blot. ${duel.name} taught me ${topic}. All of it!` : `I am ${ctx.monster.name}! Nobody understands ${topic}. Nobody!`);
   sfx.reveal();
   await wait(2400);
+  // Power-ups earned by remembering (SPEC §17): Blot uses them now, while the examiner runs.
+  const used = new Set(ctx.boostsUsed);
+  if (used.size) {
+    const chips = h('div', { class: 'powerups-used', id: 'powerups-used', 'aria-label': 'Power-ups used' });
+    if (used.has('refill')) chips.append(h('span', { class: 'powerup-chip refill' }, h('span', { class: 'pu-icon', 'aria-hidden': 'true' }, '🧪'), `Ink refill +${REFILL_HP} HP`));
+    if (used.has('double')) chips.append(h('span', { class: 'powerup-chip double' }, h('span', { class: 'pu-icon', 'aria-hidden': 'true' }, '✦'), 'Double ink: first hit ×2'));
+    root.querySelector('.exam-blot')!.append(chips);
+    blotBubble.set(used.has('refill') ? ctx.lines.refill : ctx.lines.double);
+    blot.setPose('eating', 900);
+    sfx.gulp();
+    await wait(1800);
+  }
   blotBubble.set(ctx.lines.ready);
   blot.setPose('excited');
   await wait(2000);
-  taunt.set('Come on then, little blot. Show me what you know.');
+  taunt.set(duel ? 'Your coach versus mine. Let’s see who taught better.' : 'Come on then, little blot. Show me what you know.');
   await wait(2100);
   const result = await Promise.race([exam, timeout]);
   if (result.ok) {
@@ -79,13 +97,14 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   if (performance.now() - started < 6500 / getSpeed()) await wait(400);
   cancelAnimationFrame(raf);
   blot.destroy();
+  rival?.destroy();
 }
 
 /** The bout (SPEC §8): HP bars, idea names, sparks, backfire, fizzle, ink-burst K.O. */
 export async function boutScreen(ctx: RoundCtx): Promise<void> {
   const exam = ctx.exam!;
   const ideas = boutIdeas(ctx.lesson.ideas, exam);
-  const result = simulateBout(ideas, (ctx.engine.seed + ctx.attempt * 7919) >>> 0);
+  const result = simulateBout(ideas, (ctx.engine.seed + ctx.attempt * 7919) >>> 0, undefined, ctx.boosts);
   ctx.bout = result;
   // For the smoke test's log: what the bout was given and how it ended.
   (window as unknown as Record<string, unknown>).__bout = { ideas, outcome: result.outcome, knockout: result.knockout, exchanges: result.exchanges.length };
@@ -114,7 +133,18 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
   const monsterBox = h('div', { class: 'fighter fighter-monster' }, monsterBubble.el, monster.canvas);
   const ko = h('div', { class: 'ko-glow', 'aria-hidden': 'true' });
   ko.style.backgroundImage = assetBackground('glow');
-  arena.append(h('div', { class: 'hp-row' }, hp('blot', 'Blot'), h('span', { class: 'vs' }, 'VS'), hp('monster', ctx.monster.name)), ribbon, blotBox, monsterBox, ko, slam, log);
+  const bonus = result.startHp - 100;
+  arena.append(h('div', { class: 'hp-row' }, hp('blot', bonus > 0 ? `Blot +${bonus}` : 'Blot'), h('span', { class: 'vs' }, 'VS'), hp('monster', ctx.monster.name)), ribbon, blotBox, monsterBox, ko, slam, log);
+  if (ctx.boostsUsed.length) {
+    arena.append(
+      h(
+        'div',
+        { class: 'bout-powerups', 'aria-label': 'Power-ups' },
+        ctx.boostsUsed.includes('refill') ? h('span', { class: 'powerup-chip refill' }, h('span', { class: 'pu-icon', 'aria-hidden': 'true' }, '🧪'), `+${REFILL_HP} HP`) : null,
+        ctx.boostsUsed.includes('double') ? h('span', { class: 'powerup-chip double', id: 'chip-double' }, h('span', { class: 'pu-icon', 'aria-hidden': 'true' }, '✦'), 'First hit ×2') : null,
+      ),
+    );
+  }
   if (ctx.provisional) arena.append(h('p', { class: 'provisional' }, 'Scores are provisional'));
   root.append(arena, effects.canvas);
 
@@ -131,13 +161,16 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
 
   const setHp = (who: 'blot' | 'monster', value: number) => {
     const v = Math.max(0, value);
+    // Blot's bar is relative to its starting HP (more than 100 after an Ink refill).
+    const pct = (v / (who === 'blot' ? result.startHp : 100)) * 100;
     const fill = document.getElementById(`hp-${who}`)!;
-    fill.style.width = `${v}%`;
-    fill.classList.toggle('low', v <= 30);
+    fill.style.width = `${pct}%`;
+    fill.classList.toggle('low', pct <= 30);
     const ghost = document.getElementById(`hp-${who}-ghost`)!;
-    setTimeout(() => (ghost.style.width = `${v}%`), 450 / getSpeed());
+    setTimeout(() => (ghost.style.width = `${pct}%`), 450 / getSpeed());
     document.getElementById(`hp-${who}-num`)!.textContent = String(Math.round(v));
   };
+  document.getElementById('hp-blot-num')!.textContent = String(result.startHp);
   const centreOf = (el: Element) => {
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -211,7 +244,11 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
       sfx.hit(big);
       const c = centreOf(monster.canvas);
       effects.sparks(c.x, c.y, '#ffd34d', big ? 34 : 18, big ? 1.5 : 1);
-      showSlam(x.name, big ? 'hit big' : 'hit');
+      if (x.doubled) {
+        effects.sparks(c.x, c.y, '#5b4bff', 30, 1.4);
+        document.getElementById('chip-double')?.classList.add('spent');
+      }
+      showSlam(x.doubled ? `Double ink! ${x.name}` : x.name, big ? 'hit big' : 'hit');
       damage(monster.canvas, x.dealt, 'hit');
       screenShake(big ? 12 : 5);
       setHp('monster', x.monsterHp);
@@ -221,7 +258,7 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
       });
       hurt = 0;
       shake = 0;
-      addLog(`Blot used ${x.name}: ${x.dealt} damage.`);
+      addLog(x.doubled ? `Blot used ${x.name} with double ink: ${x.dealt} damage!` : `Blot used ${x.name}: ${x.dealt} damage.`);
     } else if (x.kind === 'backfire') {
       // The misreading, in Blot's own words, acted out.
       const misread = ctx.exam?.results.find((r) => r.id === x.ideaId)?.creatureAnswer || 'Wait, I thought…';
@@ -345,13 +382,18 @@ export async function eatScreen(ctx: RoundCtx): Promise<'replay'> {
   monsterBox.remove();
 
   // The trait from the highest-scoring idea.
-  const trait = chooseTrait(ctx.exam!, ctx.lesson.ideas, { name: ctx.monster.name, color: ctx.monster.color }, Date.now());
+  // In a comeback the trait comes from the idea just learned, not from the ones beaten before.
+  const open = { results: ctx.exam!.results.filter((r) => !(r.id in ctx.locked)) };
+  const chosen = chooseTrait(open.results.length ? open : ctx.exam!, ctx.lesson.ideas, { name: ctx.monster.name, color: ctx.monster.color }, Date.now());
+  // The trait belongs to its idea's memory card: it fades when the memory does (SPEC §17).
+  const best = chosen && ctx.lesson.ideas.find((i) => i.name === chosen.ideaName);
+  const cardId = best ? ctx.cardIds[best.id] : undefined;
+  const trait = chosen && cardId ? { ...chosen, cardId } : chosen;
   ctx.trait = trait;
   if (trait) {
     const worn = [...ctx.traits, trait].slice(-TRAITS_WORN);
     ctx.traits = worn;
-    const all = await getLocal<typeof worn>('traits', []);
-    await setLocal('traits', [...all, trait].slice(-50));
+    await addTrait(trait);
     blot.setTraits(worn);
     blotBox.classList.add('grown');
     const m = blot.mouthPoint();
@@ -360,7 +402,7 @@ export async function eatScreen(ctx: RoundCtx): Promise<'replay'> {
   }
   blot.setPose('proud');
   sfx.win();
-  const looks = { wobbly: 'a bit wobbly', solid: 'solid', shining: 'shining' } as const;
+  const looks = { wobbly: 'a bit wobbly', solid: 'solid', shining: 'shining', faded: 'faded' } as const;
   headline.textContent = 'Gulp! Blot grew a new trait.';
   root.append(
     h(

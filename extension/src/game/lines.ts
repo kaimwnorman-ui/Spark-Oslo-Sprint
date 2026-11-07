@@ -27,6 +27,16 @@ const en = {
   onDevice: 'Blot is thinking on this laptop',
   offlineDevice: 'Offline: Blot is still thinking on this laptop',
   expired: 'This round expired. Play it again!',
+  exampleQuestion: (name: string) => `Ooh! Can you give me an example of "${name}"?`,
+  coverage: (n: number) => `${n} ideas are still empty! One sentence each?`,
+  comebackHello: (name: string) => `It's back! Teach me "${name}" properly this time!`,
+  duelHello: (name: string) => `${name}'s Blot wants a fight! Teach me well, coach!`,
+  refill: 'Glug glug! Ink refill: +20 HP!',
+  double: 'My ink is doubled! My first hit hits twice!',
+  forgetting: 'Wait… I’m forgetting something you taught me!',
+  remembered: 'It’s all coming back! Thank you, coach!',
+  almost: 'Almost… I remember some of it.',
+  forgot: 'Oh no. Tell me again soon?',
 };
 
 const nb: typeof en = {
@@ -54,6 +64,16 @@ const nb: typeof en = {
   onDevice: 'Blot tenker på denne maskinen',
   offlineDevice: 'Frakoblet: Blot tenker fortsatt på denne maskinen',
   expired: 'Runden er utløpt. Spill den på nytt!',
+  exampleQuestion: (name: string) => `Å! Kan du gi meg et eksempel på «${name}»?`,
+  coverage: (n: number) => `${n} ideer er fortsatt tomme! Én setning hver?`,
+  comebackHello: (name: string) => `Det er tilbake! Lær meg «${name}» skikkelig denne gangen!`,
+  duelHello: (name: string) => `Blot-en til ${name} vil slåss! Lær meg godt, trener!`,
+  refill: 'Glugg glugg! Blekkpåfyll: +20 HP!',
+  double: 'Blekket mitt er doblet! Første treff teller dobbelt!',
+  forgetting: 'Vent… jeg glemmer noe du lærte meg!',
+  remembered: 'Nå husker jeg alt! Takk, trener!',
+  almost: 'Nesten… jeg husker litt av det.',
+  forgot: 'Å nei. Fortell meg det igjen snart?',
 };
 
 export type Lines = typeof en;

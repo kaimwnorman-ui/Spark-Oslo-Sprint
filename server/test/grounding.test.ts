@@ -20,7 +20,7 @@ const rounds = readdirSync(dir)
   .filter((r) => r.id !== 'stage');
 const pageText = (r: DemoRound) =>
   readFileSync(new URL(`../../${r.page}`, import.meta.url), 'utf8').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-const stored = (r: DemoRound): StoredLesson => ({ lesson: r.lesson, roundId: null, text: pageText(r), seed: 1, expires: Infinity });
+const stored = (r: DemoRound): StoredLesson => ({ lesson: r.lesson, roundId: null, text: pageText(r), seed: 1, page: null, expires: Infinity });
 const tides = rounds.find((r) => r.id === 'tides')!;
 
 test('grounding: an empty transcript scores 0/5 on every demo page', { skip: !enabled }, async () => {

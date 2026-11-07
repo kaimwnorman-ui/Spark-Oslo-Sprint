@@ -1,17 +1,19 @@
 // The four AI routes (SPEC §13), plus /reveal for an on-device Blot. With AI_STUB=1, or with no Anthropic key, they answer from the
 // demo round that matches the page (offline mode). Live AI: ai.ts.
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { EXTRACTS_PER_HOUR } from '../../shared/config.ts';
+import { DUELS_PER_HOUR, EXTRACTS_PER_HOUR, RECALLS_PER_HOUR } from '../../shared/config.ts';
 import { demoAllBars, demoBars, demoExam, demoReply, type CreatureEvent } from '../../shared/demo.ts';
+import { readChallenge } from '../../shared/duel.ts';
 import { sealLesson } from '../../shared/lesson.ts';
+import { recallScore } from '../../shared/memory.ts';
 import { misreadIdeaIds, type TeachBelief } from '../../shared/round.ts';
 import type { DemoRound, Lesson, RevealReply } from '../../shared/types.ts';
 import type { RouteHandler } from './app.ts';
 import { createAnthropic } from './anthropic.ts';
 import { roundById, roundForPage } from './fixtures.ts';
 import { HttpError, clientIp } from './http.ts';
-import { LessonStore, RateLimit, pageKey, type StoredLesson } from './lessons.ts';
-import { readCapture, readLessonId, readString, readStrings, readTranscript } from './requests.ts';
+import { DuelStore, LessonStore, RateLimit, pageKey, type StoredLesson } from './lessons.ts';
+import { readCapture, readDuelCode, readLessonId, readRecall, readString, readStrings, readTranscript } from './requests.ts';
 import type { Settings } from './settings.ts';
 import { keepPageLinksOnly } from './validate.ts';
 import type { LiveAi } from './ai.ts';
@@ -21,6 +23,7 @@ const BELIEFS: TeachBelief[] = ['none', 'right', 'misread'];
 
 export interface RouteOptions {
   store?: LessonStore;
+  duels?: DuelStore;
   /** Live AI roles; absent in stub/offline mode. */
   ai?: LiveAi | null;
   log?: (line: string) => void;
@@ -28,7 +31,10 @@ export interface RouteOptions {
 
 export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record<string, RouteHandler> {
   const store = opts.store ?? new LessonStore();
+  const duels = opts.duels ?? new DuelStore();
   const limit = new RateLimit(EXTRACTS_PER_HOUR, 60 * 60 * 1000);
+  const recallLimit = new RateLimit(RECALLS_PER_HOUR, 60 * 60 * 1000);
+  const duelLimit = new RateLimit(DUELS_PER_HOUR, 60 * 60 * 1000);
   const live = settings.stub ? null : (opts.ai ?? null);
 
   const lessonFor = (body: unknown): StoredLesson => {
@@ -56,7 +62,7 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
       seed = round.seed;
     }
     lesson = keepPageLinksOnly(lesson, capture.links);
-    const put = store.put(lesson, capture.text, roundId, seed);
+    const put = store.put(lesson, capture.text, roundId, seed, { url: capture.url, title: capture.title });
     return { lesson: sealLesson(lesson, put.lessonId), seed: put.seed, offline: !live, roundId };
   };
 
@@ -105,6 +111,42 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     return live.examine(stored, transcript, held);
   };
 
+  /** A flashback answer, graded against the idea's revealed answer (SPEC §17). Offline: word overlap. */
+  const recall: RouteHandler = async (body, req) => {
+    if (!recallLimit.allow(clientIp(req))) throw new HttpError(429, 'That is a lot of remembering for one hour. Try again a bit later.');
+    const input = readRecall(body);
+    if (!live) return { score: recallScore(input, input.answer), feedback: '', offline: true };
+    return { ...(await live.recall(input)), offline: false };
+  };
+
+  /** Stores a real page's duel for 24 hours; the friend joins with the code. */
+  const duel: RouteHandler = async (body, req) => {
+    if (!duelLimit.allow(clientIp(req))) throw new HttpError(429, 'That is a lot of challenges for one hour. Try again a bit later.');
+    const stored = lessonFor(body);
+    const b = (body ?? {}) as Record<string, unknown>;
+    const challenge = readChallenge({
+      v: 1, demo: null, name: b.name, topic: stored.lesson.topic, monsterName: stored.lesson.monsterName, ideas: b.ideas, seed: stored.seed, at: Date.now(),
+    });
+    if (!challenge || challenge.ideas.length !== stored.lesson.ideas.length) throw new HttpError(400, 'Missing your Blot’s scores.');
+    const code = duels.put({ lesson: stored.lesson, text: stored.text, roundId: stored.roundId, page: stored.page, challenge });
+    return { code };
+  };
+
+  /** The friend's side: a fresh round on the same lesson and seed, plus the challenger's Blot. */
+  const duelJoin: RouteHandler = async (body) => {
+    const found = duels.get(readDuelCode(body));
+    if (!found) throw new HttpError(410, 'This challenge has expired. Ask your friend for a new one.');
+    const put = store.put(found.lesson, found.text, found.roundId, found.challenge.seed, found.page);
+    return {
+      lesson: sealLesson(found.lesson, put.lessonId),
+      seed: put.seed,
+      offline: !live,
+      roundId: found.roundId,
+      page: found.page,
+      challenge: found.challenge,
+    };
+  };
+
   /**
    * For an on-device Blot (Opera WebAI): one fact the game is about to show anyway, never an
    * answer. No AI and no player text: the lesson is enough, so it works in AI_STUB mode too.
@@ -127,7 +169,7 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     throw new HttpError(400, 'Unknown question.');
   };
 
-  return { '/extract': extract, '/creature': creature, '/bars': bars, '/examine': examine, '/reveal': reveal };
+  return { '/extract': extract, '/creature': creature, '/bars': bars, '/examine': examine, '/recall': recall, '/duel': duel, '/duel/join': duelJoin, '/reveal': reveal };
 }
 
 /** Builds the live AI roles when there is a key and AI_STUB is off. */

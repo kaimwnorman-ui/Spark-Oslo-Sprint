@@ -19,6 +19,7 @@
     "check": "npm run typecheck && npm test && npm run build && npm run check:nokey",
     "smoke:demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-demo.mjs",
     "smoke:ext": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-ext.mjs",
+    "smoke:loop": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-loop.mjs",
     "assets:gen": "node tools/assets-gen.mjs",
     "models:check": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/check-models.ts",
     "demo:bake": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/demo-bake.ts",

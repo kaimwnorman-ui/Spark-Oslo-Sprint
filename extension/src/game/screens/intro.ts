@@ -8,7 +8,9 @@ import type { RoundCtx } from '../context.ts';
 import { h } from '../dom.ts';
 import { MonsterView } from '../monster.ts';
 import { sfx } from '../sound.ts';
-import { primary, showScreen, removeScreen, inkSwirl } from '../ui.ts';
+import { Bubble, primary, showScreen, removeScreen, inkSwirl } from '../ui.ts';
+import type { Comeback, MemoryCard } from '../../../../shared/memory.ts';
+import { navUrl } from '../memory-store.ts';
 import { assetBackground, assetImg } from '../assets.ts';
 
 declare global {
@@ -17,12 +19,38 @@ declare global {
   }
 }
 
-export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void {
-  const root = showScreen('home');
+export interface HomeOptions {
+  traits: Trait[];
+  onDemo: (id: string) => void;
+  /** Returning players: Blot's memory and the loop's next steps (SPEC §17). */
+  returning: boolean;
+  dueCard: MemoryCard | null;
+  comeback: Comeback | null;
+  onBlot: () => void;
+  onComeback: (id: string) => void;
+}
+
+export function homeScreen(opts: HomeOptions): void {
+  // Returning players: "Your Blot" sits where Home sits on every other screen.
+  const yours = opts.returning ? h('button', { class: 'icon-btn your-blot-pill', id: 'btn-your-blot', onclick: () => { sfx.tap(); opts.onBlot(); } }, '✦ Your Blot') : null;
+  if (yours && opts.dueCard) yours.append(h('span', { class: 'badge', 'aria-label': 'A memory is fading' }, '1'));
+  const root = showScreen('home', { left: yours });
   const blot = createBlot(200);
-  blot.setTraits(traits);
-  blot.setPose('excited');
+  blot.setTraits(opts.traits);
+  blot.setPose(opts.dueCard ? 'confused' : 'excited');
   root.style.backgroundImage = assetBackground('title');
+  // One obvious primary action: a monster that came back, else the demo.
+  const cb = opts.comeback;
+  const main = cb
+    ? primary('btn-home-comeback', `Fight ${cb.monsterName} again`, () => opts.onComeback(cb.id))
+    : primary('btn-play-demo', 'Play the demo', () => opts.onDemo('tides'));
+  const pages: [string, string][] = [['pvalue', 'P-values'], ['solar', 'Solar panels'], ['sove', 'Søvn (norsk)'], ['ai-answer', 'An AI answer'], ['stage', 'Stage round']];
+  if (cb) pages.unshift(['tides', 'Tides']);
+  let bubble: Bubble | null = null;
+  if (opts.returning && (opts.dueCard || cb)) {
+    bubble = new Bubble('home-bubble');
+    bubble.set(opts.dueCard ? `My “${opts.dueCard.ideaName}” memory is fading… remind me?` : `${cb!.monsterName} is back for a rematch!`);
+  }
   root.append(
     h(
       'div',
@@ -31,19 +59,18 @@ export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void 
       h('h1', { class: 'logo' }, PRODUCT_NAME),
       CHALLENGE_HOOK ? h('p', { class: 'tagline' }, CHALLENGE_HOOK) : null,
       h('p', { class: 'pitch' }, 'Any page becomes a monster made of its words. Beat it by teaching Blot what the page means.'),
-      primary('btn-play-demo', 'Play the demo', () => onDemo('tides')),
+      main,
       h('p', { class: 'quiet-line' }, 'On any page: click the Spark button in your toolbar, or press Alt+Shift+B.'),
       h(
         'p',
         { class: 'more-pages' },
         'More pages: ',
-        ...[['pvalue', 'P-values'], ['solar', 'Solar panels'], ['sove', 'Søvn (norsk)'], ['ai-answer', 'An AI answer'], ['stage', 'Stage round']].flatMap(([id, label], i) => [
-          i ? ' · ' : '',
-          h('a', { href: `game.html?demo=${id}`, class: 'page-link' }, label!),
-        ]),
+        ...pages.flatMap(([id, label], i) => [i ? ' · ' : '', h('a', { href: navUrl(`game.html?demo=${id}`), class: 'page-link' }, label)]),
       ),
     ),
-    h('div', { class: 'home-blot' }, blot.el),
+    opts.returning
+      ? h('button', { class: 'home-blot as-button', id: 'btn-home-blot', 'aria-label': 'Your Blot', onclick: () => { sfx.tap(); opts.onBlot(); } }, bubble?.el ?? null, blot.el)
+      : h('div', { class: 'home-blot' }, blot.el),
   );
 }
 
@@ -80,7 +107,7 @@ export function pageScreen(ctx: RoundCtx): Promise<{ boxes: WordBox[]; text: str
       'div',
       { class: 'spark-dock' },
       h('div', { class: 'dock-blot' }, blot.el),
-      h('div', null, h('p', { class: 'dock-title' }, 'Read this page… or fight it.'), button, h('p', { class: 'quiet-line small' }, 'Demo round · works offline · ', h('a', { href: 'game.html', id: 'btn-page-home' }, 'Home'))),
+      h('div', null, h('p', { class: 'dock-title' }, 'Read this page… or fight it.'), button, h('p', { class: 'quiet-line small' }, 'Demo round · works offline · ', h('a', { href: navUrl('game.html'), id: 'btn-page-home' }, 'Home'))),
     ),
   );
   return new Promise((resolve) => {
@@ -122,7 +149,7 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
   fly.height = H * dpr;
   const g = fly.getContext('2d')!;
   g.scale(dpr, dpr);
-  const title = h('h1', { class: 'monster-name' }, ctx.monster.name);
+  const title = h('h1', { class: 'monster-name' }, ctx.kind === 'comeback' ? `${ctx.monster.name} is back!` : ctx.monster.name);
   const attacks = h('ul', { class: 'attacks', 'aria-label': 'Its five attacks' });
   const teach = primary('btn-teach', 'Teach Blot');
   teach.classList.add('hidden');
@@ -251,7 +278,18 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
   silhouette = 1;
   mark('monster-formed');
   for (const idea of ctx.lesson.ideas) {
-    attacks.append(h('li', { class: 'attack' }, h('span', { class: 'attack-icon', 'aria-hidden': 'true' }, '✶'), idea.name));
+    // A comeback: the ideas already beaten are crossed out; the weak one glows.
+    const beaten = idea.id in ctx.locked;
+    const weak = ctx.kind === 'comeback' && idea.id === ctx.focus;
+    attacks.append(
+      h(
+        'li',
+        { class: `attack${beaten ? ' beaten' : ''}${weak ? ' weak' : ''}`, 'data-id': idea.id },
+        h('span', { class: 'attack-icon', 'aria-hidden': 'true' }, beaten ? '✓' : '✶'),
+        idea.name,
+        beaten ? h('span', { class: 'sr-only' }, ' (beaten)') : null,
+      ),
+    );
     sfx.tap();
     await wait(reduce ? 60 : 220);
   }

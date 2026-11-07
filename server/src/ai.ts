@@ -13,8 +13,8 @@ import { HttpError } from './http.ts';
 import type { StoredLesson } from './lessons.ts';
 import {
   BARS_SCHEMA, BARS_SYSTEM, CREATURE_SYSTEM, EXAMINER_SCHEMA, EXAMINER_SYSTEM, EXTRACTOR_SCHEMA, EXTRACTOR_SYSTEM, IDEA_IDS,
-  creatureTask, dataBlock, extractorMessage, lessonBlock, transcriptBlock,
-  type BarsOutput, type ExaminerOutput, type ExtractorOutput,
+  RECALL_SCHEMA, RECALL_SYSTEM, creatureTask, dataBlock, extractorMessage, lessonBlock, recallMessage, transcriptBlock,
+  type BarsOutput, type ExaminerOutput, type ExtractorOutput, type RecallInput, type RecallOutput,
 } from './prompts.ts';
 import type { Settings } from './settings.ts';
 
@@ -23,6 +23,8 @@ export interface LiveAi {
   creature(stored: StoredLesson, req: CreatureRequest): AsyncIterable<string>;
   bars(stored: StoredLesson, ideaId: string, transcript: TranscriptEntry[]): Promise<{ bars: BarValue[]; whenRight?: boolean }>;
   examine(stored: StoredLesson, transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult>;
+  /** Grades a flashback answer against the idea's revealed answer (SPEC §17). */
+  recall(input: RecallInput): Promise<RecallOutput>;
 }
 
 type Effort = 'low' | 'medium' | 'high';
@@ -204,6 +206,13 @@ export function makeLiveAi(client: Anthropic, settings: Settings, log: (line: st
       }
       return { results: lesson.ideas.map((idea) => gradeIdea(idea, fixed, out?.results[idea.id as (typeof IDEA_IDS)[number]], heldMisreads, lesson.language)) };
     },
+
+    async recall(input) {
+      // Too short to be an answer: no call.
+      if (input.answer.trim().split(/\s+/).filter(Boolean).length < 3) return { score: 0, feedback: '' };
+      const out = await jsonCall<RecallOutput>('recall', RECALL_SYSTEM, [{ type: 'text', text: recallMessage(input) }], RECALL_SCHEMA, 600, { thinking: false });
+      return { score: Math.round(Math.min(100, Math.max(0, out.score))), feedback: (out.feedback ?? '').trim().slice(0, 240) };
+    },
   };
 }
 
@@ -292,5 +301,9 @@ function gradeIdea(
     belief = 'wrong';
     creatureAnswer = idea.misread;
   }
-  return { id: idea.id, score, grounded: score > 0, belief, creatureAnswer, tip: raw?.tip?.trim() ?? '', modelAnswer: idea.modelAnswer };
+  // After teaching, the idea's answer is revealed: the replay's "stronger" column, flashbacks and comebacks.
+  return {
+    id: idea.id, score, grounded: score > 0, belief, creatureAnswer, tip: raw?.tip?.trim() ?? '',
+    modelAnswer: idea.modelAnswer, question: idea.question, keyPoints: idea.keyPoints,
+  };
 }
