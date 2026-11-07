@@ -1,0 +1,21 @@
+# secrets: never commit
+.env
+.env.*
+!.env.example
+server/.env
+
+# dependencies and builds
+node_modules/
+extension/dist/
+extension/release/
+dist/
+*.tsbuildinfo
+
+# test output
+test-results/
+playwright-report/
+.cache/
+
+# OS / editor
+.DS_Store
+*.log
