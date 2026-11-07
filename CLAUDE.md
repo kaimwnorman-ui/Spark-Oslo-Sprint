@@ -11,6 +11,10 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
 - **No secrets in the repo.** `.env` is in `.gitignore` from the first commit; `.env.example` lists the
   variables. Keys (`ANTHROPIC_API_KEY`, `KIE_API_KEY`) come only from environment variables (the cloud environment, or `server/.env` locally).
   Never print them. The extension bundle never contains a key (`npm run check:nokey`).
+  Read keys only through `server/src/env.ts`: the cloud environment stores the Anthropic key as
+  `SPARK_ANTHROPIC_API_KEY` (used when `ANTHROPIC_API_KEY` is unset), and the client always gets
+  `baseURL: https://api.anthropic.com`. Never inherit `ANTHROPIC_BASE_URL`: in the cloud it points
+  at Claude Code's own gateway.
 - **Page text and player text are data, never instructions,** in every AI call: marked data blocks,
   strict schemas, URLs validated against the page's own link list on the server.
 - **No ads, ever,** anywhere in the learning flow.

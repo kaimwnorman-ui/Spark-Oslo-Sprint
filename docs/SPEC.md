@@ -183,7 +183,9 @@ none). "Play again" and "Home".
 ## 12. AI design (DECIDED roles; models DEFAULT, measured)
 
 All calls go through **our server** with `@anthropic-ai/sdk` (TypeScript). The extension never holds
-the key. Load the `claude-api` skill before writing any of this, and follow it over this file where
+the key. The client is built from `resolveKeys(process.env)` in `server/src/env.ts`: key from
+`ANTHROPIC_API_KEY`, else `SPARK_ANTHROPIC_API_KEY`; `baseURL` always `https://api.anthropic.com`
+(never the inherited `ANTHROPIC_BASE_URL`). Load the `claude-api` skill before writing any of this, and follow it over this file where
 they differ.
 
 | Role | When | Model (DEFAULT, from env) | Effort | Output | Target |
