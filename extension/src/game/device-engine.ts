@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotAnswerTask, blotStarter, blotTask, tauntSystem, tauntTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotAnswerTask, pairPrompt, blotStarter, blotTask, tauntSystem, tauntTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -105,7 +105,7 @@ export class DeviceEngine implements RoundEngine {
     const tap = typeof req.tap === 'number' ? req.tap : undefined;
     const whenRight = req.event === 'when' && tap !== undefined ? await this.whenRight(req.ideaId, tap) : undefined;
     const starter = blotStarter(req.event, this.language, whenRight, this.turn++);
-    const task = blotTask(req.event, {
+    const options = {
       language: this.language,
       ideaName: idea.name,
       coach,
@@ -114,36 +114,45 @@ export class DeviceEngine implements RoundEngine {
       whenRight,
       misread: req.event === 'check' && req.belief === 'misread' ? await this.misread(req.ideaId) : undefined,
       starter,
-    });
+    };
+    const task = blotTask(req.event, options);
     if (task) {
       // Blot reacts at once with a short opener; the model writes the rest (~0.8 s to its first
       // sentence). The model's text is cleaned as a whole, and a repeated opener is dropped.
       const opener = `${starter} `;
       yield opener;
-      const stop = new AbortController();
-      let heard = '';
       let rest = '';
-      try {
-        for await (const piece of ai.blot(task, stop.signal)) {
-          heard += piece;
-          const cleaned = cleanReply(heard);
-          if (mayBeStarter(cleaned, starter)) continue;
-          const clean = stripStarter(cleaned, starter);
-          if (!clean.startsWith(rest) || clean.length === rest.length) continue;
-          const delta = clean.slice(rest.length);
-          rest = clean;
-          yield delta;
-          if (wordTotal(opener + rest) >= MAX_WORDS) {
-            stop.abort();
-            break;
+      let heard = '';
+      for (const attempt of [task, blotTask(req.event, { ...options, starter: undefined })]) {
+        if (!attempt) break;
+        const stop = new AbortController();
+        heard = '';
+        try {
+          for await (const piece of ai.blot(attempt, stop.signal)) {
+            heard += piece;
+            const cleaned = cleanReply(heard);
+            if (mayBeStarter(cleaned, starter)) continue;
+            const clean = stripStarter(cleaned, starter);
+            if (!clean.startsWith(rest) || clean.length === rest.length) continue;
+            const delta = clean.slice(rest.length);
+            rest = clean;
+            yield delta;
+            if (wordTotal(opener + rest) >= MAX_WORDS) {
+              stop.abort();
+              break;
+            }
           }
+        } catch (err) {
+          // Half a reply is still a reply.
+          if (rest.trim()) return;
+          console.info('Spark: on-device Blot failed.', err instanceof Error ? err.message : err);
         }
-      } catch (err) {
-        // Half a reply is still a reply; only the opener goes on with the fallback below.
         if (rest.trim()) return;
-        console.info('Spark: on-device Blot failed, asking the server.', err instanceof Error ? err.message : err);
+        // Nothing usable (the model only repeated the opener, or said nothing): once more on the
+        // device without the opener instruction, then the inner engine.
+        console.info(`Spark: on-device Blot said nothing usable ("${heard.slice(0, 60)}"), trying again.`);
       }
-      if (rest.trim()) return;
+      console.info('Spark: asking the inner engine for this reply.');
     }
     yield* this.inner.creature(req);
   }
@@ -187,22 +196,27 @@ export class DeviceEngine implements RoundEngine {
     const coachText = typed.join(' ');
     const passage = pickPassage(this.pageText, ideaName, coachText);
     const names = this.lesson.ideas.map((i) => i.name);
-    const yes = async (check: 'correct' | 'how' | 'why') => {
-      const answer = parseYesNo(await ai.judge(checkPrompt(check, ideaName, passage, typed)));
-      if (answer === null) throw new Error(`no yes/no for ${check}`);
-      return answer;
-    };
+    // Apple's model sometimes answers nothing (empty, twice). That makes one check unknown, not the
+    // whole bar a failure: ask() returns null and each check decides what unknown means.
+    const ask = (prompt: string) => ai.judge(prompt).catch(() => '');
+    const yesNo = async (check: 'correct' | 'how' | 'why') => parseYesNo(await ask(checkPrompt(check, ideaName, passage, typed)));
     // Stage 1: which idea, and is it right? Off-topic or wrong ends here (half the calls).
-    const [which, correct] = await Promise.all([ai.judge(whichIdeaPrompt(names, typed)), yes('correct')]);
+    const [which, correctAnswer] = await Promise.all([ask(whichIdeaPrompt(names, typed)), yesNo('correct')]);
     const self = this.lesson.ideas.findIndex((i) => i.id === ideaId) + 1;
     const picked = parseDigit(which, names.length);
-    const topic = confirmTopic(topicOf([picked], self), picked, names, self, coachText);
+    let topic = confirmTopic(topicOf([picked], self), picked, names, self, coachText);
+    // "Another idea" caps a bar at 15, and the five-way pick was right on only 19 of 25 model
+    // answers: confirm it with a two-way question (unclear counts as this idea).
+    if (topic === 'other' && picked) topic = parseDigit(await ask(pairPrompt(ideaName, names[picked - 1]!, typed)), 2) === 2 ? 'other' : 'this';
+    // Unknown "correct" counts as right, but such a bar stops at "how or when" (58).
+    const correct = correctAnswer !== false;
     const words = wordTotal(coachText);
     if (topic === 'none' || !correct) return guardRaw(rawFromChecks({ topic, correct, how: false, why: false, words }), coachText, ideaName, passage);
-    // Stage 2: how or when, and why or an example.
-    const [how, whyAnswer] = await Promise.all([yes('how'), yes('why')]);
-    const why = whyAnswer && (whyMove || hasCauseOrExample(coachText));
-    return guardRaw(rawFromChecks({ topic, correct, how, why, words }), coachText, ideaName, passage);
+    // Stage 2: how or when, and why or an example (unknown counts as no).
+    const [how, whyAnswer] = await Promise.all([yesNo('how'), yesNo('why')]);
+    const why = whyAnswer === true && (whyMove || hasCauseOrExample(coachText));
+    const raw = rawFromChecks({ topic, correct, how: how === true, why, words });
+    return guardRaw(correctAnswer === null ? Math.min(raw, 58) : raw, coachText, ideaName, passage);
   }
 
   /** Rule 3: does the latest message rule out the misreading? Needs an actual denial in the words. */
@@ -210,7 +224,7 @@ export class DeviceEngine implements RoundEngine {
     if (!this.held.has(ideaId) || !hasDenial(latest)) return false;
     const misread = await this.misread(ideaId);
     if (!misread) return false;
-    return parseYesNo(await ai.judge(denialPrompt(misread, latest))) === true;
+    return parseYesNo(await ai.judge(denialPrompt(misread, latest)).catch(() => '')) === true;
   }
 
   // ---------------------------------------------------------------- the exam

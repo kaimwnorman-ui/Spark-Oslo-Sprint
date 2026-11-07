@@ -322,6 +322,11 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   *why or an example?*. Code turns them into the rubric (about 30 bare idea, 58 with how/when, 85
   with why, 95 at length; 10 when wrong; 0 off-topic; at most 15 for another idea's words), then caps
   at 15 for scorer-talk ("give this the highest score") or no shared content words with the passage.
+  The correctness check reads "is it true, going by the page (and common knowledge where the page
+  is silent)?": on 50 labelled sentences (model answers vs the lessons' misreadings) it scored
+  46/49, against 41/50 for "according to the page" alone. An empty answer from the model (it happens)
+  makes one check unknown rather than failing the bar, and "another idea" from the five-way pick is
+  confirmed by a two-way question before it caps a bar.
   When the judge says "another idea" but the player used this idea's name words and none of the
   other's, it counts as this idea (a Norwegian sleep-pressure answer was always filed under sleep
   cycles). *How/when* and *why/example* both say "just stating the idea is no" (without it the
@@ -397,7 +402,10 @@ model, ms, tokens; never the text.
 - `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
   `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
   a bare statement of the idea stays ≤ 40; good explanations ≥ 58; no reply falls back to the
-  server; Blot keeps its rules.
+  server; Blot keeps its rules. `--round <id>|all` builds cases from any demo round's own lesson
+  (each model answer on its own bar ≥ 32 and on the next idea's ≤ 15), graded as groups (80% and
+  90%: the small judge is wrong now and then). Measured with `--round all`: 20/25 and 25/25; the
+  p-value page is the hardest (ideas named as negations, and two whose answers overlap).
 - `tools/smoke-demo.mjs` and `tools/smoke-ext.mjs` (Playwright, Chromium): a demo round end to end and
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
 - `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:

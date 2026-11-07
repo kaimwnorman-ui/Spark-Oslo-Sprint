@@ -236,6 +236,11 @@ export function topicOf(answers: readonly (number | null)[], self: number): 'thi
   return 'other';
 }
 
+/** Two-way check when the judge says "another idea": easier for a small model than five options. */
+export function pairPrompt(thisName: string, otherName: string, coach: readonly string[]): string {
+  return `1. ${thisName}\n2. ${otherName}\n${coachBlock(coach)}\nWhich of these two ideas do the coach's words explain? Answer 1 or 2.`;
+}
+
 /** Does the text use a word from idea `a`'s name that idea `b`'s name doesn't have? */
 export function namesIdea(text: string, aName: string, bName: string): boolean {
   const said = new Set(contentWords(text).map(stem));
@@ -258,7 +263,9 @@ export function confirmTopic(topic: 'this' | 'other' | 'none', picked: number | 
 /** The three yes/no checks behind a live bar, each judged against the page's own words. */
 export type Check = 'correct' | 'how' | 'why';
 const CHECK_QUESTION: Record<Check, (name: string) => string> = {
-  correct: (n) => `Is what the coach says about "${n}" correct, according to the page?`,
+  // Measured on 50 labelled sentences from five rounds (model answers vs the lessons' misreadings):
+  // "according to the page" alone 41/50 (3 empty); without the page 42/50; this one 46/49.
+  correct: () => `Is what the coach says true, going by the page (and common knowledge where the page is silent)?`,
   // "Just stating the idea is no": without it Apple's model said yes to bare statements (6/8 → 8/8).
   how: (n) => `Besides naming "${n}", do the coach's words add how it works or when it happens? Just stating the idea is "no".`,
   why: (n) => `Besides naming "${n}", do the coach's words give a reason why it happens (a cause) or a concrete example? Just stating the idea is "no".`,
