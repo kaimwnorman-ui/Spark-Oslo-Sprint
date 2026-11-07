@@ -8,7 +8,12 @@ small ink creature, Blot, the page's five key ideas in your own words. Blot then
 only what you taught it, eats it if it wins, and keeps a trait. The replay shows what you said, what Blot
 believed and what would have been stronger, with one real page to go deeper.
 
-The design is in [`docs/SPEC.md`](docs/SPEC.md); the build rules are in [`CLAUDE.md`](CLAUDE.md).
+Then the learning loop makes it stick: what you taught fades unless you remember it, Blot asks about
+it again days later (a good answer earns a power-up for the next fight), monsters come back with the
+idea you were weakest on, "Your Blot" shows what you struggle with in your own numbers, and a link lets
+a friend's Blot fight yours.
+
+The design is in [`docs/SPEC.md`](docs/SPEC.md) (the loop is §17); the build rules are in [`CLAUDE.md`](CLAUDE.md).
 
 ## Try it in 30 seconds (no extension, no server)
 
@@ -49,6 +54,22 @@ No key? The server runs in offline mode and the demo pages still work from their
 `AI_STUB=1 npm run dev` makes every AI route answer from `demo/` (for tests and rehearsals).
 `game.html?demo=tides&live=1` plays a demo page through the server, without the extension.
 
+## The learning loop in two minutes
+
+Play `?demo=tides` once (teach two ideas, ring the bell). Then add `days=4` to jump four days ahead:
+
+- http://127.0.0.1:8790/game.html?days=4: home shows a fading memory and the monster coming back.
+- **Your Blot** (top left): insights from your own rounds, memories fading, power-ups, comebacks.
+  **Remind Blot** asks a question from your round; answer from memory to earn a power-up.
+- **Fight The Tide Serpent again**: the comeback. The ideas you beat are locked; teach the weak one,
+  and Blot uses the power-up in the bout.
+- **Challenge a friend** (on the replay) makes a link; open it in another browser (or a private
+  window) to play the friend's side and watch the two Blots fight.
+
+Everything is stored in the browser, offline. With the server running, flashbacks are graded by the
+AI (`/recall`); without it, by word overlap. `npm run smoke:loop` walks all of this and saves
+screenshots to `docs/shots/loop-*.png`.
+
 ## Presenting
 
 - The 60-second moment: `?demo=tides` → **Turn into a monster** → **Teach Blot** → teach one or two ideas
@@ -67,6 +88,7 @@ No key? The server runs in offline mode and the demo pages still work from their
 | `npm run check` | Typecheck + tests + release build + `check:nokey` (no key can ship in the extension). |
 | `npm run smoke:demo` | Plays a demo round end to end in Chromium; screenshots to `docs/shots/`. Flags: `--lose`, `--no-art`, `--reduced`, `--live` (AI_STUB server), `--real` (real AI), `--blocked` / `--drop` (server cut off), `--fast`. |
 | `npm run smoke:ext` | Loads the extension, triggers it on a local page, checks the game tab's monster is built from that page's words. |
+| `npm run smoke:loop` | The learning loop end to end: memories, a flashback that earns a power-up, the coach, a comeback, a duel in a second browser. |
 | `npm run test:ai` | Grounding tests with the real examiner. |
 | `npm run models:check` | One 10-token call per configured model. |
 | `npm run measure` | Times 5 real calls per role (extractor, examiner). |
@@ -100,9 +122,13 @@ host permissions, because Playwright cannot click the toolbar button (which is w
   `src/content/main.ts` (reads the page and runs the lift-off overlay in a closed Shadow DOM; the page is
   never changed), `src/game/` (the game tab: screens, Blot and the monster drawn in code, Web Audio sound).
 - `server/`: one Node process (plain `node:http`, TypeScript run natively by Node 22). Routes
-  `/extract`, `/creature` (streamed), `/bars`, `/examine`, `/health`. Lessons live in memory for 2 hours;
-  the extension only ever gets a sealed lesson with the answers stripped.
-- `shared/`: types, config, the bout simulation, bar rules, round rules. Pure and unit-tested.
+  `/extract`, `/creature` (streamed), `/bars`, `/examine`, `/health`, and for the loop `/recall`
+  (grades a flashback), `/duel` and `/duel/join` (a real page's duel, kept 24 hours) and `/app/` (the
+  built game, so a duel link opens in any browser). Lessons live in memory for 2 hours; the extension
+  only ever gets a sealed lesson with the answers stripped (each idea's answer is revealed after the
+  exam).
+- `shared/`: types, config, the bout and duel simulations, bar rules, round rules, memory cards and
+  insights. Pure and unit-tested.
 - `demo/`: the demo pages (written for Spark) and their canned rounds.
 - `tools/`: build, dev, smoke tests, art generation, model checks, baking.
 
@@ -114,6 +140,7 @@ host permissions, because Playwright cannot click the toolbar button (which is w
 | Blot (creature) | `claude-haiku-5-5` | Streamed, first token ~0.4 s, only uses the player's own words. |
 | Live bars | `claude-haiku-5-5` | ~2 s, same rubric as the examiner. |
 | Examiner | `claude-opus-5-5` | p50 6.3 s; sees only the player's messages and taps (never Blot's replies). |
+| Recall | `claude-haiku-5-5` | Grades one flashback answer against the revealed answer, ~1–2 s; offline fallback: word overlap. |
 
 All JSON roles use structured outputs, explicit effort and no sampling parameters; page and player text
 are always delimited data, never instructions; source links are checked against the page's own links.

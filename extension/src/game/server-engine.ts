@@ -1,7 +1,35 @@
 // The live round engine: the Spark server's /creature (streamed), /bars and /examine.
-import { CLIENT_TOKEN } from '../../../shared/config.ts';
+// Also the small helpers every other server call uses (/recall, /duel).
+import { CLIENT_TOKEN, SERVER_URL } from '../../../shared/config.ts';
 import type { BarValue, ExamResult, Language, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 import type { BarsReply, CreatureRequest, RoundEngine } from './engine.ts';
+import { getLocal } from './storage.ts';
+
+/** Where the server is: this page's own server when it serves the game (/app/), else the configured one. */
+export async function serverBase(): Promise<string> {
+  if (/^https?:$/.test(location.protocol) && location.pathname.startsWith('/app/')) return location.origin;
+  return (await getLocal<string>('serverUrl', '')) || SERVER_URL;
+}
+
+/** POST JSON to the server; throws ServerError (status 0 when it cannot be reached). */
+export async function postJson<T>(path: string, body: unknown, timeoutMs = 15_000): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${await serverBase()}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-spark': CLIENT_TOKEN },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new ServerError(0, 'Spark can’t reach its server.');
+  }
+  if (!res.ok) {
+    const message = await res.json().then((b: { error?: string }) => b.error ?? '', () => '');
+    throw new ServerError(res.status, message || `The server answered ${res.status}.`);
+  }
+  return (await res.json()) as T;
+}
 
 export class ServerError extends Error {
   status: number;

@@ -21,6 +21,8 @@ export const DEFAULT_MODELS = {
   creature: 'claude-haiku-5-5',
   bars: 'claude-haiku-5-5',
   examiner: 'claude-opus-5-5',
+  /** Grades a flashback answer (SPEC §17): one short structured call, like the live bars. */
+  recall: 'claude-haiku-5-5',
 } as const;
 export type Role = keyof typeof DEFAULT_MODELS;
 
@@ -57,3 +59,9 @@ export const LESSON_TTL_MS = 2 * 60 * 60 * 1000;
 export const EXTRACT_CACHE_MS = 24 * 60 * 60 * 1000;
 export const EXTRACTS_PER_HOUR = 20;
 export const MAX_BODY_BYTES = 300_000;
+/** Flashback grading calls per IP per hour. */
+export const RECALLS_PER_HOUR = 60;
+/** A real page's duel waits this long on the server for the friend. */
+export const DUEL_TTL_MS = 24 * 60 * 60 * 1000;
+export const DUELS_PER_HOUR = 20;
+export const MAX_DUELS = 500;

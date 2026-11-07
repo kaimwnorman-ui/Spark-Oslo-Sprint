@@ -4,6 +4,7 @@ import {
   barValue, capFor, clampMessage, counterVisible, atLimit, effectiveMove, isPasted, levelOf, sourceWindows, wordsMissing,
 } from '../../../../shared/bars.ts';
 import type { Move, SealedIdea, TranscriptEntry } from '../../../../shared/types.ts';
+import { COACH_NOTES } from '../../../../shared/insights.ts';
 import { createBlot, type Pose } from '../blot.ts';
 import type { RoundCtx } from '../context.ts';
 import { h } from '../dom.ts';
@@ -70,6 +71,11 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     bellBtn,
   );
   const hint = h('p', { class: 'hint', id: 'hint' }, lines.hint);
+  // Personalised from the player's history (SPEC §17): one line on what Blot will do differently.
+  const focus = ctx.kind === 'round' ? ctx.coach[0] : undefined;
+  const coachNote = focus
+    ? h('p', { class: 'coach-note', id: 'coach-note' }, h('span', { class: 'coach-kicker' }, 'Coach'), COACH_NOTES[focus])
+    : null;
   const ideaList = h('div', { class: 'ideas', role: 'list' });
   const blot = createBlot(230);
   blot.setTraits(ctx.traits);
@@ -78,9 +84,17 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   const stage = h('div', { class: 'blot-stage' }, bubble.el, blot.el);
   root.append(
     header,
-    h('div', { class: 'teach-body' }, h('aside', { class: 'idea-col' }, hasHint() ? hint : null, ideaList), h('div', { class: 'teach-main' }, stage, panelEl)),
+    h('div', { class: 'teach-body' }, h('aside', { class: 'idea-col' }, coachNote ?? (hasHint() ? hint : null), ideaList), h('div', { class: 'teach-main' }, stage, panelEl)),
   );
-  bubble.set(ctx.attempt > 1 && ctx.focus ? lines.rematch(nameOf(ctx.focus)) : lines.hello);
+  bubble.set(
+    ctx.kind === 'comeback' && ctx.focus
+      ? lines.comebackHello(nameOf(ctx.focus))
+      : ctx.kind === 'duel' && ctx.duel && ctx.attempt === 1
+        ? lines.duelHello(ctx.duel.name)
+        : ctx.attempt > 1 && ctx.focus
+          ? lines.rematch(nameOf(ctx.focus))
+          : lines.hello,
+  );
 
   function hasHint() {
     return hintShown;
@@ -100,10 +114,12 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
 
   // ---------------------------------------------------------------- ideas and bars
   const ideaButtons = new Map<string, HTMLButtonElement>();
+  const isLocked = (id: string) => id in ctx.locked;
   for (const i of lesson.ideas) {
+    const locked = isLocked(i.id);
     const btn = h(
       'button',
-      { class: 'idea', 'data-id': i.id, role: 'listitem', 'aria-pressed': 'false', onclick: () => selectIdea(i.id) },
+      { class: `idea${locked ? ' locked' : ''}`, 'data-id': i.id, role: 'listitem', 'aria-pressed': 'false', disabled: locked, onclick: () => selectIdea(i.id) },
       h('span', { class: 'idea-name' }, i.name),
       h('span', { class: 'ink-bar', 'aria-hidden': 'true' }, h('span', { class: 'ink-fill' }), h('span', { class: 'mark mark-solid' }), h('span', { class: 'mark mark-sig' })),
       h('span', { class: 'idea-level' }),
@@ -119,9 +135,9 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
       fill.style.width = `${p.value}%`;
       const level = levelOf(p.value);
       btn.dataset.level = level;
-      btn.querySelector('.idea-level')!.textContent = LEVEL_LABEL[level];
+      btn.querySelector('.idea-level')!.textContent = isLocked(id) ? 'Beaten ✓' : LEVEL_LABEL[level];
       btn.setAttribute('aria-pressed', String(id === selected));
-      btn.setAttribute('aria-label', `${idea(id).name}: ${p.value} percent`);
+      btn.setAttribute('aria-label', isLocked(id) ? `${idea(id).name}: already beaten` : `${idea(id).name}: ${p.value} percent`);
       if (id === flash) {
         btn.classList.remove('inked');
         void btn.offsetWidth;
@@ -218,6 +234,8 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     if (panel.kind === 'move') {
       const moves = h('div', { class: 'moves', role: 'tablist' });
       for (const m of Object.keys(MOVE_LABELS) as Exclude<Move, 'why'>[]) {
+        // A real page's comeback has no situations to tap (they were never revealed).
+        if (m === 'when' && !current.whenOptions.length) continue;
         moves.append(
           h('button', { class: 'move', 'data-move': m, role: 'tab', 'aria-selected': String(panel.move === m), onclick: () => selectMove(m) }, MOVE_LABELS[m]),
         );
@@ -291,7 +309,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
       class: 'composer-input',
       rows: 2,
       maxLength: MESSAGE_LIMIT,
-      placeholder: PLACEHOLDER[move] ?? '',
+      placeholder: ctx.coach.includes('paste') && move !== 'why' ? 'In your own words (copied text is capped)…' : (PLACEHOLDER[move] ?? ''),
       'aria-label': PLACEHOLDER[move] ?? 'Your message',
     });
     const counter = h('span', { class: 'counter', 'aria-live': 'polite' });
@@ -334,7 +352,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
 
   // ---------------------------------------------------------------- actions
   function selectIdea(id: string) {
-    if (finished) return;
+    if (finished || isLocked(id)) return;
     dismissHint();
     sfx.tap();
     selected = id;
@@ -366,7 +384,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     const p = progress[id]!;
     const pasted = isPasted(rawText, windows);
     const counted = effectiveMove(move, pasted);
-    record({ ideaId: id, move: counted, text: rawText });
+    record({ ideaId: id, move: counted, text: rawText, ...(pasted ? { pasted } : {}) });
     setBusy(true);
     provisional(id);
     try {
@@ -392,11 +410,12 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
           p.belief = 'right';
           await blotSays(id, 'say', { text: rawText });
         }
-        maybeAskWhy(id);
+        if (idea(id).asksWhy) maybeAskWhy(id);
+        else maybeAskExample(id);
       } else {
         if (p.belief === 'none') p.belief = 'right';
         await blotSays(id, counted as CreatureEvent, { text: rawText });
-        maybeAskWhen(id);
+        if (!maybeAskExample(id)) maybeAskWhen(id);
       }
       void scheduleBars(id);
     } finally {
@@ -409,8 +428,9 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     if (!selected || busy) return;
     const id = selected;
     const p = progress[id]!;
-    const counted = effectiveMove('say', isPasted(text, windows));
-    record({ ideaId: id, move: counted, text });
+    const pasted = isPasted(text, windows);
+    const counted = effectiveMove('say', pasted);
+    record({ ideaId: id, move: counted, text, ...(pasted ? { pasted } : {}) });
     setBusy(true);
     provisional(id);
     try {
@@ -473,7 +493,9 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     if (!selected) return;
     const id = selected;
     sfx.tap();
-    record({ ideaId: id, move: 'check', tap: yes ? 'yes' : 'no' });
+    // Notes for the player's insights: ✓ on a misreading was a slip, ✗ caught it.
+    const misread = progress[id]!.belief === 'misread';
+    record({ ideaId: id, move: 'check', tap: yes ? 'yes' : 'no', ...(misread ? (yes ? { fooled: true } : { caught: true }) : {}) });
     if (yes) {
       // ✓ on a wrong belief leaves it wrong (the replay shows it).
       blotLine(lines.yay);
@@ -489,15 +511,34 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
 
   function maybeAskWhy(id: string) {
     if (!idea(id).asksWhy || progress[id]!.asked) return;
-    const wait = Math.max(1200, lastQuestionAt + QUESTION_GAP_MS - performance.now());
+    // Coach focus "why": Blot asks right away.
+    const wait = ctx.coach.includes('why') ? 700 : Math.max(1200, lastQuestionAt + QUESTION_GAP_MS - performance.now());
     clearTimeout(questionTimer);
     questionTimer = window.setTimeout(() => void askWhy(id), wait);
+  }
+
+  /** Coach focus "examples": Blot asks for one, once per idea, until it has one. True when it will ask. */
+  function maybeAskExample(id: string): boolean {
+    const p = progress[id]!;
+    if (!ctx.coach.includes('examples') || p.moves.includes('example') || p.askedExample) return false;
+    const wait = Math.max(1500, lastQuestionAt + QUESTION_GAP_MS - performance.now());
+    clearTimeout(questionTimer);
+    questionTimer = window.setTimeout(() => {
+      if (finished || selected !== id || busy || panel.kind !== 'move') return;
+      p.askedExample = true;
+      lastQuestionAt = performance.now();
+      sfx.question();
+      blotLine(lines.exampleQuestion(idea(id).name), 'listening');
+      panel = { kind: 'move', move: 'example' };
+      renderPanel();
+    }, wait);
+    return true;
   }
 
   /** "When would I use X?" (3 taps), once per idea, after a typed message and never right after another question. */
   function maybeAskWhen(id: string) {
     const p = progress[id]!;
-    if (p.moves.includes('when') || p.askedWhen) return;
+    if (p.moves.includes('when') || p.askedWhen || !idea(id).whenOptions.length) return;
     const wait = Math.max(1500, lastQuestionAt + QUESTION_GAP_MS - performance.now());
     clearTimeout(questionTimer);
     questionTimer = window.setTimeout(() => {
@@ -562,6 +603,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   let paused = false;
   let pausedForCard = false;
   let warned = false;
+  let nudged = false;
   const paintTimer = () => {
     const s = Math.ceil(remaining / 1000);
     timerEl.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -576,6 +618,12 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     if (remaining <= 10_000 && !warned) {
       warned = true;
       blotLine(lines.timeLow, 'excited');
+    }
+    // Coach focus "coverage": at half time, Blot points out the empty ideas.
+    if (!nudged && ctx.coach.includes('coverage') && remaining <= (ctx.teachSeconds * 1000) / 2) {
+      nudged = true;
+      const empty = lesson.ideas.filter((i) => !isLocked(i.id) && !progress[i.id]!.moves.length).length;
+      if (empty >= 2 && !busy) blotLine(lines.coverage(empty), 'excited');
     }
     if (remaining <= 0) {
       remaining = 0;

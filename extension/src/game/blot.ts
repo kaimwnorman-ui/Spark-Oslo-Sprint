@@ -84,7 +84,8 @@ const ANCHORS: Record<Trait['kind'], number[]> = {
 
 export function createBlot(size = 220): BlotView {
   const el = document.createElement('div');
-  el.className = 'blot';
+  // Small Blots (avatars) wear their traits without the words, which would not fit.
+  el.className = size < 130 ? 'blot small' : 'blot';
   el.style.width = `${size}px`;
   el.style.height = `${(size * 230) / 200}px`;
   const svg = svgEl('svg', { viewBox: '0 0 200 230', role: 'img', 'aria-label': 'Blot, a small ink creature' });
@@ -169,12 +170,16 @@ export function createBlot(size = 220): BlotView {
       const rot = deg + 90;
       const wobbly = trait.look === 'wobbly';
       const shining = trait.look === 'shining';
-      const skew = wobbly ? ' skewX(-12)' : '';
+      // A faded trait is a memory nobody refreshed (SPEC §17): grey, dashed, see-through.
+      const faded = trait.look === 'faded';
+      const skew = wobbly || faded ? ' skewX(-12)' : '';
       const glow = shining ? ` filter="url(#trait-glow)"` : '';
-      const opacity = wobbly ? 0.78 : 1;
+      const opacity = faded ? 0.42 : wobbly ? 0.78 : 1;
+      const fill = faded ? '#b4adc6' : trait.color;
+      const dash = faded ? ' stroke-dasharray="5 4"' : '';
       const label = `<text class="trait-word" x="0" y="-14" text-anchor="middle" transform="rotate(${-rot})">${escapeXml(trait.word)}</text>`;
-      const g = `<g class="trait trait-${trait.look}" data-kind="${trait.kind}" transform="translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${rot})${skew}" opacity="${opacity}">
-        <path d="${TRAIT_SHAPES[trait.kind]}" fill="${trait.color}" stroke="#0d0b18" stroke-width="2.5"${glow}/>
+      const g = `<g class="trait trait-${trait.look}" data-kind="${trait.kind}" data-card="${escapeXml(trait.cardId ?? '')}" transform="translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${rot})${skew}" opacity="${opacity}">
+        <path d="${TRAIT_SHAPES[trait.kind]}" fill="${fill}" stroke="#0d0b18" stroke-width="2.5"${dash}${glow}/>
         ${shining ? '<circle cx="4" cy="-30" r="3" fill="#fff" class="sparkle"/>' : ''}
         ${i === traits.length - 1 ? label : ''}
       </g>`;

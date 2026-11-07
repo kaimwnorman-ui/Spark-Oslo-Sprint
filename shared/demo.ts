@@ -92,5 +92,11 @@ export function demoExam(round: DemoRound, transcript: TranscriptEntry[], heldMi
     beliefs[idea.id] = heldMisreads.includes(idea.id) ? 'misread' : mine.length ? 'right' : 'none';
   }
   const exam = offlineExam(round.lesson.ideas, values, beliefs, round.exam);
-  return { results: exam.results.map((r) => ({ ...r, modelAnswer: ideaOf(round, r.id)?.modelAnswer })) };
+  // After teaching, each idea's answer is revealed (replay, flashbacks, comebacks).
+  return {
+    results: exam.results.map((r) => {
+      const idea = ideaOf(round, r.id);
+      return { ...r, modelAnswer: idea?.modelAnswer, question: idea?.question, keyPoints: idea?.keyPoints };
+    }),
+  };
 }

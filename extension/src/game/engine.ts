@@ -147,3 +147,98 @@ export class OfflineEngine implements RoundEngine {
     return { results };
   }
 }
+
+/**
+ * A comeback (SPEC §17): the ideas already beaten stay beaten (locked at their score), and only the
+ * weak idea is taught again. Wraps any engine.
+ */
+export class LockedEngine implements RoundEngine {
+  readonly inner: RoundEngine;
+  private readonly locks: Readonly<Record<string, number>>;
+  constructor(inner: RoundEngine, locks: Readonly<Record<string, number>>) {
+    this.inner = inner;
+    this.locks = locks;
+  }
+  get offline() {
+    return this.inner.offline;
+  }
+  get lesson() {
+    return this.inner.lesson;
+  }
+  get language() {
+    return this.inner.language;
+  }
+  get seed() {
+    return this.inner.seed;
+  }
+  creature(req: CreatureRequest): AsyncIterable<string> {
+    return this.inner.creature(req);
+  }
+  bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
+    if (ideaId in this.locks) return Promise.resolve({ raw: this.locks[ideaId]!, contradictsMisread: false });
+    return this.inner.bars(ideaId, transcript);
+  }
+  async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
+    const exam = await this.inner.examine(transcript, heldMisreads);
+    return {
+      results: exam.results.map((r) =>
+        r.id in this.locks ? { ...r, score: this.locks[r.id]!, belief: 'right', grounded: true, creatureAnswer: r.creatureAnswer || '…' } : r,
+      ),
+    };
+  }
+}
+
+/** What a comeback needs to grade its weak idea without the server's lesson (it expired days ago). */
+export interface ComebackIdea {
+  ideaId: string;
+  ideaName: string;
+  question: string;
+  modelAnswer: string;
+  keyPoints: string[];
+}
+
+/**
+ * A real page's comeback: Blot repeats what it is told (like the offline Blot), and the weak idea is
+ * graded against its revealed answer by /recall, or by word overlap when the server is away.
+ */
+export class ComebackEngine extends OfflineEngine {
+  private readonly idea: ComebackIdea;
+  private readonly grade: (answer: string) => Promise<{ score: number; feedback: string }>;
+  constructor(lesson: SealedLesson, seed: number, idea: ComebackIdea, grade: (answer: string) => Promise<{ score: number; feedback: string }>) {
+    super(lesson, seed);
+    this.idea = idea;
+    this.grade = grade;
+  }
+  private taught(transcript: TranscriptEntry[]): string {
+    return transcript.filter((e) => e.ideaId === this.idea.ideaId && e.text).map((e) => e.text).join(' ');
+  }
+  override async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
+    if (ideaId !== this.idea.ideaId) return super.bars(ideaId, transcript);
+    const text = this.taught(transcript);
+    return { raw: text ? (await this.grade(text)).score : 0, contradictsMisread: false };
+  }
+  override async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
+    const exam = await super.examine(transcript, heldMisreads);
+    const mine = transcript.filter((e) => e.ideaId === this.idea.ideaId);
+    const moves = mine.map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
+    const text = this.taught(transcript);
+    const graded = text ? await this.grade(text) : { score: 0, feedback: '' };
+    const score = barValue(moves, graded.score);
+    return {
+      results: exam.results.map((r) =>
+        r.id === this.idea.ideaId
+          ? {
+              ...r,
+              score,
+              grounded: score > 0,
+              belief: score < 10 ? 'unknown' : score >= 60 ? 'right' : 'partial',
+              tip: graded.feedback || r.tip,
+              modelAnswer: this.idea.modelAnswer,
+              question: this.idea.question,
+              keyPoints: this.idea.keyPoints,
+            }
+          : r,
+      ),
+    };
+  }
+}

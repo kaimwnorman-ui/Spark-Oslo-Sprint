@@ -29,10 +29,20 @@ export function exchangeKind(idea: BoutIdea, k: BoutConstants = BOUT): BoutExcha
   return 'hit';
 }
 
-export function simulateBout(ideas: readonly BoutIdea[], seed: number, k: BoutConstants = BOUT): BoutResult {
+/** Power-ups earned by remembering (shared/memory.ts): never by playing more. */
+export interface BoutBoosts {
+  /** Ink refill: Blot starts with extra HP. */
+  bonusHp?: number;
+  /** Double ink: Blot's first hit deals double damage. */
+  doubleFirstHit?: boolean;
+}
+
+export function simulateBout(ideas: readonly BoutIdea[], seed: number, k: BoutConstants = BOUT, boosts: BoutBoosts = {}): BoutResult {
   const next = rng(seed);
-  let blotHp = k.hp;
+  const startHp = k.hp + Math.max(0, boosts.bonusHp ?? 0);
+  let blotHp = startHp;
   let monsterHp = k.hp;
+  let doubleLeft = !!boosts.doubleFirstHit;
   const exchanges: BoutExchange[] = [];
 
   const weakest = [...ideas].sort((a, b) => a.score - b.score || a.id.localeCompare(b.id))[0];
@@ -48,9 +58,15 @@ export function simulateBout(ideas: readonly BoutIdea[], seed: number, k: BoutCo
     const kind = exchangeKind(idea, k);
     let dealt = 0;
     let taken = 0;
+    let doubled = false;
     if (kind === 'hit') {
       dealt = Math.round(clamp(k.dealSlope * idea.score + k.dealBase + dealNoise, 0, k.dealMax));
       taken = Math.round(clamp(k.takeBase - k.takeSlope * idea.score + takeNoise, 0, k.takeMax));
+      if (doubleLeft && dealt > 0) {
+        dealt *= 2;
+        doubled = true;
+        doubleLeft = false;
+      }
     } else {
       taken = kind === 'backfire' ? k.backfire : k.fizzle;
     }
@@ -58,12 +74,12 @@ export function simulateBout(ideas: readonly BoutIdea[], seed: number, k: BoutCo
     monsterHp = Math.max(0, monsterHp - dealt);
     if (monsterHp > 0) blotHp = Math.max(0, blotHp - taken);
     else taken = 0;
-    exchanges.push({ ideaId: idea.id, name: idea.name, kind, dealt, taken, blotHp, monsterHp, suddenDeath });
+    exchanges.push({ ideaId: idea.id, name: idea.name, kind, dealt, taken, blotHp, monsterHp, suddenDeath, ...(doubled ? { doubled } : {}) });
     // Sudden death only happens when nobody is knocked out after the five exchanges.
     if (exchanges.length === ideas.length && (blotHp <= 0 || monsterHp <= 0)) break;
   }
 
   const knockout = blotHp <= 0 || monsterHp <= 0;
   const outcome = blotHp > monsterHp ? 'win' : blotHp < monsterHp ? 'lose' : 'draw';
-  return { exchanges, outcome, knockout, blotHp, monsterHp };
+  return { exchanges, outcome, knockout, blotHp, monsterHp, startHp };
 }

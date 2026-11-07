@@ -9,9 +9,12 @@ export interface ScreenOptions {
   overlay?: boolean;
   /** Label for the top bar's Home button; null hides it. */
   home?: (() => void) | null;
+  /** Something else for the top bar's left slot when there is no Home button (the home screen). */
+  left?: HTMLElement | null;
 }
 
 let homeHandler: (() => void) | null = null;
+let leftSlot: HTMLElement | null = null;
 
 /** Mounts a new screen root (#screen-<id>) and records it for the smoke test. */
 export function showScreen(id: string, opts: ScreenOptions = {}): HTMLElement {
@@ -25,6 +28,7 @@ export function showScreen(id: string, opts: ScreenOptions = {}): HTMLElement {
   app.append(el);
   window.__screens.push(id);
   homeHandler = opts.home ?? null;
+  leftSlot = opts.left ?? null;
   renderTopBar();
   return el;
 }
@@ -42,7 +46,7 @@ function renderTopBar(): void {
   bar.replaceChildren(
     homeHandler
       ? h('button', { class: 'icon-btn', id: 'btn-topbar-home', onclick: () => homeHandler?.(), 'aria-label': 'Home' }, '⌂ Home')
-      : h('span'),
+      : (leftSlot ?? h('span')),
     muteButton(),
   );
 }

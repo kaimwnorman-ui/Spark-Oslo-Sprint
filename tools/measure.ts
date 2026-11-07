@@ -39,7 +39,7 @@ if (roles.includes('extractor')) {
   report.extractor = { model: settings.models.extractor, ...(await time('extractor', () => ai.extract({ url: 'http://localhost:8787/pages/tides.html', title: 'Why the sea breathes', text, links, source: 'page' }))) };
 }
 if (roles.includes('examiner')) {
-  const stored = { lesson: round.lesson, roundId: null, text, seed: 1, expires: Infinity };
+  const stored = { lesson: round.lesson, roundId: null, text, seed: 1, page: null, expires: Infinity };
   report.examiner = { model: settings.models.examiner, effort: settings.efforts.examiner, ...(await time('examiner', () => ai.examine(stored, round.script, []))) };
 }
 console.log(JSON.stringify(report, null, 2));

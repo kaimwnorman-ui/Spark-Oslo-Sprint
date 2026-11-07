@@ -62,3 +62,58 @@ test('an unknown lesson says the round expired', async () => {
     assert.equal(res.status, 410);
   });
 });
+
+const tidesCapture = {
+  url: 'http://localhost:8787/pages/tides.html', title: 'Why the sea breathes', text: pageText, source: 'page',
+  links: [{ text: 'Tidal force', href: 'https://en.wikipedia.org/wiki/Tidal_force' }],
+};
+
+test('after the exam, each idea’s question and key points are revealed (flashbacks need them)', async () => {
+  await withStub(async (post) => {
+    const { lesson } = await (await post('/extract', { capture: tidesCapture })).json();
+    const transcript = [{ ideaId: 'i1', move: 'say', text: 'The moon pulls the water on the near side harder than on the far side.' }];
+    const exam = await (await post('/examine', { lessonId: lesson.lessonId, transcript, heldMisreads: [] })).json();
+    for (const r of exam.results) {
+      const idea = tides.lesson.ideas.find((i) => i.id === r.id)!;
+      assert.equal(r.question, idea.question);
+      assert.deepEqual(r.keyPoints, idea.keyPoints);
+    }
+  });
+});
+
+test('/recall grades a flashback answer (offline: word overlap) and checks its input', async () => {
+  await withStub(async (post) => {
+    const idea = tides.lesson.ideas[0]!;
+    const card = { ideaName: idea.name, question: idea.question, modelAnswer: idea.modelAnswer, keyPoints: idea.keyPoints, language: 'en' };
+    const good = await (await post('/recall', { ...card, answer: idea.modelAnswer })).json();
+    assert.ok(good.score >= 60, `good ${good.score}`);
+    assert.equal(good.offline, true);
+    const empty = await (await post('/recall', { ...card, answer: '' })).json();
+    assert.equal(empty.score, 0);
+    assert.equal((await post('/recall', { answer: 'hello there friend' })).status, 400);
+  });
+});
+
+test('a real page’s duel: stored by code, joined as a fresh sealed round on the same seed', async () => {
+  await withStub(async (post) => {
+    const ex = await (await post('/extract', { capture: tidesCapture })).json();
+    const ideas = ex.lesson.ideas.map((i: { id: string }, n: number) => ({ id: i.id, score: n * 20, belief: 'partial' }));
+    const made = await post('/duel', { lessonId: ex.lesson.lessonId, name: '  Kai <3 ', ideas });
+    assert.equal(made.status, 200);
+    const { code } = await made.json();
+    assert.match(code, /^[a-z0-9]{8}$/);
+    const joined = await (await post('/duel/join', { code })).json();
+    assert.notEqual(joined.lesson.lessonId, ex.lesson.lessonId);
+    assert.equal(joined.seed, ex.seed);
+    assert.equal(JSON.stringify(joined.lesson).includes('modelAnswer'), false);
+    assert.equal(joined.challenge.name, 'Kai 3');
+    assert.deepEqual(joined.challenge.ideas.map((i: { score: number }) => i.score), [0, 20, 40, 60, 80]);
+    assert.equal(joined.page.title, 'Why the sea breathes');
+    // The joined round works like any other.
+    const bars = await post('/bars', { lessonId: joined.lesson.lessonId, ideaId: 'i1', transcript: [] });
+    assert.equal(bars.status, 200);
+    assert.equal((await post('/duel/join', { code: 'zzzzzzzz' })).status, 410);
+    assert.equal((await post('/duel/join', { code: '../../x' })).status, 400);
+    assert.equal((await post('/duel', { lessonId: ex.lesson.lessonId, name: 'K', ideas: [] })).status, 400);
+  });
+});

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { existsSync } from 'node:fs';
 import { createApp } from '../src/app.ts';
 import { loadSettings } from '../src/settings.ts';
 import { CLIENT_TOKEN, EXTENSION_ID } from '../../shared/config.ts';
@@ -55,5 +56,24 @@ test('CORS allows our extension and refuses other sites', async () => {
     assert.equal(other.headers.get('access-control-allow-origin'), null);
     const local = await fetch(`${base}/health`, { headers: { origin: 'http://localhost:5173' } });
     assert.equal(local.headers.get('access-control-allow-origin'), null, 'no dev origins in production');
+  });
+});
+
+test('/app serves the built game and nothing outside it', async () => {
+  await withServer({ NODE_ENV: 'production' }, async (base) => {
+    const root = await fetch(`${base}/app`, { redirect: 'manual' });
+    assert.equal(root.status, 302);
+    assert.equal(root.headers.get('location'), '/app/game.html');
+    for (const sneaky of ['/app/../package.json', '/app/%2e%2e/%2e%2e/package.json', '/app/..%2f..%2fserver%2f.env', '/app/game.ts']) {
+      const res = await fetch(`${base}${sneaky}`);
+      assert.equal(res.status, 404, sneaky);
+    }
+    const game = await fetch(`${base}/app/game.html`);
+    if (existsSync(new URL('../../extension/dist/game.html', import.meta.url))) {
+      assert.equal(game.status, 200);
+      assert.match(game.headers.get('content-type') ?? '', /text\/html/);
+    } else {
+      assert.equal(game.status, 404, 'no build yet');
+    }
   });
 });

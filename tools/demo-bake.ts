@@ -130,7 +130,7 @@ const UNKNOWN: Record<string, (name: string) => string> = {
 async function bake(id: string, capture: PageCapture): Promise<DemoRound> {
   const t0 = Date.now();
   const lesson: Lesson = await ai.extract(capture);
-  const stored: StoredLesson = { lesson, roundId: null, text: capture.text, seed: 1, expires: Infinity };
+  const stored: StoredLesson = { lesson, roundId: null, text: capture.text, seed: 1, page: null, expires: Infinity };
   const seed = PAGES[id]!.seed ?? (hashString(id) % 100000);
   const misreads = misreadIdeaIds(lesson.ideas.map((i) => i.id), seed);
   const lines = await writePlayer(client!, lesson);

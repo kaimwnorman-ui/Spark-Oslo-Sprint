@@ -324,6 +324,8 @@ model, ms, tokens; never the text.
 - `server/test/grounding.test.ts` (real AI, `npm run test:ai`): the three §12.4 cases.
 - `tools/smoke-demo.mjs` and `tools/smoke-ext.mjs` (Playwright, Chromium): a demo round end to end and
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
+- `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:
+  the learning loop (§17).
 
 ## 15. Demo pages (written fresh)
 
@@ -342,4 +344,76 @@ model, ms, tokens; never the text.
 - The words-to-monster, bout and eating moments read from the back of a room at 1280×720, with no
   dropped frames.
 - Demo mode runs with Wi-Fi off. No console errors on the demo path. No key in the bundle.
-- `npm run check`, `npm run smoke:demo` and `npm run smoke:ext` are green.
+- `npm run check`, `npm run smoke:demo`, `npm run smoke:ext` and `npm run smoke:loop` are green.
+
+## 17. The learning loop (DECIDED; built after M7)
+
+One round teaches; the loop makes it stick. Everything below is offline-first, kept in the player's
+own browser (`chrome.storage.local`, or `localStorage` when the game runs as a page), and never sent
+anywhere except the one answer being graded. Pure rules live in `shared/memory.ts`,
+`shared/insights.ts` and `shared/duel.ts`, all unit-tested.
+
+**Memories that fade (spaced retrieval).** After the exam, every idea the player actually taught (score
+10 or more, with its question revealed) becomes a memory card: the hidden question, the model answer
+and key points (revealed only after teaching), the score and the date. A card is fresh for 3 days,
+then fading for 3 more, then faded. Each trait Blot wears belongs to the card of the idea it came
+from, and looks as fresh as that memory: a step down while fading, grey and dashed once faded.
+
+**Flashbacks.** Before a new round (never the stage round, a comeback or a duel), if a card from
+another page is due, Blot stops: "Wait… I'm forgetting something you taught me!" and asks the card's
+question. The player answers from memory in their own words ("I don't remember" and "Skip for now"
+are always there). The answer is graded by `POST /recall` (Haiku 5.5, structured output, thinking
+off, effort low: about 1–2 s), or offline by how much of the key points the answer covers. Then the
+answer is shown, always. A pass (60+) moves the card a step further apart (3 → 7 → 14 → 30 → 60
+days) and refreshes the trait; a partial (30–59) refreshes it; a fail leaves it due (asked again after
+a 12-hour snooze). Your Blot can also start a flashback.
+
+**Power-ups, earned only by remembering.** A passing flashback earns an **Ink refill** (+20 HP for
+Blot in the next bout); 85+ earns **Double ink** (Blot's first hit deals double damage). At most 3 of
+each are kept; Blot uses one of each at the start of the next bout (shown while the monster taunts,
+on the HP bar and as a slam when the doubled hit lands). Nothing can be earned by playing more,
+only by remembering.
+
+**Insights and the coach (personalisation).** Each finished round is summarised locally (scores,
+beliefs and moves per idea, Check-it slips and catches, pasted messages; no text). From the last five
+rounds, up to three insights in the player's own numbers ("Ideas with an example scored 74 on
+average. Without one: 38."), tips first in this order: trust (Blot fooled you), examples, why,
+coverage, paste; then praise. The top two tips steer the next round: trust → Blot quietly misreads
+three ideas instead of two; examples → Blot asks "Can you give me an example?"; why → Blot asks why
+right away; coverage → at half time Blot points out the empty ideas; paste → the composer reminds
+that copied text is capped. One line at the top of teaching says what changed. The replay shows the
+top tip as one line; Your Blot shows all three with the evidence.
+
+**Comebacks.** A monster that got away, or that Blot beat while one idea stayed under 60, comes back
+a day later with that weakest idea. In the comeback the other ideas start beaten (locked at their
+best score, at least 70, crossed out in the reveal and in teaching), teaching opens on the weak idea
+for one minute, and power-ups apply. Winning with the weak idea at 60+ tames the monster for good;
+otherwise it comes back again the next day. Demo pages replay their canned round; real pages are
+graded against the revealed answer through `/recall` (the server's lesson is long gone).
+
+**Your Blot.** One screen: Blot wearing its traits as they look today; fights, wins and tamed
+monsters; power-ups; up to three insights; memories with freshness bars and when each is next
+checked; monsters coming back. One primary action: remind Blot (a card is due), else fight the
+returning monster, else play a page. Home shows a "Your Blot" pill with a badge when a memory is
+fading, and the comeback becomes home's primary action when one is due.
+
+**Blot vs Blot (an async duel by link).** After a round, "Challenge a friend" makes a link. A demo
+page's challenge lives entirely in the link (`?duel=L…`, base64url JSON: name, page, the challenger's
+score and belief per idea, the round's seed). A real page's challenge is stored on the server for 24
+hours under an 8-character code (`POST /duel`, `POST /duel/join`), which also gives the friend a fresh
+sealed lesson on the same seed. The friend reads the same page and teaches their own Blot with the
+same teaching time, no coach and no power-ups. Then the two Blots fight (`simulateDuel`: both use each
+idea in turn, a hit hurts the other, a misreading backfires on its holder, an untaught idea fizzles),
+and a table shows who taught each idea better, with "Challenge back". Duels are compared, never
+ranked: there is no leaderboard.
+
+**Time travel for presenters and tests.** `?days=N` moves the game's clock forward N days and is
+kept on every link inside the game, so a fading memory, a flashback and a comeback can be shown in
+one sitting. The server also serves the built game at `/app/` so a duel link opens in any browser
+that can reach it.
+
+**Tested by** `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts`, the route
+tests (recall, duel, the answer reveal, `/app/`), and `npm run smoke:loop` (Playwright): a round →
+memories, a comeback and a duel link → four days later a fading memory on home and in Your Blot → a
+flashback that earns a power-up → a flashback before a new round and the coach's note → the comeback
+with the power-up → a friend accepts the duel in a second browser and the two Blots fight.

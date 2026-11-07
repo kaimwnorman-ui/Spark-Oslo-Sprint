@@ -1,7 +1,8 @@
 // Lessons live in server memory for 2 hours (SPEC §12.4); extractor results are cached by
 // URL hash + text hash for 24 hours. Nothing else is stored.
-import { createHash, randomUUID } from 'node:crypto';
-import { EXTRACT_CACHE_MS, LESSON_TTL_MS } from '../../shared/config.ts';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { DUEL_TTL_MS, EXTRACT_CACHE_MS, LESSON_TTL_MS, MAX_DUELS } from '../../shared/config.ts';
+import type { DuelChallenge } from '../../shared/duel.ts';
 import type { Lesson, PageCapture } from '../../shared/types.ts';
 
 export interface StoredLesson {
@@ -11,6 +12,8 @@ export interface StoredLesson {
   /** The page's text, for grounding checks and the creature's context. */
   text: string;
   seed: number;
+  /** The page's address and title (for a duel's "read the page first" link). */
+  page: { url: string; title: string } | null;
   expires: number;
 }
 
@@ -28,11 +31,17 @@ export class LessonStore {
     this.now = now;
   }
 
-  put(lesson: Lesson, text: string, roundId: string | null = null, seed?: number): { lessonId: string; seed: number } {
+  put(
+    lesson: Lesson,
+    text: string,
+    roundId: string | null = null,
+    seed?: number,
+    page: StoredLesson['page'] = null,
+  ): { lessonId: string; seed: number } {
     this.sweep();
     const lessonId = randomUUID();
     const s = seed ?? parseInt(lessonId.replace(/-/g, '').slice(0, 8), 16) >>> 0;
-    this.lessons.set(lessonId, { lesson, roundId, text, seed: s, expires: this.now() + LESSON_TTL_MS });
+    this.lessons.set(lessonId, { lesson, roundId, text, seed: s, page, expires: this.now() + LESSON_TTL_MS });
     return { lessonId, seed: s };
   }
 
@@ -63,7 +72,57 @@ export class LessonStore {
   }
 }
 
-/** Per-IP rate limit for /extract (20 per hour). */
+/** A real page's duel: the lesson (with its answers) waits on the server for the friend for 24 hours. */
+export interface StoredDuel {
+  lesson: Lesson;
+  text: string;
+  roundId: string | null;
+  page: StoredLesson['page'];
+  challenge: DuelChallenge;
+  expires: number;
+}
+
+export class DuelStore {
+  private duels = new Map<string, StoredDuel>();
+  private readonly now: () => number;
+  constructor(now: () => number = Date.now) {
+    this.now = now;
+  }
+
+  /** Returns a short code: 8 lowercase letters and digits. */
+  put(duel: Omit<StoredDuel, 'expires'>): string {
+    this.sweep();
+    // Bounded memory: the oldest duels go first.
+    while (this.duels.size >= MAX_DUELS) this.duels.delete(this.duels.keys().next().value!);
+    let code = '';
+    do code = codeFrom(randomBytes(8));
+    while (this.duels.has(code));
+    this.duels.set(code, { ...duel, expires: this.now() + DUEL_TTL_MS });
+    return code;
+  }
+
+  get(code: string): StoredDuel | null {
+    const duel = this.duels.get(code);
+    if (!duel) return null;
+    if (duel.expires < this.now()) {
+      this.duels.delete(code);
+      return null;
+    }
+    return duel;
+  }
+
+  private sweep(): void {
+    const now = this.now();
+    for (const [code, d] of this.duels) if (d.expires < now) this.duels.delete(code);
+  }
+}
+
+const ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789';
+function codeFrom(bytes: Buffer): string {
+  return [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join('');
+}
+
+/** Per-IP rate limit (e.g. /extract: 20 per hour). */
 export class RateLimit {
   private hits = new Map<string, number[]>();
   private readonly max: number;

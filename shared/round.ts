@@ -4,9 +4,12 @@ import type { Belief, BoutIdea, ExamItem, ExamResult, Idea, Trait, TraitKind, Tr
 import { hashString, rng, shuffle } from './random.ts';
 import { contentWords, stem } from './words.ts';
 
-/** Rule 3: exactly two ideas (deterministic from the seed) where Blot quietly misreads. */
-export function misreadIdeaIds(ids: readonly string[], seed: number): string[] {
-  return shuffle(ids, rng(seed ^ 0x9e3779b9)).slice(0, Math.min(MISREAD_COUNT, ids.length));
+/**
+ * Rule 3: exactly two ideas (deterministic from the seed) where Blot quietly misreads.
+ * A player who tends to accept Blot's wrong explanations gets three (the coach's "trust" focus).
+ */
+export function misreadIdeaIds(ids: readonly string[], seed: number, count: number = MISREAD_COUNT): string[] {
+  return shuffle(ids, rng(seed ^ 0x9e3779b9)).slice(0, Math.min(count, ids.length));
 }
 
 /** What Blot believes about one idea while teaching. */
