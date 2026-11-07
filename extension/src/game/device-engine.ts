@@ -172,11 +172,16 @@ export class DeviceEngine implements RoundEngine {
       if (answer === null) throw new Error(`no yes/no for ${check}`);
       return answer;
     };
-    const [which, correct, how, why] = await Promise.all([ai.judge(whichIdeaPrompt(names, typed)), yes('correct'), yes('how'), yes('why')]);
+    // Stage 1: which idea, and is it right? Off-topic or wrong ends here (half the calls).
+    const [which, correct] = await Promise.all([ai.judge(whichIdeaPrompt(names, typed)), yes('correct')]);
     const self = this.lesson.ideas.findIndex((i) => i.id === ideaId) + 1;
     const picked = parseDigit(which, names.length);
     const topic = confirmTopic(topicOf([picked], self), picked, names, self, coachText);
-    return guardRaw(rawFromChecks({ topic, correct, how, why, words: wordTotal(coachText) }), coachText, ideaName, passage);
+    const words = wordTotal(coachText);
+    if (topic === 'none' || !correct) return guardRaw(rawFromChecks({ topic, correct, how: false, why: false, words }), coachText, ideaName, passage);
+    // Stage 2: how or when, and why or an example.
+    const [how, why] = await Promise.all([yes('how'), yes('why')]);
+    return guardRaw(rawFromChecks({ topic, correct, how, why, words }), coachText, ideaName, passage);
   }
 
   /** Rule 3: does the latest message rule out the misreading? Needs an actual denial in the words. */

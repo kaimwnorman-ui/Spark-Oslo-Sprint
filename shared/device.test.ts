@@ -80,7 +80,8 @@ test('judge prompts carry the idea, the page passage and the coach as data', () 
   assert.match(w, /from 1 to 2, or 0 if none/);
   for (const c of ['correct', 'how', 'why'] as const) {
     const p = checkPrompt(c, 'Two bulges', 'The Moon pulls.', ['It bulges.']);
-    assert.match(p, /<page>\nThe Moon pulls\.\n<\/page>/);
+    // Only "correct" is judged against the page.
+    assert.equal(/<page>\nThe Moon pulls\.\n<\/page>/.test(p), c === 'correct', c);
     assert.match(p, /<coach>\nIt bulges\.\n<\/coach>/);
     assert.match(p, /Answer yes or no\.$/);
   }

@@ -325,7 +325,9 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   cycles). The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
   `samplingMode: 'most-predictable'` (with default sampling the "which idea" answer wobbled between
   runs and could wrongly cap a good answer at 15). Measured (`npm run eval:device`, Apple's model,
-  warm): a bar in ~1.3 s, Blot's first words in ~0.8 s.
+  warm): a bar in ~1.2 s (~0.7 s for a wrong or off-topic message: *which idea* and *correct?* run
+  first, and *how* and *why*, which don't need the page passage, only when those pass), Blot's first
+  words in ~0.8 s.
 - **Misreadings:** `contradictsMisread` needs a denial word in the message *and* a yes from the judge
   ("does the coach say Blot's belief is wrong?"), as on the server.
 - **Defaults:** on for rounds from real pages and `?live=1`; off for the scripted demo rounds (the

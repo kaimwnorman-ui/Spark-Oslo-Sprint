@@ -195,8 +195,13 @@ const CHECK_QUESTION: Record<Check, (name: string) => string> = {
   why: (n) => `Do the coach's words give a reason why it happens (a cause), or a concrete example?`,
 };
 
+/**
+ * One check. Only "correct" needs the page; "how" and "why" are about the coach's words alone, so
+ * they skip the passage (less for the model to read: faster).
+ */
 export function checkPrompt(check: Check, ideaName: string, passage: string, coach: readonly string[]): string {
-  return [`Idea: "${ideaName}"`, 'What the page says:', pageBlock(passage), 'What the coach taught:', coachBlock(coach), `${CHECK_QUESTION[check](ideaName)} Answer yes or no.`].join('\n');
+  const page = check === 'correct' ? ['What the page says:', pageBlock(passage)] : [];
+  return [`Idea: "${ideaName}"`, ...page, 'What the coach taught:', coachBlock(coach), `${CHECK_QUESTION[check](ideaName)} Answer yes or no.`].join('\n');
 }
 
 export interface CheckAnswers {
