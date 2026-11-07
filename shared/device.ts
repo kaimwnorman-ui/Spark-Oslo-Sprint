@@ -266,10 +266,10 @@ export function guardRaw(raw: number, coachText: string, ideaName: string, passa
 }
 
 /**
- * The part of the page an idea's bar is scored against: the sentence that best matches the idea's
- * name (and, more weakly, the coach's words), widened up to `maxWords`, mostly with what follows it.
+ * The part of the page an idea's bar is scored against: the sentence that best names the idea (or,
+ * failing that, matches the coach's words), widened up to `maxWords`, mostly with what follows it.
  */
-export function pickPassage(pageText: string, ideaName: string, coachText: string, maxWords = 200): string {
+export function pickPassage(pageText: string, ideaName: string, coachText: string, maxWords = 120): string {
   const sentences = pageText
     .replace(/\s+/g, ' ')
     .split(/(?<=[.!?])\s+/)
@@ -278,16 +278,29 @@ export function pickPassage(pageText: string, ideaName: string, coachText: strin
   if (!sentences.length) return pageText.split(/\s+/).slice(0, maxWords).join(' ');
   const nameStems = new Set(contentWords(ideaName).map(stem));
   const coachStems = new Set(contentWords(coachText).map(stem));
-  let best = 0;
-  let bestScore = -1;
-  sentences.forEach((s, i) => {
-    let score = 0;
-    for (const w of new Set(contentWords(s).map(stem))) score += (nameStems.has(w) ? 3 : 0) + (coachStems.has(w) ? 1 : 0);
-    if (score > bestScore) {
-      bestScore = score;
-      best = i;
-    }
-  });
+  const stemsOf = sentences.map((x) => new Set(contentWords(x).map(stem)));
+  // Rare words on this page say more ("coast" beats "tides" on a tides page).
+  const df = new Map<string, number>();
+  for (const st of stemsOf) for (const w of st) df.set(w, (df.get(w) ?? 0) + 1);
+  const weight = (w: string) => Math.log((sentences.length + 1) / ((df.get(w) ?? 0) + 0.5));
+  // The sentence that names the idea best, the earliest on a tie (where a page introduces it). The
+  // coach's words are used only when no sentence names the idea: otherwise a long message pulls the
+  // passage into another idea's part of the page (seen on the tides page).
+  const bestBy = (words: Set<string>) => {
+    let at = -1;
+    let top = 0;
+    stemsOf.forEach((st, i) => {
+      let score = 0;
+      for (const w of words) if (st.has(w)) score += weight(w);
+      if (score > top + 1e-9) {
+        top = score;
+        at = i;
+      }
+    });
+    return at;
+  };
+  let best = bestBy(nameStems);
+  if (best < 0) best = Math.max(0, bestBy(coachStems));
   // Grow forward first: a page usually names an idea (a heading, a topic sentence) and explains it
   // in the sentences after. Then backward, while the word budget lasts.
   let lo = best;

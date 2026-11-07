@@ -142,3 +142,19 @@ test('passage grows mostly forward from the matching sentence (explanations foll
   const p = pickPassage(page, 'Later every day', '', 22);
   assert.match(p, /^Why high tide is later every day\. The Moon moves along its orbit\. So Earth turns a bit more\./);
 });
+
+test('passage: the idea name beats the words of a long message', () => {
+  const page = 'Two bulges form on opposite sides. The near side faces the Moon. ' +
+    'Spring tides happen when the Moon and the Sun pull the near water and the far water together on both sides, so the water piles up.';
+  const coach = 'The Moon pulls the near water harder and the far water least, so water piles up on both sides.';
+  assert.match(pickPassage(page, 'Two bulges', coach, 8), /^Two bulges form on opposite sides\./);
+});
+
+test('passage: of equal mentions, the first wins over one that shares more of the message (tides bug)', () => {
+  const page = 'Two bulges, so two high tides. One bulge points toward the Moon. Earth turns through both. ' +
+    'Later on, at new moon and full moon, the Sun, the Moon and Earth line up, the two bulges grow and the water piles up on both sides.';
+  const coach = 'The Moon pulls the near water harder than the Earth, so water piles up on both sides at full moon.';
+  assert.match(pickPassage(page, 'Two bulges', coach, 14), /^Two bulges, so two high tides\./);
+  // No sentence names the idea: the message's words find the part instead.
+  assert.match(pickPassage(page, 'Gravity gradient', 'new moon and full moon line up', 25), /new moon and full moon/);
+});

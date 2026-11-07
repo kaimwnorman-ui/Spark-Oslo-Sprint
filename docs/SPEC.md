@@ -303,8 +303,12 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   offline Blot), so a round never stalls. If the server goes away mid-round, Blot keeps talking on
   the device; the offline exam then uses the device's scores.
 - **Answers stay sealed:** the device never sees a model answer, key point or hidden question. The
-  live bars are judged against the page's own text (which the browser already has): the passage that
-  best matches the idea's name. Blot sees only the coach's words for that idea, never the page.
+  live bars are judged against the page's own text (which the browser already has): about 120 words
+  around the sentence that best names the idea (its rarest words count most, the earliest mention
+  wins a tie, mostly what follows it). The coach's words pick the passage only when no sentence names
+  the idea: a long message otherwise pulled it into another idea's part of the page, and a 200-word
+  passage made the small judge miss a correct but clumsy sentence. Blot sees only the coach's words
+  for that idea, never the page.
 - **`POST /reveal`** (no AI, no player text) gives the device only two facts the game shows anyway:
   whether a "when" tap was right (the button turns green or red) and the misreading Blot holds on one
   of the two misread ideas (Check it says it aloud). `server/test/routes.test.ts` checks it reveals
@@ -374,6 +378,9 @@ model, ms, tokens; never the text.
   the rubric from the checks; scorer-talk and off-topic caps; the page passage.
 - `server/test/routes.test.ts`: `/reveal` answers only "was that tap right" and "which misreading",
   and refuses anything else.
+- `tools/smoke-opera.mjs` (`npm run smoke:opera`, real Opera with WebAI; skips without it): a whole
+  round with Blot on the device: the pill, no `/creature` or `/bars` requests, bars move for good
+  teaching and not for off-topic text, a right tap turns green, the misreading flow, the end.
 - `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
   `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
   good explanations ≥ 58; no reply falls back to the server; Blot keeps its rules.
