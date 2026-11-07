@@ -124,6 +124,20 @@ export function blotAnswerTask(ideaName: string, coach: readonly string[]): stri
   return `${coachBlock(coach)}\nSomeone asks you to explain "${ideaName}". Answer in first person, in your own playful words, using only what your coach said above. One or two sentences, under 30 words.`;
 }
 
+/** The page's monster, for its taunt in the bout intro (topic and name only: no page text, no answers). */
+export function tauntSystem(language: Language): string {
+  return [
+    'You are a pompous, funny monster made of the words of a web page.',
+    'You speak in one short boastful line, in first person. No quotes, no emoji, no markdown.',
+    SPEAK[deviceLanguage(language)],
+  ].join('\n');
+}
+
+export function tauntTask(monsterName: string, topic: string): string {
+  const clean = (t: string) => t.replace(/["“”<>\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return `Your name is "${clean(monsterName)}" and you are made of a page about "${clean(topic)}". Taunt the small ink blot Blot, who is about to fight you, about how nobody really understands ${clean(topic)}. One sentence, under 16 words.`;
+}
+
 /**
  * A short, in-character opener shown the moment Blot starts to reply, while the model writes the
  * rest (its first sentence takes ~0.8 s on Apple's model; the opener takes none). `turn` rotates

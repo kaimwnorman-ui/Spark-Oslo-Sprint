@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotStarter, blotSystem, hasCauseOrExample, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotStarter, blotSystem, hasCauseOrExample, tauntSystem, tauntTask, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -196,4 +196,11 @@ test('a cause or an example in so many words (en, nb), not a bare statement', ()
   assert.ok(hasCauseOrExample('The near water is pulled most, so it bulges.'));
   assert.ok(hasCauseOrExample('Vi blir trøtte fordi adenosin hoper seg opp.'));
   assert.ok(hasCauseOrExample('Adenosin ryddes bort, og derfor er det viktig.'));
+});
+
+test('the monster taunt sees only its name and topic, cleaned, in the page language', () => {
+  const t = tauntTask('The "Tide" Serpent', 'how tides work <b>\nnow</b>');
+  assert.equal(/["<>\n]/.test(t.replace(/^Your name is "|" and you are made of a page about "|"\. Taunt/g, ' ')), false);
+  assert.match(t, /The Tide Serpent/);
+  assert.match(tauntSystem('nb'), /Norwegian Bokmål/);
 });

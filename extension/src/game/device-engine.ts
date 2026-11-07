@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotAnswerTask, blotStarter, blotTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotAnswerTask, blotStarter, blotTask, tauntSystem, tauntTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -230,6 +230,15 @@ export class DeviceEngine implements RoundEngine {
       }),
     );
     return { results };
+  }
+
+  /** A fresh, one-line taunt from the page's monster (the topic and its name only), or null. */
+  async taunt(monsterName: string, topic: string): Promise<string | null> {
+    const ai = this.ai;
+    if (!ai) return null;
+    const text = cleanReply(await ai.line(tauntSystem(this.language), tauntTask(monsterName, topic), 4000).catch(() => '')).trim();
+    const words = text.split(/\s+/).filter(Boolean);
+    return words.length >= 3 && words.length <= 24 ? text : null;
   }
 
   /** Blot's replay answer for one idea, in its own words (at most 40 words, SPEC §12.3). */

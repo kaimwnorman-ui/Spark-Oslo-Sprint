@@ -336,6 +336,9 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   and the model writes the rest, its first words after ~0.9 s; a repeated opener is dropped.
 - **Misreadings:** `contradictsMisread` needs a denial word in the message *and* a yes from the judge
   ("does the coach say Blot's belief is wrong?"), as on the server.
+- **The monster's taunt:** in the bout intro, the monster's second line is written on the device while
+  the first plays (its name and the page topic only, in the page's language); if it isn't ready in
+  time, the fixed line stands. Not in duels or comebacks.
 - **Defaults:** on for rounds from real pages and `?live=1`; off for the scripted demo rounds (the
   stage round stays canned); `?device=1` turns it on for a demo round, `?device=0` off everywhere.
 - **Not on the device:** duels (both Blots are judged the same way, and a joined real-page duel has

@@ -25,6 +25,8 @@ export interface RoundEngine {
    * Blot holds). Absent when nothing can answer (the offline Blot).
    */
   reveal?(ideaId: string, ask: RevealAsk): Promise<RevealReply>;
+  /** The monster's taunt in the bout intro, written fresh (on-device engines); null to keep the fixed line. */
+  taunt?(monsterName: string, topic: string): Promise<string | null>;
 }
 
 /** Streams a canned line word by word, like a model would. */

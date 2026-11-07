@@ -65,6 +65,10 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   );
   const timeout = new Promise<{ ok: false }>((r) => setTimeout(() => r({ ok: false }), EXAMINER_WAIT_MS));
   const topic = ctx.lesson.topic.toLowerCase();
+  // On the device (Opera WebAI) the monster's second line is written fresh while the intro plays;
+  // if it isn't ready in time, the fixed line stands.
+  let freshTaunt: string | null = null;
+  if (!duel) void ctx.engine.taunt?.(ctx.monster.name, ctx.lesson.topic).then((t) => (freshTaunt = t), () => {});
   taunt.set(duel ? `I’m ${duel.name}’s Blot. ${duel.name} taught me ${topic}. All of it!` : `I am ${ctx.monster.name}! Nobody understands ${topic}. Nobody!`);
   sfx.reveal();
   await wait(2400);
@@ -83,7 +87,7 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   blotBubble.set(ctx.lines.ready);
   blot.setPose('excited');
   await wait(2000);
-  taunt.set(duel ? 'Your coach versus mine. Let’s see who taught better.' : 'Come on then, little blot. Show me what you know.');
+  taunt.set(duel ? 'Your coach versus mine. Let’s see who taught better.' : (freshTaunt ?? 'Come on then, little blot. Show me what you know.'));
   await wait(2100);
   const result = await Promise.race([exam, timeout]);
   if (result.ok) {

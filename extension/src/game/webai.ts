@@ -37,6 +37,8 @@ export interface DeviceAi {
   blot(task: string, signal?: AbortSignal): AsyncIterable<string>;
   /** One short judge answer (a digit or yes/no). */
   judge(prompt: string): Promise<string>;
+  /** One line from a one-off character (the monster's taunt), or '' if it takes too long. */
+  line(system: string, prompt: string, timeoutMs: number): Promise<string>;
   /** One throwaway prompt, so the first real reply doesn't pay the model's wake-up time (~4 s). */
   warm(): Promise<void>;
   close(): void;
@@ -149,6 +151,18 @@ class WebAi implements DeviceAi {
       }
     }
     throw new Error('empty answer');
+  }
+
+  async line(system: string, prompt: string, timeoutMs: number): Promise<string> {
+    if (this.closed) throw new Error('closed');
+    const signal = AbortSignal.timeout(timeoutMs);
+    const lang = deviceLanguage(this.language);
+    const session = await this.LM.create({ signal, expectedInputs: [{ type: 'text', languages: lang === 'en' ? ['en'] : ['en', lang] }], expectedOutputs: [{ type: 'text', languages: [lang] }], initialPrompts: [{ role: 'system', content: system }] });
+    try {
+      return (await session.prompt(prompt, { signal })).trim();
+    } finally {
+      session.destroy?.();
+    }
   }
 
   async warm(): Promise<void> {

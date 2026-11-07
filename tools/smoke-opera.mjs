@@ -50,6 +50,8 @@ try {
   page.on('console', (m) => {
     // Opera logs these itself while its AI service starts; they are not ours.
     if (m.type() === 'error' && !/service is not running/i.test(m.text())) errors.push(m.text().slice(0, 160));
+    // The device engine says when it falls back to the server, and why.
+    if (/^Spark:/.test(m.text())) log(m.text().slice(0, 200));
   });
   page.on('request', (r) => {
     const u = new URL(r.url());
@@ -131,6 +133,15 @@ try {
     await page.waitForTimeout(300);
     await page.click('#btn-bell', { force: true });
     await page.locator('#screen-exam').waitFor({ timeout: 10_000 });
+    // The monster's second line is written on the device while the intro plays.
+    const fixedTaunt = 'Come on then, little blot. Show me what you know.';
+    const tauntText = () => page.evaluate(() => (document.querySelector('#screen-exam .taunt')?.textContent ?? '').trim());
+    await page.waitForFunction(() => (document.querySelector('#screen-exam .taunt')?.textContent ?? '').trim().length > 0, null, { timeout: 10_000, polling: 100 });
+    const first = await tauntText();
+    await page.waitForFunction((f) => { const t = (document.querySelector('#screen-exam .taunt')?.textContent ?? '').trim(); return t.length > 0 && t !== f; }, first, { timeout: 15_000, polling: 100 }).catch(() => {});
+    const second = ((await page.textContent('#screen-exam .taunt').catch(() => '')) ?? '').trim();
+    log(`monster: ${second}`);
+    checks.push([second.length > 0 && second !== fixedTaunt, 'the monster’s second taunt was written on the device']);
     await page.locator('#screen-eat, #screen-lose').first().waitFor({ timeout: 150_000 });
     checks.push([true, `the round reached the end (${(await page.locator('#screen-eat').count()) ? 'won' : 'lost'})`]);
 
