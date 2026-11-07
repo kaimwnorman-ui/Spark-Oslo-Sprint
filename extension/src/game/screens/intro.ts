@@ -11,6 +11,12 @@ import { sfx } from '../sound.ts';
 import { primary, showScreen, removeScreen, inkSwirl } from '../ui.ts';
 import { assetBackground, assetImg } from '../assets.ts';
 
+declare global {
+  interface Window {
+    __monsterWords?: string[];
+  }
+}
+
 export function homeScreen(traits: Trait[], onDemo: (id: string) => void): void {
   const root = showScreen('home');
   const blot = createBlot(200);
@@ -126,11 +132,16 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
     root.prepend(covers);
   }
 
-  // Words to fly: the page's own boxes, or the monster's words from the edges (live mode).
+  // Words to fly: the page's own boxes (demo), or, continuing the page overlay's vortex,
+  // the page's words spinning in a ring around the centre (real pages).
   const flying = (boxes.length ? boxes : ctx.monster.words.slice(0, 160).map((text, i) => {
-    const a = (i / 160) * Math.PI * 2;
-    return { text, x: W / 2 + Math.cos(a) * W * 0.6, y: H / 2 + Math.sin(a) * H * 0.6, w: 60, h: 20, size: 18 };
+    const a = (i / 160) * Math.PI * 2 * 3;
+    const r = Math.min(W, H) * (0.12 + 0.2 * ((i * 37) % 100) / 100);
+    return { text, x: W / 2 + Math.cos(a) * r, y: H * 0.42 + Math.sin(a) * r, w: 60, h: 20, size: 18 };
   })).slice(0, 300);
+  monster.canvas.id = 'monster';
+  monster.canvas.dataset.words = String(ctx.monster.words.length);
+  window.__monsterWords = ctx.monster.words;
   const targets = monster.targets(flying.length).map((t) => ({ x: t.x + mx, y: t.y + my, angle: t.angle }));
   const cx = mx + monsterW / 2;
   const cy = my + monsterH / 2;

@@ -1,14 +1,16 @@
 // Spark's game tab: home, demo rounds (?demo=tides) and, from M3, rounds from real pages.
-import { DEMO_SPEED, DEMO_TEACH_SECONDS, TEACH_SECONDS, TRAITS_WORN } from '../../../shared/config.ts';
+import { DEMO_SPEED, DEMO_TEACH_SECONDS, MONSTER_WORDS, TEACH_SECONDS, TRAITS_WORN } from '../../../shared/config.ts';
 import { misreadIdeaIds, monsterInk } from '../../../shared/round.ts';
-import type { Trait } from '../../../shared/types.ts';
+import type { RoundHandoff, Trait } from '../../../shared/types.ts';
+import { distinctiveWords } from '../../../shared/words.ts';
+import { ServerEngine } from './server-engine.ts';
 import { setSpeed } from './anim.ts';
 import { newProgress, type RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { DemoEngine, loadDemoRound, type RoundEngine } from './engine.ts';
 import { linesFor } from './lines.ts';
 import { initSound } from './sound.ts';
-import { getLocal, setLocal } from './storage.ts';
+import { getLocal, getSession, setLocal } from './storage.ts';
 import { primary, secondary, showScreen } from './ui.ts';
 import { formingScreen, homeScreen, pageScreen } from './screens/intro.ts';
 import { teachScreen } from './screens/teach.ts';
@@ -91,6 +93,25 @@ async function playDemo(id: string): Promise<void> {
   await playRound(ctx);
 }
 
+/** A round from a real page: the background stored the capture and the sealed lesson. */
+async function playLive(id: string): Promise<void> {
+  const handoff = await getSession<RoundHandoff>(`round:${id}`);
+  if (!handoff) throw new Error('This round has expired. Click the Spark button on a page to start a new one.');
+  const engine = new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline);
+  setSpeed(1);
+  const firstRound = !(await getLocal('played', false));
+  const ctx = baseCtx(engine, await wornTraits(), firstRound, TEACH_SECONDS);
+  ctx.capture = handoff.capture;
+  ctx.pageText = handoff.capture.text;
+  // The monster's texture is the page's own words (SPEC §6), whatever the server returned.
+  const pageWords = distinctiveWords(handoff.capture.text, MONSTER_WORDS);
+  if (pageWords.length >= 40) ctx.monster.words = pageWords;
+  ctx.onPlayAgain = () => (location.href = `game.html?round=${encodeURIComponent(id)}`);
+  await formingScreen(ctx, [], null);
+  await setLocal('played', true);
+  await playRound(ctx);
+}
+
 function errorScreen(message: string): void {
   const root = showScreen('error', { home: goHome });
   root.append(
@@ -108,9 +129,14 @@ function errorScreen(message: string): void {
 async function boot(): Promise<void> {
   await initSound();
   const demo = params.get('demo');
+  const round = params.get('round');
   try {
     if (demo) {
       await playDemo(demo);
+      return;
+    }
+    if (round) {
+      await playLive(round);
       return;
     }
     setSpeed(1);
@@ -122,4 +148,3 @@ async function boot(): Promise<void> {
 }
 
 void boot();
-void TEACH_SECONDS;

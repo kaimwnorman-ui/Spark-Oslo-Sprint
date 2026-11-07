@@ -81,6 +81,20 @@ export interface WordBox {
   h: number;
   /** CSS pixels. */
   size: number;
+  /** The page's font family and weight for this word, for the lift-off. */
+  font?: string;
+  weight?: number;
+}
+
+/** What the background stores for the game tab (chrome.storage.session, key round:<id>). */
+export interface RoundHandoff {
+  capture: PageCapture;
+  lesson: SealedLesson;
+  seed: number;
+  /** True when the server answered from a canned round (AI_STUB or no key). */
+  offline: boolean;
+  roundId: string | null;
+  server: string;
 }
 
 export interface PageCapture {

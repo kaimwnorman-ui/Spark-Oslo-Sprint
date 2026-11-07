@@ -1,6 +1,8 @@
 // Spark's HTTP routes. createApp returns a plain node:http handler so tests can
 // call it without opening a port.
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { PRODUCT_NAME } from '../../shared/config.ts';
 import { HttpError, readJson, sendJson, setCors } from './http.ts';
 import type { Settings } from './settings.ts';
@@ -34,6 +36,15 @@ export function createApp({ settings, routes, log = console.log }: AppDeps) {
         });
         return;
       }
+      if (req.method === 'GET' && settings.devOrigins && /^\/pages\/[a-z0-9-]+\.html$/.test(url.pathname)) {
+        // Dev only: the demo pages, so the extension can be tried (and tested) on them.
+        const file = fileURLToPath(new URL(`../../demo${url.pathname}`, import.meta.url));
+        const html = await readFile(file).catch(() => null);
+        if (!html) throw new HttpError(404, 'Not found.');
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+        res.end(html);
+        return;
+      }
       const route = routes[url.pathname];
       if (!route) throw new HttpError(404, 'Not found.');
       if (req.method !== 'POST') throw new HttpError(405, 'Use POST.');
@@ -48,7 +59,7 @@ export function createApp({ settings, routes, log = console.log }: AppDeps) {
       if (!res.headersSent) sendJson(res, status, { error: message });
       else res.end();
     } finally {
-      if (url.pathname !== '/health') log(`${req.method} ${url.pathname} ${res.statusCode} ${Date.now() - started}ms`);
+      if (url.pathname !== '/health' && !url.pathname.startsWith('/pages/')) log(`${req.method} ${url.pathname} ${res.statusCode} ${Date.now() - started}ms`);
     }
   };
 }

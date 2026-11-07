@@ -62,6 +62,8 @@ function wordBoxes(doc: Document, win: Window, containers: Element[], range: Ran
       const style = win.getComputedStyle(parent);
       if (style.visibility === 'hidden' || style.display === 'none') continue;
       const size = parseFloat(style.fontSize) || 16;
+      const font = style.fontFamily.slice(0, 200);
+      const weight = parseInt(style.fontWeight, 10) || 400;
       const text = node.textContent ?? '';
       for (const m of text.matchAll(word)) {
         if (boxes.length >= MAX_WORD_POSITIONS) break;
@@ -70,7 +72,7 @@ function wordBoxes(doc: Document, win: Window, containers: Element[], range: Ran
         r.setEnd(node, m.index! + m[0].length);
         const rect = r.getClientRects()[0];
         if (!rect || rect.width <= 0 || rect.bottom < 0 || rect.top > vh || rect.right < 0 || rect.left > vw) continue;
-        boxes.push({ text: m[0], x: rect.left, y: rect.top, w: rect.width, h: rect.height, size });
+        boxes.push({ text: m[0], x: rect.left, y: rect.top, w: rect.width, h: rect.height, size, font, weight });
       }
     }
   };
