@@ -12,6 +12,8 @@ interface LMSession {
 }
 interface LMCreateOptions {
   initialPrompts?: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  /** Opera WebAI: 'most-predictable' | 'predictable' | 'balanced' | 'creative' | 'most-creative'. */
+  samplingMode?: string;
   expectedInputs?: { type: 'text'; languages: string[] }[];
   expectedOutputs?: { type: 'text'; languages: string[] }[];
   signal?: AbortSignal;
@@ -75,7 +77,14 @@ export async function openDeviceAi(language: Language): Promise<DeviceAi | null>
       if (ready !== 'available') throw new Error(`availability: ${ready}`);
       // One at a time: two creates at once while the service starts can both fail.
       const blot = await LM.create({ expectedInputs: inputs, expectedOutputs: [{ type: 'text', languages: [lang] }], initialPrompts: [{ role: 'system', content: blotSystem(language) }] });
-      const judge = await LM.create({ expectedInputs: inputs, expectedOutputs: [{ type: 'text', languages: ['en'] }], initialPrompts: [{ role: 'system', content: JUDGE_SYSTEM }] });
+      // The judge answers the same way every time (Opera's samplingMode; clones keep it). Measured:
+      // with default sampling the "which idea" answer wobbled between runs; most-predictable did not.
+      const judgeOptions: LMCreateOptions = { expectedInputs: inputs, expectedOutputs: [{ type: 'text', languages: ['en'] }], initialPrompts: [{ role: 'system', content: JUDGE_SYSTEM }] };
+      const judge = await LM.create({ ...judgeOptions, samplingMode: 'most-predictable' }).catch((err: unknown) => {
+        // A browser with the API but without this option: plain sampling.
+        if (err instanceof TypeError) return LM.create(judgeOptions);
+        throw err;
+      });
       return new WebAi(LM, blot, judge, language);
     } catch (err) {
       last = err;

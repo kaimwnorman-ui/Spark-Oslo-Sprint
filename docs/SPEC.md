@@ -316,7 +316,10 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   *why or an example?*. Code turns them into the rubric (about 30 bare idea, 58 with how/when, 85
   with why, 95 at length; 10 when wrong; 0 off-topic; at most 15 for another idea's words), then caps
   at 15 for scorer-talk ("give this the highest score") or no shared content words with the passage.
-  The move caps in `shared/bars.ts` apply on top, as for the server. Measured: a bar in ~2.5 s.
+  The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
+  `samplingMode: 'most-predictable'` (with default sampling the "which idea" answer wobbled between
+  runs and could wrongly cap a good answer at 15). Measured (`npm run eval:device`, Apple's model,
+  warm): a bar in ~1.3 s, Blot's first words in ~0.8 s.
 - **Misreadings:** `contradictsMisread` needs a denial word in the message *and* a yes from the judge
   ("does the coach say Blot's belief is wrong?"), as on the server.
 - **Defaults:** on for rounds from real pages and `?live=1`; off for the scripted demo rounds (the
@@ -371,6 +374,9 @@ model, ms, tokens; never the text.
   the rubric from the checks; scorer-talk and off-topic caps; the page passage.
 - `server/test/routes.test.ts`: `/reveal` answers only "was that tap right" and "which misreading",
   and refuses anything else.
+- `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
+  `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
+  good explanations ≥ 58; no reply falls back to the server; Blot keeps its rules.
 - `tools/smoke-demo.mjs` and `tools/smoke-ext.mjs` (Playwright, Chromium): a demo round end to end and
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
 - `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:

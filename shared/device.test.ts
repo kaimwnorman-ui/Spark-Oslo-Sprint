@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotSystem, blotTask, checkPrompt, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotSystem, blotTask, checkPrompt, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -126,4 +126,19 @@ test('passage: the sentence about the idea, widened with neighbours, within the 
   assert.match(wide, /far side/);
   assert.ok(wide.startsWith('Tides are'), 'a short page fits whole');
   assert.equal(pickPassage('', 'x', ''), '');
+});
+
+test('topic from two wobbly answers: benefit of the doubt for this idea', () => {
+  assert.equal(topicOf([3, 3], 3), 'this');
+  assert.equal(topicOf([2, 3], 3), 'this', 'one vote is enough');
+  assert.equal(topicOf([null, 1], 3), 'this', 'unreadable counts as this idea');
+  assert.equal(topicOf([1, 2], 3), 'other');
+  assert.equal(topicOf([0, 0], 3), 'none');
+  assert.equal(topicOf([0, 2], 3), 'other');
+});
+
+test('passage grows mostly forward from the matching sentence (explanations follow their headings)', () => {
+  const page = 'Alpha one two three. Beta four five six. Why high tide is later every day. The Moon moves along its orbit. So Earth turns a bit more. Gamma seven eight nine.';
+  const p = pickPassage(page, 'Later every day', '', 22);
+  assert.match(p, /^Why high tide is later every day\. The Moon moves along its orbit\. So Earth turns a bit more\./);
 });

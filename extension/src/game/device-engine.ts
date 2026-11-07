@@ -13,7 +13,7 @@ import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
   WHEN_TAP_RAW, blotTask, checkPrompt, cleanReply, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
-  rawFromChecks, whichIdeaPrompt, wordTotal,
+  rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 
@@ -173,10 +173,8 @@ export class DeviceEngine implements RoundEngine {
       return answer;
     };
     const [which, correct, how, why] = await Promise.all([ai.judge(whichIdeaPrompt(names, typed)), yes('correct'), yes('how'), yes('why')]);
-    const n = parseDigit(which, names.length);
     const self = this.lesson.ideas.findIndex((i) => i.id === ideaId) + 1;
-    // An unreadable topic answer counts as "this idea": the other checks still apply.
-    const topic = n === 0 ? 'none' : n === null || n === self ? 'this' : 'other';
+    const topic = topicOf([parseDigit(which, names.length)], self);
     return guardRaw(rawFromChecks({ topic, correct, how, why, words: wordTotal(coachText) }), coachText, ideaName, passage);
   }
 

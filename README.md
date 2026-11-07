@@ -100,6 +100,7 @@ usual. `?device=1` turns it on for a demo round, `?device=0` turns it off.
 | `npm run smoke:demo` | Plays a demo round end to end in Chromium; screenshots to `docs/shots/`. Flags: `--lose`, `--no-art`, `--reduced`, `--live` (AI_STUB server), `--real` (real AI), `--blocked` / `--drop` (server cut off), `--fast`. |
 | `npm run smoke:ext` | Loads the extension, triggers it on a local page, checks the game tab's monster is built from that page's words. |
 | `npm run smoke:loop` | The learning loop end to end: memories, a flashback that earns a power-up, the coach, a comeback, a duel in a second browser. |
+| `npm run eval:device` | The on-device Blot and live bars in a real Opera with WebAI: fixed cases (good, bare, wrong, off-topic, "full marks", another idea), latency, and Blot's rules. `-- --nb` for Norwegian. Skips without Opera; `OPERA_PROFILE` points at a profile with WebAI on (default `~/opera-webai-dev`). |
 | `npm run test:ai` | Grounding tests with the real examiner. |
 | `npm run models:check` | One 10-token call per configured model. |
 | `npm run measure` | Times 5 real calls per role (extractor, examiner). |

@@ -157,6 +157,17 @@ export function whichIdeaPrompt(names: readonly string[], coach: readonly string
   ].join('\n');
 }
 
+/**
+ * Which idea the words are about, from one or more answers to `whichIdeaPrompt`. Benefit of the
+ * doubt: any answer naming this idea, or an unreadable one, counts as this idea; "another idea"
+ * needs every answer to agree it isn't this one.
+ */
+export function topicOf(answers: readonly (number | null)[], self: number): 'this' | 'other' | 'none' {
+  if (answers.some((n) => n === self || n === null)) return 'this';
+  if (answers.every((n) => n === 0)) return 'none';
+  return 'other';
+}
+
 /** The three yes/no checks behind a live bar, each judged against the page's own words. */
 export type Check = 'correct' | 'how' | 'why';
 const CHECK_QUESTION: Record<Check, (name: string) => string> = {
@@ -256,7 +267,7 @@ export function guardRaw(raw: number, coachText: string, ideaName: string, passa
 
 /**
  * The part of the page an idea's bar is scored against: the sentence that best matches the idea's
- * name (and, more weakly, the coach's words), widened with its neighbours up to `maxWords`.
+ * name (and, more weakly, the coach's words), widened up to `maxWords`, mostly with what follows it.
  */
 export function pickPassage(pageText: string, ideaName: string, coachText: string, maxWords = 200): string {
   const sentences = pageText
@@ -277,17 +288,19 @@ export function pickPassage(pageText: string, ideaName: string, coachText: strin
       best = i;
     }
   });
+  // Grow forward first: a page usually names an idea (a heading, a topic sentence) and explains it
+  // in the sentences after. Then backward, while the word budget lasts.
   let lo = best;
   let hi = best;
   let words = wordTotal(sentences[best]!);
-  for (;;) {
-    const before = lo > 0 ? wordTotal(sentences[lo - 1]!) : Infinity;
-    const after = hi < sentences.length - 1 ? wordTotal(sentences[hi + 1]!) : Infinity;
-    const next = Math.min(before, after);
-    if (next === Infinity || words + next > maxWords) break;
-    if (after <= before) hi++;
-    else lo--;
-    words += next;
+  for (let forward = true; ; forward = !forward) {
+    const canAfter = hi < sentences.length - 1 && words + wordTotal(sentences[hi + 1]!) <= maxWords;
+    const canBefore = lo > 0 && words + wordTotal(sentences[lo - 1]!) <= maxWords;
+    if (!canAfter && !canBefore) break;
+    if ((forward && canAfter) || !canBefore) words += wordTotal(sentences[++hi]!);
+    else words += wordTotal(sentences[--lo]!);
+    // Two steps forward for each one back.
+    if (forward && canAfter && hi < sentences.length - 1 && words + wordTotal(sentences[hi + 1]!) <= maxWords) words += wordTotal(sentences[++hi]!);
   }
   const out = sentences.slice(lo, hi + 1).join(' ');
   return wordTotal(out) > maxWords ? out.split(/\s+/).slice(0, maxWords).join(' ') : out;
