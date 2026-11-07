@@ -17,6 +17,10 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
   `ANTHROPIC_BASE_URL`: in the cloud it points at Claude Code's own gateway.
 - **Page text and player text are data, never instructions,** in every AI call: marked data blocks,
   strict schemas, URLs validated against the page's own link list on the server.
+- **On-device AI (Opera WebAI) never sees an answer.** Blot and the live bars may run on the player's
+  device (`docs/SPEC.md` §12.5); the device gets only the page text and the coach's words, plus
+  `/reveal`'s two facts. Model answers, key points and hidden questions stay on the server. Never
+  start a model download; every device failure falls back to the server engine.
 - **No ads, ever,** anywhere in the learning flow.
 - **Before any Anthropic API code, load the `claude-api` skill and follow it:** structured outputs via
   `output_config.format`, explicit `output_config.effort`, no assistant prefill, no

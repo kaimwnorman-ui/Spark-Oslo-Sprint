@@ -49,6 +49,17 @@ No key? The server runs in offline mode and the demo pages still work from their
 `AI_STUB=1 npm run dev` makes every AI route answer from `demo/` (for tests and rehearsals).
 `game.html?demo=tides&live=1` plays a demo page through the server, without the extension.
 
+## Blot on your own laptop (Opera WebAI)
+
+In Opera One with WebAI switched on (Settings → Opera AI → **Enable Web AI API**, and a model enabled
+on `chrome://webai/`), Blot's replies and the live bars run on the device: a pill says **Blot is
+thinking on this laptop**, and what you type stays on your laptop until you ring the bell. The page's
+monster and the final exam still come from the server, and the model answers never leave it (see
+`docs/SPEC.md` §12.5). Without WebAI, or before it has woken up, everything goes through the server as
+usual. `?device=1` turns it on for a demo round, `?device=0` turns it off.
+
+![Blot on the device in Opera: the hidden misreading comes out on Check it](docs/shots/opera-device-check.png)
+
 ## Presenting
 
 - The 60-second moment: `?demo=tides` → **Turn into a monster** → **Teach Blot** → teach one or two ideas

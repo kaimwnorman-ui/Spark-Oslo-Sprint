@@ -24,6 +24,8 @@ const en = {
   rematch: (name: string) => `Teach me ${name} and let's try again!`,
   whenQuestion: (name: string) => `Ooh! But when would I use "${name}"?`,
   offline: 'Offline mode: Blot is playing from the demo round.',
+  onDevice: 'Blot is thinking on this laptop',
+  offlineDevice: 'Offline: Blot is still thinking on this laptop',
   expired: 'This round expired. Play it again!',
 };
 
@@ -49,6 +51,8 @@ const nb: typeof en = {
   rematch: (name: string) => `Lær meg ${name}, så prøver vi igjen!`,
   whenQuestion: (name: string) => `Å! Men når skulle jeg brukt «${name}»?`,
   offline: 'Frakoblet: Blot spiller fra demorunden.',
+  onDevice: 'Blot tenker på denne maskinen',
+  offlineDevice: 'Frakoblet: Blot tenker fortsatt på denne maskinen',
   expired: 'Runden er utløpt. Spill den på nytt!',
 };
 

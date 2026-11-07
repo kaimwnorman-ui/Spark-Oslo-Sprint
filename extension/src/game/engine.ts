@@ -1,7 +1,8 @@
 // The round engine: where Blot's replies, live bars and the exam come from.
 // DemoEngine answers from a canned round (offline); ServerEngine talks to the Spark server.
-import type { DemoRound, ExamItem, ExamResult, Language, Move, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
+import type { DemoRound, ExamItem, ExamResult, Language, Move, RevealAsk, RevealReply, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 import { barValue } from '../../../shared/bars.ts';
+import { misreadIdeaIds } from '../../../shared/round.ts';
 import { sealLesson } from '../../../shared/lesson.ts';
 import { demoBars, demoExam, demoReply, type BarsReply, type CreatureRequest } from '../../../shared/demo.ts';
 import { wait } from './anim.ts';
@@ -19,6 +20,11 @@ export interface RoundEngine {
   bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply>;
   /** The exam, from the player's messages and taps only, plus the misreads Blot still holds. */
   examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult>;
+  /**
+   * For an on-device Blot: a fact the game shows anyway (was a "when" tap right; the misreading
+   * Blot holds). Absent when nothing can answer (the offline Blot).
+   */
+  reveal?(ideaId: string, ask: RevealAsk): Promise<RevealReply>;
 }
 
 /** Streams a canned line word by word, like a model would. */
@@ -56,6 +62,14 @@ export class DemoEngine implements RoundEngine {
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     return demoExam(this.round, transcript, heldMisreads);
+  }
+
+  async reveal(ideaId: string, ask: RevealAsk): Promise<RevealReply> {
+    const idea = this.round.lesson.ideas.find((i) => i.id === ideaId);
+    if (!idea) return {};
+    if (ask.kind === 'when') return { right: !!idea.whenOptions[ask.tap]?.right };
+    const held = misreadIdeaIds(this.round.lesson.ideas.map((i) => i.id), this.seed).includes(ideaId);
+    return { misread: held ? idea.misread : null };
   }
 }
 
@@ -127,12 +141,17 @@ export class OfflineEngine implements RoundEngine {
   }
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
+    return this.examineWith(async (id, t) => (await this.bars(id, t)).raw, transcript, heldMisreads);
+  }
+
+  /** The offline exam with raw scores from `rawFor` (word counts here; the on-device judge when there is one). */
+  async examineWith(rawFor: (ideaId: string, transcript: TranscriptEntry[]) => Promise<number>, transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     const nb = this.language === 'nb' || this.language === 'nn';
     const results = [];
     for (const idea of this.lesson.ideas) {
       const mine = transcript.filter((e) => e.ideaId === idea.id);
       const moves = mine.map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
-      const score = barValue(moves, (await this.bars(idea.id, transcript)).raw);
+      const score = mine.length ? barValue(moves, await rawFor(idea.id, transcript)) : 0;
       const belief = heldMisreads.includes(idea.id) ? 'wrong' : score < 10 ? 'unknown' : score >= 60 ? 'right' : 'partial';
       const said = mine.filter((e) => e.text).at(-1)?.text;
       results.push({

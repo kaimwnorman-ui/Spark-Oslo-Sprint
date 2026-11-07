@@ -1,11 +1,11 @@
-// The four AI routes (SPEC §13). With AI_STUB=1, or with no Anthropic key, they answer from the
+// The four AI routes (SPEC §13), plus /reveal for an on-device Blot. With AI_STUB=1, or with no Anthropic key, they answer from the
 // demo round that matches the page (offline mode). Live AI: ai.ts.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { EXTRACTS_PER_HOUR } from '../../shared/config.ts';
 import { demoAllBars, demoBars, demoExam, demoReply, type CreatureEvent } from '../../shared/demo.ts';
 import { sealLesson } from '../../shared/lesson.ts';
-import type { TeachBelief } from '../../shared/round.ts';
-import type { DemoRound, Lesson } from '../../shared/types.ts';
+import { misreadIdeaIds, type TeachBelief } from '../../shared/round.ts';
+import type { DemoRound, Lesson, RevealReply } from '../../shared/types.ts';
 import type { RouteHandler } from './app.ts';
 import { createAnthropic } from './anthropic.ts';
 import { roundById, roundForPage } from './fixtures.ts';
@@ -105,7 +105,29 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     return live.examine(stored, transcript, held);
   };
 
-  return { '/extract': extract, '/creature': creature, '/bars': bars, '/examine': examine };
+  /**
+   * For an on-device Blot (Opera WebAI): one fact the game is about to show anyway, never an
+   * answer. No AI and no player text: the lesson is enough, so it works in AI_STUB mode too.
+   */
+  const reveal: RouteHandler = async (body) => {
+    const stored = lessonFor(body);
+    const ideaId = readString(body, 'ideaId', 8);
+    const idea = stored.lesson.ideas.find((i) => i.id === ideaId);
+    if (!idea) throw new HttpError(400, 'Unknown idea.');
+    const kind = readString(body, 'kind', 10);
+    if (kind === 'when') {
+      const tap = (body as Record<string, unknown>).tap;
+      if (typeof tap !== 'number' || !Number.isInteger(tap) || tap < 0 || tap >= idea.whenOptions.length) throw new HttpError(400, 'Unknown situation.');
+      return { right: !!idea.whenOptions[tap]!.right } satisfies RevealReply;
+    }
+    if (kind === 'misread') {
+      const held = misreadIdeaIds(stored.lesson.ideas.map((i) => i.id), stored.seed).includes(ideaId);
+      return { misread: held ? idea.misread : null } satisfies RevealReply;
+    }
+    throw new HttpError(400, 'Unknown question.');
+  };
+
+  return { '/extract': extract, '/creature': creature, '/bars': bars, '/examine': examine, '/reveal': reveal };
 }
 
 /** Builds the live AI roles when there is a key and AI_STUB is off. */

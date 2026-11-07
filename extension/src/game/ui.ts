@@ -121,6 +121,13 @@ export function inkSwirl(label: string): HTMLElement {
 
 /** One small "offline mode" line (SPEC §13): shown once the round runs without the AI. */
 export function showOfflineNote(text: string): void {
+  document.getElementById('device-note')?.remove();
   if (document.getElementById('offline-note')) return;
   document.body.append(h('div', { id: 'offline-note', class: 'offline-note', role: 'status' }, text));
+}
+
+/** A quieter line in the same spot: Blot is thinking on this device (Opera WebAI). */
+export function showDeviceNote(text: string): void {
+  if (document.getElementById('device-note') || document.getElementById('offline-note')) return;
+  document.body.append(h('div', { id: 'device-note', class: 'device-note', role: 'status' }, text));
 }

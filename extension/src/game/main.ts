@@ -10,10 +10,11 @@ import { setSpeed } from './anim.ts';
 import { newProgress, type RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { DemoEngine, OfflineEngine, loadDemoRound, type RoundEngine } from './engine.ts';
+import { DeviceEngine, withDevice } from './device-engine.ts';
 import { linesFor } from './lines.ts';
 import { initSound } from './sound.ts';
 import { getLocal, getSession, setLocal } from './storage.ts';
-import { primary, secondary, showOfflineNote, showScreen } from './ui.ts';
+import { primary, secondary, showDeviceNote, showOfflineNote, showScreen } from './ui.ts';
 import { formingScreen, homeScreen, pageScreen } from './screens/intro.ts';
 import { teachScreen } from './screens/teach.ts';
 import { boutScreen, eatScreen, examScreen, loseScreen } from './screens/fight.ts';
@@ -26,6 +27,17 @@ const FAST = params.has('fast');
 const LIVE = params.get('live') === '1';
 /** Optional teaching time in seconds (presenters, tests). */
 const TEACH = Math.min(300, Math.max(20, Number(params.get('teach')) || 0)) || null;
+/**
+ * On-device Blot (Opera WebAI): on by default for rounds from real pages, off for the scripted demo
+ * rounds. ?device=1 turns it on for a demo round, ?device=0 turns it off everywhere.
+ */
+const DEVICE = params.get('device');
+
+/** Blot on the device when this browser can, around `inner`; the label shows once it really is. */
+function onDevice(inner: RoundEngine, pageText: string, wanted: boolean): RoundEngine {
+  if (!wanted || DEVICE === '0') return inner;
+  return withDevice(inner, pageText, () => showDeviceNote(linesFor(inner.language).onDevice));
+}
 
 const goHome = () => {
   location.href = 'game.html';
@@ -70,20 +82,25 @@ function baseCtx(engine: RoundEngine, traits: Trait[], firstRound: boolean, teac
  */
 function failOver(ctx: RoundCtx, canned: DemoRound | null): void {
   ctx.onEngineError = (err) => {
-    // Only the server engine can fail; the local engines (canned or offline Blot) never do.
-    if (!(ctx.engine instanceof ServerEngine)) return;
+    // Only the server engine can fail; the local engines (canned or offline Blot) never do. An
+    // on-device Blot keeps talking: only the engine behind it changes.
+    const device = ctx.engine instanceof DeviceEngine ? ctx.engine : null;
+    const server = device ? device.inner : ctx.engine;
+    if (!(server instanceof ServerEngine)) return;
     if (err instanceof ServerError && err.status === 410) {
       errorScreen(ctx.lines.expired, true);
       return;
     }
     const sameLesson = !!canned && canned.lesson.ideas.every((i, n) => ctx.lesson.ideas[n]?.name === i.name);
-    ctx.engine = sameLesson ? new DemoEngine(canned!, ctx.lesson) : new OfflineEngine(ctx.lesson, ctx.engine.seed);
+    const fallback = sameLesson ? new DemoEngine(canned!, ctx.lesson) : new OfflineEngine(ctx.lesson, server.seed);
+    if (device) device.inner = fallback;
+    else ctx.engine = fallback;
     // An offline Blot cannot reveal a hidden misreading, so it stops holding any.
     if (!sameLesson) {
       ctx.misreads = [];
       for (const p of Object.values(ctx.progress)) if (p.belief === 'misread') p.belief = 'right';
     }
-    showOfflineNote(ctx.lines.offline);
+    showOfflineNote(device?.onDevice ? ctx.lines.offlineDevice : ctx.lines.offline);
   };
 }
 
@@ -136,6 +153,8 @@ async function playDemo(id: string): Promise<void> {
   ctx.pageSrc = round.page;
   const { boxes, text, frame, capture } = await pageScreen(ctx);
   ctx.pageText = text;
+  // ?live=1 wraps the server engine below instead (one device session per round).
+  ctx.engine = onDevice(ctx.engine, text, DEVICE === '1' && !LIVE);
   if (LIVE) {
     // ?live=1: the same demo page, but the lesson and Blot come from the server (real AI or AI_STUB).
     const server = (await getLocal<string>('serverUrl', '')) || SERVER_URL;
@@ -146,7 +165,7 @@ async function playDemo(id: string): Promise<void> {
     }).catch(() => null);
     const data = res && res.ok ? ((await res.json()) as { lesson: SealedLesson; seed: number; offline: boolean }) : null;
     if (data) {
-      const live = baseCtx(new ServerEngine(server, data.lesson, data.seed, data.offline), ctx.traits, firstRound, ctx.teachSeconds);
+      const live = baseCtx(onDevice(new ServerEngine(server, data.lesson, data.seed, data.offline), text, true), ctx.traits, firstRound, ctx.teachSeconds);
       Object.assign(ctx, { engine: live.engine, lesson: live.lesson, misreads: live.misreads, progress: live.progress, monster: { ...live.monster, words: ctx.monster.words }, fullLesson: null });
       failOver(ctx, round);
     } else {
@@ -164,7 +183,7 @@ async function playDemo(id: string): Promise<void> {
 async function playLive(id: string): Promise<void> {
   const handoff = await getSession<RoundHandoff>(`round:${id}`);
   if (!handoff) throw new Error('This round has expired. Click the Spark button on a page to start a new one.');
-  const engine = new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline);
+  const engine = onDevice(new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline), handoff.capture.text, true);
   setSpeed(1);
   const firstRound = !(await getLocal('played', false));
   const ctx = baseCtx(engine, await wornTraits(), firstRound, TEACH ?? TEACH_SECONDS);

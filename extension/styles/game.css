@@ -275,6 +275,10 @@ button, a.primary { font: inherit; }
 
 /* ---------- offline note ---------- */
 .offline-note { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 60; padding: 8px 16px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 16px; font-weight: 700; pointer-events: none; }
+.device-note { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 60; padding: 6px 14px 6px 12px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 16px; font-weight: 700; pointer-events: none; display: flex; align-items: center; gap: 8px; animation: device-in 400ms ease-out; }
+.device-note::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 25%, transparent); }
+@keyframes device-in { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .device-note { animation: none; } }
 
 /* ---------- error ---------- */
 .screen-error { place-items: center; }
