@@ -204,3 +204,13 @@ test('the monster taunt sees only its name and topic, cleaned, in the page langu
   assert.match(t, /The Tide Serpent/);
   assert.match(tauntSystem('nb'), /Norwegian Bokmål/);
 });
+
+test('a missing stop before "Right?" becomes a dash, and what was shown stays a prefix', () => {
+  assert.equal(cleanReply('one bulge faces the Moon and one is on the far side Right?'), 'one bulge faces the Moon and one is on the far side — right?');
+  assert.ok(cleanReply('the far side Right? Yay').startsWith(cleanReply('the far side ')));
+  assert.equal(cleanReply('the far side. Right?'), 'the far side. Right?');
+  assert.equal(cleanReply('adenosin samles Stemmer det?'), 'adenosin samles — stemmer det?');
+  assert.equal(cleanReply('and that fixes everything right?'), 'and that fixes everything — right?');
+  assert.equal(cleanReply('Is that right?'), 'Is that right?');
+  assert.equal(cleanReply('Er det så stemmer det?'), 'Er det så stemmer det?');
+});

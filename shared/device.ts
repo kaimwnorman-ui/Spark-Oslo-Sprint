@@ -179,6 +179,9 @@ export function mayBeStarter(text: string, starter: string): boolean {
   return said.length > 0 && said.length < core.length && core.startsWith(said);
 }
 
+/** Words after which "right?" is part of the sentence ("Is that right?"), not a tag question. */
+const TAG_OK = new Set(['that', 'this', 'it', 'is', 'was', 'be', 'am', 'are', 'all', 'det', 'er', 'så']);
+
 /**
  * Tidies Blot's reply so far (call it on the whole text after each streamed piece): no markdown
  * marks, no "Blot:" label, no "<image of ...>" stage directions (seen on Apple's model), one line.
@@ -192,6 +195,9 @@ export function cleanReply(text: string): string {
     .replace(/^\s*blot\s*:\s*/i, '')
     .replace(/^\s*["“]/, '')
     .replace(/\s+/g, ' ')
+    // "…far side Right?" (seen on Apple's model): a dash after the space, not a full stop before
+    // it, so text already on screen ("…far side ") stays a prefix of the tidied reply.
+    .replace(/([\p{L}\p{N}]+) (right\?|stemmer det\?)/giu, (m: string, word: string, q: string) => (TAG_OK.has(word.toLowerCase()) ? m : `${word} — ${q.toLowerCase()}`))
     .trimStart();
 }
 
