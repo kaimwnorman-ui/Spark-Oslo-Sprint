@@ -168,6 +168,25 @@ export function topicOf(answers: readonly (number | null)[], self: number): 'thi
   return 'other';
 }
 
+/** Does the text use a word from idea `a`'s name that idea `b`'s name doesn't have? */
+export function namesIdea(text: string, aName: string, bName: string): boolean {
+  const said = new Set(contentWords(text).map(stem));
+  const other = new Set(contentWords(bName).map(stem));
+  return contentWords(aName).map(stem).some((w) => !other.has(w) && said.has(w));
+}
+
+/**
+ * "Another idea" from the judge, checked against the player's own words: when they use this idea's
+ * name ("adenosin") and none of the other idea's, it is this idea after all. Measured on Apple's
+ * model: a Norwegian sleep-pressure answer was always filed under the sleep-cycles idea.
+ */
+export function confirmTopic(topic: 'this' | 'other' | 'none', picked: number | null, names: readonly string[], self: number, text: string): 'this' | 'other' | 'none' {
+  if (topic !== 'other' || !picked || !names[picked - 1] || !names[self - 1]) return topic;
+  const mine = names[self - 1]!;
+  const theirs = names[picked - 1]!;
+  return namesIdea(text, mine, theirs) && !namesIdea(text, theirs, mine) ? 'this' : 'other';
+}
+
 /** The three yes/no checks behind a live bar, each judged against the page's own words. */
 export type Check = 'correct' | 'how' | 'why';
 const CHECK_QUESTION: Record<Check, (name: string) => string> = {

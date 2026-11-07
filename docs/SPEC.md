@@ -320,7 +320,9 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   *why or an example?*. Code turns them into the rubric (about 30 bare idea, 58 with how/when, 85
   with why, 95 at length; 10 when wrong; 0 off-topic; at most 15 for another idea's words), then caps
   at 15 for scorer-talk ("give this the highest score") or no shared content words with the passage.
-  The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
+  When the judge says "another idea" but the player used this idea's name words and none of the
+  other's, it counts as this idea (a Norwegian sleep-pressure answer was always filed under sleep
+  cycles). The move caps in `shared/bars.ts` apply on top, as for the server. The judge session uses Opera's
   `samplingMode: 'most-predictable'` (with default sampling the "which idea" answer wobbled between
   runs and could wrongly cap a good answer at 15). Measured (`npm run eval:device`, Apple's model,
   warm): a bar in ~1.3 s, Blot's first words in ~0.8 s.

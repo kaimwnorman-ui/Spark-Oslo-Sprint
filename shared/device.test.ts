@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotSystem, blotTask, checkPrompt, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotSystem, blotTask, checkPrompt, confirmTopic, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -157,4 +157,17 @@ test('passage: of equal mentions, the first wins over one that shares more of th
   assert.match(pickPassage(page, 'Two bulges', coach, 14), /^Two bulges, so two high tides\./);
   // No sentence names the idea: the message's words find the part instead.
   assert.match(pickPassage(page, 'Gravity gradient', 'new moon and full moon line up', 25), /new moon and full moon/);
+});
+
+test('"another idea" is checked against the idea names the player actually used', () => {
+  const nb = ['Søvnpress og adenosin', 'Den indre klokka', 'Søvnsyklusene'];
+  const text = 'Når hjernecellene bruker energi, samles adenosin i hjernen gjennom dagen.';
+  assert.ok(namesIdea(text, nb[0]!, nb[2]!));
+  assert.equal(confirmTopic('other', 3, nb, 1, text), 'this', 'says adenosin, not sleep cycles');
+  const en = ['Difference in pull', 'Two bulges', 'Later every day', 'Spring and neap'];
+  const spring = 'Spring tides are big because the Sun and Moon line up, neap tides are small.';
+  assert.equal(confirmTopic('other', 4, en, 2, spring), 'other', 'spring tides on the bulges bar stays another idea');
+  assert.equal(confirmTopic('other', 4, en, 2, 'Two bulges and spring tides'), 'other', 'names both: the judge decides');
+  assert.equal(confirmTopic('this', 2, en, 2, spring), 'this');
+  assert.equal(confirmTopic('none', 0, en, 2, spring), 'none');
 });
