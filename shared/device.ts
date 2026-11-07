@@ -119,6 +119,11 @@ function blotTaskBody(event: BlotEvent, o: BlotTaskOptions): string | null {
   }
 }
 
+/** Blot's answer for the offline exam's replay row: what it learned, from the coach's words only. */
+export function blotAnswerTask(ideaName: string, coach: readonly string[]): string {
+  return `${coachBlock(coach)}\nSomeone asks you to explain "${ideaName}". Answer in first person, in your own playful words, using only what your coach said above. One or two sentences, under 30 words.`;
+}
+
 /**
  * A short, in-character opener shown the moment Blot starts to reply, while the model writes the
  * rest (its first sentence takes ~0.8 s on Apple's model; the opener takes none). `turn` rotates

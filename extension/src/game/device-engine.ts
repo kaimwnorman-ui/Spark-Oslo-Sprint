@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotStarter, blotTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotAnswerTask, blotStarter, blotTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -31,6 +31,8 @@ export class DeviceEngine implements RoundEngine {
   private readonly misreadCache = new Map<string, string | null>();
   /** Rotates Blot's openers. */
   private turn = 0;
+  /** The last device bar per idea, by what the player did on it: an unchanged idea isn't judged twice. */
+  private readonly barsCache = new Map<string, { key: string; reply: BarsReply }>();
   /** The device model, once it is ready (null before, or when it never starts). */
   private ai: DeviceAi | null = null;
   private readonly pageText: string;
@@ -160,11 +162,16 @@ export class DeviceEngine implements RoundEngine {
     const typedEntries = mine.filter((e) => e.text && e.move !== 'same' && e.move !== 'dontknow');
     const typed = typedEntries.map((e) => e.text!);
     if (!typed.length) return { raw, contradictsMisread: false, whenRight };
+    const key = JSON.stringify(mine);
+    const cached = this.barsCache.get(ideaId);
+    if (cached?.key === key) return { ...cached.reply, whenRight };
     // An Example or an answer to Blot's "but WHY?" is a why/example by its move.
     const whyMove = typedEntries.some((e) => e.move === 'example' || e.move === 'why');
     try {
       const [score, contradictsMisread] = await Promise.all([this.score(ai, ideaId, idea.name, typed, whyMove), this.denies(ai, ideaId, typed.at(-1)!)]);
-      return { raw: Math.max(raw, score), contradictsMisread, whenRight };
+      const reply = { raw: Math.max(raw, score), contradictsMisread, whenRight };
+      this.barsCache.set(ideaId, { key, reply });
+      return reply;
     } catch (err) {
       console.info('Spark: on-device bars failed, asking the server.', err instanceof Error ? err.message : err);
       const reply = await this.inner.bars(ideaId, transcript);
@@ -208,10 +215,29 @@ export class DeviceEngine implements RoundEngine {
 
   // ---------------------------------------------------------------- the exam
 
-  examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
-    // Offline (no server, no canned round): the device's own scores.
-    if (this.ai && this.inner instanceof OfflineEngine) return this.inner.examineWith((id, t) => this.bars(id, t).then((r) => r.raw), transcript, heldMisreads);
-    return this.inner.examine(transcript, heldMisreads);
+  async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
+    const ai = this.ai;
+    if (!ai || !(this.inner instanceof OfflineEngine)) return this.inner.examine(transcript, heldMisreads);
+    // Offline (no server, no canned round): the device's own scores (from the live bars when the
+    // player hasn't changed an idea since), and Blot's answers written on the device.
+    const exam = await this.inner.examineWith((id, t) => this.bars(id, t).then((r) => r.raw), transcript, heldMisreads);
+    const results = await Promise.all(
+      exam.results.map(async (r) => {
+        const coach = transcript.filter((e) => e.ideaId === r.id && e.text).map((e) => e.text!);
+        if (!coach.length || r.belief === 'wrong' || r.score < 10) return r;
+        const answer = await this.answerOnDevice(ai, this.idea(r.id).name, coach).catch(() => '');
+        return answer ? { ...r, creatureAnswer: answer } : r;
+      }),
+    );
+    return { results };
+  }
+
+  /** Blot's replay answer for one idea, in its own words (at most 40 words, SPEC §12.3). */
+  private async answerOnDevice(ai: DeviceAi, ideaName: string, coach: string[]): Promise<string> {
+    let heard = '';
+    for await (const piece of ai.blot(blotAnswerTask(ideaName, coach))) heard += piece;
+    const words = cleanReply(heard).trim().split(/\s+/).filter(Boolean);
+    return words.slice(0, 40).join(' ');
   }
 }
 

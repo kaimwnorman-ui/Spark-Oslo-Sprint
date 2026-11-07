@@ -301,7 +301,9 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   goes to the server. A quiet pill, "Blot is thinking on this laptop", shows once it is.
 - **Every device failure falls back** to the inner engine for that one call (server, canned round or
   offline Blot), so a round never stalls. If the server goes away mid-round, Blot keeps talking on
-  the device; the offline exam then uses the device's scores.
+  the device; the offline exam then uses the device's scores (reusing the live bar of any idea the
+  player hasn't touched since) and Blot's replay answers are written on the device from the coach's
+  words, instead of echoing their last message.
 - **Answers stay sealed:** the device never sees a model answer, key point or hidden question. The
   live bars are judged against the page's own text (which the browser already has): about 120 words
   around the sentence that best names the idea (its rarest words count most, the earliest mention

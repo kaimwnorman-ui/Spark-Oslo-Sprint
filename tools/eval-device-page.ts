@@ -1,7 +1,8 @@
 // Runs inside game.html in Opera (bundled by tools/eval-device.mjs): the real DeviceEngine on a demo
 // round, with an inner engine that marks any fallback, so every number below is the device's own.
 import { DeviceEngine } from '../extension/src/game/device-engine.ts';
-import { DemoEngine, type BarsReply, type CreatureRequest } from '../extension/src/game/engine.ts';
+import { DemoEngine, OfflineEngine, type BarsReply, type CreatureRequest } from '../extension/src/game/engine.ts';
+import { sealLesson } from '../shared/lesson.ts';
 import { openDeviceAi } from '../extension/src/game/webai.ts';
 import { wordTotal } from '../shared/device.ts';
 import type { DemoRound, TranscriptEntry } from '../shared/types.ts';
@@ -36,6 +37,8 @@ export interface EvalInput {
   pageText: string;
   scores: ScoreCase[];
   blot: BlotCase[];
+  /** The offline exam (no server, no canned round): what the player typed, by idea. */
+  offline: { ideaId: string; text: string }[];
 }
 
 const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]! : 0);
@@ -87,9 +90,30 @@ async function run(input: EvalInput, checks: Record<string, (reply: string) => s
     if (extra) problems.push(extra);
     blot.push({ label: c.label, reply: reply.trim(), first, shown, ms: Math.round(performance.now() - ts), problem: problems.join(', ') || null });
   }
+  // The offline exam: the device scores and writes Blot's answers; untaught ideas stay unknown.
+  const offlineEngine = new DeviceEngine(new OfflineEngine(sealLesson(round.lesson, 'eval-offline'), round.seed), Promise.resolve(ai), input.pageText);
+  await offlineEngine.ready;
+  const taught = new Set(input.offline.map((o) => o.ideaId));
+  const offlineTranscript: TranscriptEntry[] = input.offline.map((o) => ({ ideaId: o.ideaId, move: 'say', text: o.text }));
+  const te = performance.now();
+  const exam = await offlineEngine.examine(offlineTranscript, []);
+  const examMs = Math.round(performance.now() - te);
+  const offline = exam.results.map((r) => {
+    const said = input.offline.find((o) => o.ideaId === r.id)?.text ?? '';
+    const problems = [];
+    if (taught.has(r.id)) {
+      if (r.score <= 0) problems.push('no score');
+      if (said.startsWith(r.creatureAnswer.slice(0, 40))) problems.push('echoes the coach instead of Blot answering');
+      if (wordTotal(r.creatureAnswer) > 40 || /[<>*#]/.test(r.creatureAnswer)) problems.push('too long or markup');
+    } else if (r.score !== 0) problems.push('scored an idea nobody taught');
+    return { id: r.id, score: r.score, answer: r.creatureAnswer, problem: problems.join(', ') || null };
+  });
+
   return {
     openMs,
     warmMs,
+    examMs,
+    offline,
     barsMedianMs: median(scores.map((s) => s.ms)),
     blotFirstMedianMs: median(blot.map((b) => b.first)),
     blotShownMedianMs: median(blot.map((b) => b.shown)),
