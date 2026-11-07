@@ -1,0 +1,36 @@
+{
+  "name": "spark",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spark: any page becomes a monster made of its words; beat it by teaching Blot the five key ideas.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "dev": "node tools/dev.mjs",
+    "server": "node --experimental-strip-types --disable-warning=ExperimentalWarning server/src/main.ts",
+    "build": "node tools/build.mjs --release",
+    "build:dev": "node tools/build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test \"shared/**/*.test.ts\" \"server/test/**/*.test.ts\"",
+    "test:ai": "SPARK_TEST_AI=1 node --experimental-strip-types --disable-warning=ExperimentalWarning --test server/test/grounding.test.ts",
+    "check:nokey": "node tools/check-nokey.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run check:nokey",
+    "smoke:demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-demo.mjs",
+    "smoke:ext": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-ext.mjs",
+    "assets:gen": "node tools/assets-gen.mjs",
+    "models:check": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/check-models.ts",
+    "demo:bake": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/demo-bake.ts"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.3.7",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0",
+    "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.6.0"
+  }
+}

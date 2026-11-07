@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Spark",
+  "short_name": "Spark",
+  "description": "Turn any page into a monster made of its words. Beat it by teaching Blot the five ideas that matter.",
+  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx6XgG+2seOOLcRQd0H9edAGbow7HcoQVMw/vB4wppkgmHqdbEulvZ8ETMMd0jrPOF/RkPqhXteqrIphZNjJ7CiHRNaZEEzOY+e3ZuxDH00qNi/sOKWnOmfNH5Ybn6RzdzWL4QY+mB2pV9wdgXG8CBZzU+AUWHO5Dd0IanYtOcaqOFfE16uX6VhIv/pDrsWhrtwNuEq9Wal7Je0YbITQGiAHDjhh8ID1/oGNDr90xm3vYTN6XDGzvMjMEUCA1otH0fNh0w49gLuhoJS4qiMmnJLciQvzZjK+j/nxHzHx3sFf1fwFqFXVCAwmDbvJnLWlzXzBd40mC5IbV6qmMDawA6QIDAQAB",
+  "minimum_chrome_version": "116",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": {
+    "default_title": "Spark: turn this page into a monster",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
+  },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["http://localhost:8787/*"],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+B" },
+      "description": "Turn this page into a monster"
+    }
+  }
+}
