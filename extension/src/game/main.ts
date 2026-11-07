@@ -45,10 +45,13 @@ const COMEBACK_SECONDS = 60;
  */
 const DEVICE = params.get('device');
 
-/** Blot on the device when this browser can, around `inner`; the label shows once it really is. */
-function onDevice(inner: RoundEngine, pageText: string, wanted: boolean): RoundEngine {
+/**
+ * Blot on the device when this browser can, around `inner`; the label shows once it really is.
+ * `chatOnly` (comebacks, duels): only Blot's replies move to the device; scoring stays put.
+ */
+function onDevice(inner: RoundEngine, pageText: string, wanted: boolean, opts: { chatOnly?: boolean } = {}): RoundEngine {
   if (!wanted || DEVICE === '0') return inner;
-  return withDevice(inner, pageText, () => showDeviceNote(linesFor(inner.language).onDevice));
+  return withDevice(inner, pageText, () => showDeviceNote(linesFor(inner.language).onDevice), opts);
 }
 
 const go = (path: string) => {
@@ -330,7 +333,7 @@ async function playComeback(id: string): Promise<void> {
   const round = cb.demoId ? await loadDemoRound(cb.demoId).catch(() => null) : null;
   let inner: RoundEngine;
   if (round) {
-    inner = new DemoEngine(round);
+    inner = onDevice(new DemoEngine(round), '', DEVICE === '1', { chatOnly: true });
   } else {
     const lesson: SealedLesson = {
       lessonId: `comeback-${cb.id}`,
@@ -356,7 +359,8 @@ async function playComeback(id: string): Promise<void> {
         return { score: recallScore(card, answer), feedback: '' };
       }
     };
-    inner = new ComebackEngine(lesson, cb.createdAt >>> 0, { ideaId: cb.ideaId, ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints }, grade);
+    // On the device, Blot talks instead of repeating what it's told; /recall still grades.
+    inner = onDevice(new ComebackEngine(lesson, cb.createdAt >>> 0, { ideaId: cb.ideaId, ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints }, grade), '', true, { chatOnly: true });
   }
   setSpeed(FAST ? 12 : round ? DEMO_SPEED : 1);
   const ctx = baseCtx(new LockedEngine(inner, locks), await currentTraits(memory), false, TEACH ?? (FAST ? 30 : COMEBACK_SECONDS));
@@ -389,7 +393,7 @@ async function playDuel(token: string): Promise<void> {
     challenge = decodeLocalDuel(token);
     if (!challenge?.demo) throw new Error('This challenge link is broken. Ask your friend to send it again.');
     round = await loadDemoRound(challenge.demo);
-    engine = new DemoEngine(round);
+    engine = onDevice(new DemoEngine(round), '', DEVICE === '1', { chatOnly: true });
   } else if (isServerDuelCode(token)) {
     type Joined = { lesson: SealedLesson; seed: number; offline: boolean; roundId: string | null; page: typeof page; challenge: unknown };
     const data = await postJson<Joined>('/duel/join', { code: token }).catch((err: unknown) => {
@@ -398,7 +402,8 @@ async function playDuel(token: string): Promise<void> {
     challenge = readChallenge(data.challenge);
     if (!challenge) throw new Error('This challenge link is broken. Ask your friend to send it again.');
     page = data.page;
-    engine = new ServerEngine(await serverBase(), data.lesson, data.seed, data.offline);
+    // Blot's chat on the device; both Blots are still judged alike, on the server.
+    engine = onDevice(new ServerEngine(await serverBase(), data.lesson, data.seed, data.offline), '', true, { chatOnly: true });
     round = data.roundId ? await loadDemoRound(data.roundId).catch(() => null) : null;
   } else {
     throw new Error('This challenge link is broken. Ask your friend to send it again.');

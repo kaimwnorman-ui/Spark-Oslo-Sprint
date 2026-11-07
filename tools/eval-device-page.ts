@@ -109,11 +109,29 @@ async function run(input: EvalInput, checks: Record<string, (reply: string) => s
     return { id: r.id, score: r.score, answer: r.creatureAnswer, problem: problems.join(', ') || null };
   });
 
+  // Chat only (comebacks, duels): Blot's reply from the device, the bar and taunt from the inner engine.
+  const chat = new DeviceEngine(new MarkedEngine(round), Promise.resolve(ai), input.pageText, { chatOnly: true });
+  await chat.ready;
+  const chatIdea = input.offline[0]!;
+  const chatTranscript: TranscriptEntry[] = [{ ideaId: chatIdea.ideaId, move: 'say', text: chatIdea.text }];
+  const chatBar = await chat.bars(chatIdea.ideaId, chatTranscript);
+  let chatReply = '';
+  for await (const piece of chat.creature({ ideaId: chatIdea.ideaId, event: 'say', belief: 'right', transcript: chatTranscript })) chatReply += piece;
+  const chatTaunt = await chat.taunt(round.lesson.monsterName, round.lesson.topic);
+  const chatOnly = {
+    reply: chatReply.trim(),
+    problem:
+      [chatBar.raw !== -1 && 'the bar did not come from the inner engine', (chatReply.includes(FELL_BACK) || !chatReply.trim()) && 'the reply did not come from the device', chatTaunt !== null && 'it wrote a taunt']
+        .filter(Boolean)
+        .join(', ') || null,
+  };
+
   return {
     openMs,
     warmMs,
     examMs,
     offline,
+    chatOnly,
     barsMedianMs: median(scores.map((s) => s.ms)),
     blotFirstMedianMs: median(blot.map((b) => b.first)),
     blotShownMedianMs: median(blot.map((b) => b.shown)),

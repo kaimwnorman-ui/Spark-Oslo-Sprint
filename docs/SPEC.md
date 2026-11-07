@@ -347,9 +347,11 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   time, the fixed line stands. Not in duels or comebacks.
 - **Defaults:** on for rounds from real pages and `?live=1`; off for the scripted demo rounds (the
   stage round stays canned); `?device=1` turns it on for a demo round, `?device=0` off everywhere.
-- **Not on the device:** duels (both Blots are judged the same way, and a joined real-page duel has
-  no page text in the browser to judge against) and comebacks (§17: graded by `/recall` against the
-  revealed answer).
+- **Chat only in duels and comebacks:** Blot's replies run on the device there too, but the bars,
+  the exam and the taunt stay with the engine underneath: duels judge both Blots the same way on the
+  server (a joined real-page duel has no page text in the browser anyway), and comebacks are graded
+  by `/recall` against the revealed answer (§17). On for real pages (a real-page comeback's Blot used
+  to repeat what it was told), and with `?device=1` for demo rounds.
 
 ## 13. Server and extension (DEFAULT)
 

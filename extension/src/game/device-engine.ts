@@ -38,10 +38,16 @@ export class DeviceEngine implements RoundEngine {
   private readonly pageText: string;
   /** Resolves true once Blot runs on the device, false if it never will. */
   readonly ready: Promise<boolean>;
+  /**
+   * Chat only: Blot's replies on the device, everything else from the inner engine. For comebacks
+   * (graded by /recall) and duels (both Blots judged alike, on the server).
+   */
+  readonly chatOnly: boolean;
 
-  constructor(inner: RoundEngine, ai: Promise<DeviceAi | null>, pageText: string) {
+  constructor(inner: RoundEngine, ai: Promise<DeviceAi | null>, pageText: string, opts: { chatOnly?: boolean } = {}) {
     this.inner = inner;
     this.pageText = pageText;
+    this.chatOnly = !!opts.chatOnly;
     this.ready = ai.then(
       (a) => !!(this.ai = a),
       () => false,
@@ -161,7 +167,7 @@ export class DeviceEngine implements RoundEngine {
 
   async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
     const ai = this.ai;
-    if (!ai) return this.inner.bars(ideaId, transcript);
+    if (!ai || this.chatOnly) return this.inner.bars(ideaId, transcript);
     const idea = this.idea(ideaId);
     const mine = transcript.filter((e) => e.ideaId === ideaId);
     const last = mine.at(-1);
@@ -233,7 +239,7 @@ export class DeviceEngine implements RoundEngine {
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     const ai = this.ai;
-    if (!ai || !(this.inner instanceof OfflineEngine)) return this.inner.examine(transcript, heldMisreads);
+    if (!ai || this.chatOnly || !(this.inner instanceof OfflineEngine)) return this.inner.examine(transcript, heldMisreads);
     // Offline (no server, no canned round): the device's own scores (from the live bars when the
     // player hasn't changed an idea since), and Blot's answers written on the device.
     const exam = await this.inner.examineWith((id, t) => this.bars(id, t).then((r) => r.raw), transcript, heldMisreads);
@@ -251,7 +257,7 @@ export class DeviceEngine implements RoundEngine {
   /** A fresh, one-line taunt from the page's monster (the topic and its name only), or null. */
   async taunt(monsterName: string, topic: string): Promise<string | null> {
     const ai = this.ai;
-    if (!ai) return null;
+    if (!ai || this.chatOnly) return null;
     const text = cleanReply(await ai.line(tauntSystem(this.language), tauntTask(monsterName, topic), 4000).catch(() => '')).trim();
     const words = text.split(/\s+/).filter(Boolean);
     return words.length >= 3 && words.length <= 24 ? text : null;
@@ -271,13 +277,13 @@ export class DeviceEngine implements RoundEngine {
  * Never waits: the model opens and wakes in the background (during the monster's reveal), and
  * `onReady` runs once Blot is really on the device.
  */
-export function withDevice(inner: RoundEngine, pageText: string, onReady?: () => void): RoundEngine {
+export function withDevice(inner: RoundEngine, pageText: string, onReady?: () => void, opts: { chatOnly?: boolean } = {}): RoundEngine {
   if (!hasDeviceAi()) return inner;
   const ai = openDeviceAi(inner.language).then(async (a) => {
     if (a) await a.warm();
     return a;
   });
-  const engine = new DeviceEngine(inner, ai, pageText);
+  const engine = new DeviceEngine(inner, ai, pageText, opts);
   void engine.ready.then((on) => on && onReady?.());
   return engine;
 }

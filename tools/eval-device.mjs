@@ -128,6 +128,8 @@ try {
       if (b.problem) failed++;
       console.log(`${b.problem ? 'FAIL' : 'ok  '} blot ${b.label.padEnd(22)} ${b.first} ms  "${b.reply}"${b.problem ? '  ← ' + b.problem : ''}`);
     }
+    if (out.chatOnly.problem) failed++;
+    console.log(`${out.chatOnly.problem ? 'FAIL' : 'ok  '} chat only (comebacks, duels): "${out.chatOnly.reply}"${out.chatOnly.problem ? '  ← ' + out.chatOnly.problem : ''}`);
     console.log(`  offline exam (no server): ${out.examMs} ms`);
     for (const o of out.offline) {
       if (o.problem) failed++;
