@@ -68,7 +68,7 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   // On the device (Opera WebAI) the monster's second line is written fresh while the intro plays;
   // if it isn't ready in time, the fixed line stands.
   let freshTaunt: string | null = null;
-  if (!duel) void ctx.engine.taunt?.(ctx.monster.name, ctx.lesson.topic).then((t) => (freshTaunt = t), () => {});
+  const pendingTaunt = duel ? undefined : ctx.engine.taunt?.(ctx.monster.name, ctx.lesson.topic).then((t) => (freshTaunt = t), () => null);
   taunt.set(duel ? `I’m ${duel.name}’s Blot. ${duel.name} taught me ${topic}. All of it!` : `I am ${ctx.monster.name}! Nobody understands ${topic}. Nobody!`);
   sfx.reveal();
   await wait(2400);
@@ -87,6 +87,8 @@ export async function examScreen(ctx: RoundCtx): Promise<void> {
   blotBubble.set(ctx.lines.ready);
   blot.setPose('excited');
   await wait(2000);
+  // Still being written: give it a moment more (the exam runs meanwhile anyway).
+  if (pendingTaunt && !freshTaunt) await Promise.race([pendingTaunt, wait(1200)]);
   taunt.set(duel ? 'Your coach versus mine. Let’s see who taught better.' : (freshTaunt ?? 'Come on then, little blot. Show me what you know.'));
   await wait(2100);
   const result = await Promise.race([exam, timeout]);

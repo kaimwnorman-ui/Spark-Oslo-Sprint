@@ -326,7 +326,8 @@ server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/devic
   is silent)?": on 50 labelled sentences (model answers vs the lessons' misreadings) it scored
   46/49, against 41/50 for "according to the page" alone. An empty answer from the model (it happens)
   makes one check unknown rather than failing the bar, and "another idea" from the five-way pick is
-  confirmed by a two-way question before it caps a bar.
+  confirmed by a two-way question before it caps a bar. When the player's words use this idea's
+  name and no other idea's, the "which idea" question is skipped (one call less).
   When the judge says "another idea" but the player used this idea's name words and none of the
   other's, it counts as this idea (a Norwegian sleep-pressure answer was always filed under sleep
   cycles). *How/when* and *why/example* both say "just stating the idea is no" (without it the

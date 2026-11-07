@@ -12,7 +12,7 @@ import type { DeviceAi } from './webai.ts';
 import { hasDeviceAi, openDeviceAi } from './webai.ts';
 import { misreadIdeaIds } from '../../../shared/round.ts';
 import {
-  WHEN_TAP_RAW, blotAnswerTask, pairPrompt, blotStarter, blotTask, tauntSystem, tauntTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
+  WHEN_TAP_RAW, blotAnswerTask, clearlyThisIdea, pairPrompt, blotStarter, blotTask, tauntSystem, tauntTask, checkPrompt, hasCauseOrExample, mayBeStarter, stripStarter, cleanReply, confirmTopic, denialPrompt, guardRaw, hasDenial, parseDigit, parseYesNo, pickPassage,
   rawFromChecks, topicOf, whichIdeaPrompt, wordTotal,
 } from '../../../shared/device.ts';
 import type { ExamResult, Language, RevealAsk, RevealReply, SealedIdea, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
@@ -201,8 +201,10 @@ export class DeviceEngine implements RoundEngine {
     const ask = (prompt: string) => ai.judge(prompt).catch(() => '');
     const yesNo = async (check: 'correct' | 'how' | 'why') => parseYesNo(await ask(checkPrompt(check, ideaName, passage, typed)));
     // Stage 1: which idea, and is it right? Off-topic or wrong ends here (half the calls).
-    const [which, correctAnswer] = await Promise.all([ask(whichIdeaPrompt(names, typed)), yesNo('correct')]);
     const self = this.lesson.ideas.findIndex((i) => i.id === ideaId) + 1;
+    // Words that name only this idea settle the topic without asking (one call less).
+    const obvious = clearlyThisIdea(coachText, names, self);
+    const [which, correctAnswer] = await Promise.all([obvious ? Promise.resolve(String(self)) : ask(whichIdeaPrompt(names, typed)), yesNo('correct')]);
     const picked = parseDigit(which, names.length);
     let topic = confirmTopic(topicOf([picked], self), picked, names, self, coachText);
     // "Another idea" caps a bar at 15, and the five-way pick was right on only 19 of 25 model

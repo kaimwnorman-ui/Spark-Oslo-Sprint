@@ -10,6 +10,8 @@ import { chromium } from 'playwright';
 import { EXTENSION_ID, SERVER_URL } from '../shared/config.ts';
 import { DIST, ROOT } from './lib.mjs';
 import { launchOpera, operaMissing } from './opera.mjs';
+import { readFileSync } from 'node:fs';
+import { contentWords, stem } from '../shared/words.ts';
 
 const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
 const missing = operaMissing();
@@ -118,7 +120,11 @@ try {
     await busyDone();
     const check = await bubble();
     log(`Blot (Check it): ${check}`);
-    checks.push([/straw|slurp|sucks|gulp/i.test(check) && /\?\s*$/.test(check), 'Check it brings out the hidden misreading as a question']);
+    // Blot words the misreading its own way each time: compare with the round's misreading text.
+    const misread = JSON.parse(readFileSync(path.join(ROOT, 'demo', 'rounds', 'tides.json'), 'utf8')).lesson.ideas.find((i) => i.id === 'i1').misread;
+    const shared = new Set(contentWords(misread).map(stem));
+    const overlap = new Set(contentWords(check).map(stem).filter((w) => shared.has(w))).size;
+    checks.push([overlap >= 2 && /\?\s*$/.test(check), `Check it brings out the hidden misreading as a question (${overlap} words shared with it)`]);
     await shot('02-check');
     await page.click('#btn-check-no');
     await page.waitForTimeout(400);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  blotStarter, blotSystem, hasCauseOrExample, tauntSystem, tauntTask, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
+  blotStarter, blotSystem, clearlyThisIdea, hasCauseOrExample, tauntSystem, tauntTask, blotTask, checkPrompt, confirmTopic, mayBeStarter, stripStarter, namesIdea, topicOf, cleanReply, coachBlock, denialPrompt, deviceLanguage, guardRaw, hasDenial, looksLikeInstruction,
   parseDigit, parseYesNo, pickPassage, rawFromChecks, sharesContent, streamDelta, whichIdeaPrompt,
 } from './device.ts';
 
@@ -213,4 +213,13 @@ test('a missing stop before "Right?" becomes a dash, and what was shown stays a 
   assert.equal(cleanReply('and that fixes everything right?'), 'and that fixes everything — right?');
   assert.equal(cleanReply('Is that right?'), 'Is that right?');
   assert.equal(cleanReply('Er det så stemmer det?'), 'Er det så stemmer det?');
+});
+
+test('clearly this idea from the words alone (then "which idea" is not asked)', () => {
+  const names = ['Difference in pull', 'Two bulges', 'Later every day', 'Spring and neap', 'Coast shapes tides'];
+  assert.ok(clearlyThisIdea("A coast's own shape can boost tides in a funnel bay.", names, 5));
+  assert.equal(clearlyThisIdea('Spring tides happen when the Sun and Moon line up.', names, 2), false, 'names another idea');
+  assert.equal(clearlyThisIdea('The Moon pulls the near water harder.', names, 2), false, 'names none: ask');
+  assert.equal(clearlyThisIdea('Two bulges, and spring tides are bigger.', names, 2), false, 'names both: ask');
+  assert.ok(clearlyThisIdea('There are two bulges of water.', names, 2));
 });

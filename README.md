@@ -88,6 +88,9 @@ usual. `?device=1` turns it on for a demo round, `?device=0` turns it off.
 - For a sure knockout with a juror: `?demo=stage`. Four ideas are already taught; the juror teaches the
   fifth and the bout ends in a K.O.
 - Demo mode is 1.5x faster and teaching lasts 0:45 (`&teach=90` gives more time). It works with Wi-Fi off.
+- In Opera with WebAI, `?demo=stage&device=1` lets Blot answer the juror on the device (the pill shows).
+  The knockout still lands: the stage round's exam stays canned. The juror's bar fills a second or
+  two after Blot's reply, a little later than in the canned round.
 
 ## Commands
 

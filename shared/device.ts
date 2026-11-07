@@ -255,6 +255,23 @@ export function namesIdea(text: string, aName: string, bName: string): boolean {
 }
 
 /**
+ * Clearly about this idea from the words alone: uses a word of its name that no other idea's name
+ * has, and no such word of any other idea. Then the "which idea" question can be skipped (one model
+ * call less, ~0.5 s).
+ */
+export function clearlyThisIdea(text: string, names: readonly string[], self: number): boolean {
+  const mine = names[self - 1];
+  if (!mine) return false;
+  const others = names.filter((_, i) => i !== self - 1);
+  const said = new Set(contentWords(text).map(stem));
+  const stemsOf = (n: string) => new Set(contentWords(n).map(stem));
+  const otherStems = new Set(others.flatMap((n) => [...stemsOf(n)]));
+  const mineOnly = [...stemsOf(mine)].filter((w) => !otherStems.has(w));
+  if (!mineOnly.some((w) => said.has(w))) return false;
+  return others.every((n) => ![...stemsOf(n)].some((w) => !stemsOf(mine).has(w) && said.has(w)));
+}
+
+/**
  * "Another idea" from the judge, checked against the player's own words: when they use this idea's
  * name ("adenosin") and none of the other idea's, it is this idea after all. Measured on Apple's
  * model: a Norwegian sleep-pressure answer was always filed under the sleep-cycles idea.

@@ -15,9 +15,13 @@ export function operaMissing() {
   return null;
 }
 
-/** Opera with the unpacked extension loaded, in the WebAI profile. */
-export function launchOpera(chromium, extDir) {
-  return chromium.launchPersistentContext(OPERA_PROFILE, {
+/**
+ * Opera with the unpacked extension loaded, in the WebAI profile. The profile reopens its last
+ * session's tabs at launch, so every run used to add one more tab to the next (dozens by the end of
+ * a night): close whatever it restored before the run opens its own page.
+ */
+export async function launchOpera(chromium, extDir) {
+  const context = await chromium.launchPersistentContext(OPERA_PROFILE, {
     executablePath: OPERA,
     headless: false,
     viewport: { width: 1280, height: 720 },
@@ -25,6 +29,8 @@ export function launchOpera(chromium, extDir) {
     ignoreDefaultArgs: ['--disable-component-update', '--disable-background-networking', '--disable-default-apps', '--disable-extensions'],
     args: [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`],
   });
+  for (const page of context.pages()) await page.close().catch(() => {});
+  return context;
 }
 
 /** The page text the game sees for a demo page (the same cleaning as the smokes). */
