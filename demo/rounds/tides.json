@@ -1,0 +1,459 @@
+{
+  "id": "tides",
+  "title": "How tides work",
+  "page": "demo/pages/tides.html",
+  "seed": 1107,
+  "lesson": {
+    "topic": "How tides work",
+    "monsterName": "The Tide Serpent",
+    "monsterShape": "serpent",
+    "language": "en",
+    "ideas": [
+      {
+        "id": "i1",
+        "name": "The uneven pull",
+        "question": "Why does the Moon stretch the oceans instead of just pulling them toward it?",
+        "modelAnswer": "The Moon's gravity weakens with distance, so the ocean facing the Moon is pulled harder than Earth's centre and the far-side ocean is pulled less. That difference across the planet, the tidal force, stretches the oceans; an even pull would just move the whole Earth.",
+        "keyPoints": [
+          "gravity weakens with distance",
+          "the near side is pulled more than the centre and the far side less",
+          "the difference in pull stretches the oceans"
+        ],
+        "whenOptions": [
+          {
+            "text": "Explaining why there is a bulge on the side facing away from the Moon",
+            "right": true
+          },
+          {
+            "text": "Explaining why waves crash harder on a windy day",
+            "right": false
+          },
+          {
+            "text": "Explaining why big ships float",
+            "right": false
+          }
+        ],
+        "misread": "Oh! The Moon is a giant magnet, and it sucks the water up toward itself!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Tidal_force",
+        "sourceTitle": "Tidal force"
+      },
+      {
+        "id": "i2",
+        "name": "Two bulges",
+        "question": "Why do most coasts get two high tides a day instead of one?",
+        "modelAnswer": "The stretched ocean has two bulges: one facing the Moon and one on the far side, where the water is pulled less than the solid Earth and is left behind. Earth spins through both bulges each day, so a beach passes two highs and two lows.",
+        "keyPoints": [
+          "one bulge faces the Moon",
+          "a second bulge on the far side is left behind",
+          "Earth spins through both bulges each day"
+        ],
+        "whenOptions": [
+          {
+            "text": "Working out why there are two high tides between one breakfast and the next",
+            "right": true
+          },
+          {
+            "text": "Working out why the sea is salty",
+            "right": false
+          },
+          {
+            "text": "Working out why the Moon has phases",
+            "right": false
+          }
+        ],
+        "misread": "Two high tides! So the Moon must zoom all the way around the Earth twice every day.",
+        "sourceUrl": "https://oceanservice.noaa.gov/education/tutorial_tides/",
+        "sourceTitle": "NOAA tides tutorial"
+      },
+      {
+        "id": "i3",
+        "name": "The late tide",
+        "question": "Why is high tide about 50 minutes later each day?",
+        "modelAnswer": "While Earth spins, the Moon travels along its orbit in the same direction. After one spin the Moon has moved on by about 13 degrees, so Earth turns about 50 more minutes to face it again. A tidal day is about 24 hours and 50 minutes.",
+        "keyPoints": [
+          "the Moon moves along its orbit while Earth spins",
+          "Earth needs about 50 extra minutes to catch up",
+          "a tidal day is about 24 hours 50 minutes"
+        ],
+        "whenOptions": [
+          {
+            "text": "Guessing tomorrow's high tide from today's",
+            "right": true
+          },
+          {
+            "text": "Guessing how tall a wave will be",
+            "right": false
+          },
+          {
+            "text": "Guessing when the Sun will set",
+            "right": false
+          }
+        ],
+        "misread": "The tide is late because the Earth gets a little bit tired and spins slower every day!",
+        "sourceUrl": "https://science.nasa.gov/moon/tides/",
+        "sourceTitle": "NASA: the Moon and tides"
+      },
+      {
+        "id": "i4",
+        "name": "Spring and neap tides",
+        "question": "Why are some tides much bigger than others, every two weeks?",
+        "modelAnswer": "The Sun raises a smaller tide of its own. At new and full moon the Sun, Moon and Earth line up, the bulges add, and the range is largest: spring tides. At the quarter moons they pull at right angles and partly cancel: smaller neap tides.",
+        "keyPoints": [
+          "the Sun makes a smaller tide too",
+          "lined up at new and full moon the bulges add: spring tides",
+          "at right angles at the quarter moons they partly cancel: neap tides"
+        ],
+        "whenOptions": [
+          {
+            "text": "Planning a beach walk at the lowest low tide of the month",
+            "right": true
+          },
+          {
+            "text": "Planning a trip for when the weather is warm",
+            "right": false
+          },
+          {
+            "text": "Planning which day of the week the beach is quiet",
+            "right": false
+          }
+        ],
+        "misread": "Spring tides! So the big tides only come in spring, when the flowers wake up.",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Tide",
+        "sourceTitle": "Tide (encyclopedia article)"
+      },
+      {
+        "id": "i5",
+        "name": "Coastlines set the size",
+        "question": "Why does the Bay of Fundy get 16-metre tides while the Mediterranean barely has any?",
+        "modelAnswer": "In the open ocean the bulge is under a metre. The local shape amplifies or damps it: a funnel-shaped bay squeezes the water up, and if the bay's natural slosh matches the 12.4-hour tide it builds like a pushed swing. A narrow entrance like Gibraltar lets little tide in.",
+        "keyPoints": [
+          "the open-ocean bulge is small",
+          "funnel shapes and resonance amplify it",
+          "narrow entrances keep the tide out"
+        ],
+        "whenOptions": [
+          {
+            "text": "Explaining why two beaches have very different tides on the same day",
+            "right": true
+          },
+          {
+            "text": "Explaining why the ocean looks blue",
+            "right": false
+          },
+          {
+            "text": "Explaining why high tide sometimes happens at night",
+            "right": false
+          }
+        ],
+        "misread": "Big tides in that bay? Then that bay must be sitting a lot closer to the Moon!",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Bay_of_Fundy",
+        "sourceTitle": "Bay of Fundy"
+      }
+    ],
+    "words": [
+      "plain-language",
+      "difference",
+      "everything",
+      "kilometres",
+      "stretching",
+      "coastline",
+      "breathing",
+      "stretches",
+      "distance",
+      "breathes",
+      "reshaped",
+      "standing",
+      "dramatic",
+      "minutes",
+      "another",
+      "nothing",
+      "decides",
+      "running",
+      "roughly",
+      "gravity",
+      "matters",
+      "uniform",
+      "massive",
+      "farther",
+      "quickly",
+      "Stretch",
+      "bulges",
+      "planet",
+      "pulled",
+      "little",
+      "centre",
+      "result",
+      "closer",
+      "called",
+      "effect",
+      "Moon's",
+      "points",
+      "coasts",
+      "around",
+      "Spring",
+      "funnel",
+      "minute",
+      "almost",
+      "creeps",
+      "pauses",
+      "slides",
+      "people",
+      "misses",
+      "clever",
+      "oceans",
+      "weaker",
+      "facing",
+      "harder",
+      "across",
+      "simply",
+      "uneven",
+      "strong",
+      "toward",
+      "tides",
+      "water",
+      "Earth",
+      "ocean",
+      "tidal",
+      "bulge",
+      "shape",
+      "beach",
+      "turns",
+      "later",
+      "hours",
+      "looks",
+      "whole",
+      "coast",
+      "pulls",
+      "times",
+      "Sun's",
+      "ahead",
+      "table",
+      "weeks",
+      "right",
+      "highs",
+      "phase",
+      "match",
+      "local",
+      "guide",
+      "Stand",
+      "twice",
+      "waves",
+      "learn",
+      "close",
+      "rocks",
+      "alike",
+      "force",
+      "fades",
+      "grows",
+      "solid",
+      "Moon",
+      "tide",
+      "high",
+      "pull",
+      "side",
+      "less",
+      "full",
+      "work",
+      "move",
+      "back",
+      "away",
+      "half",
+      "spin",
+      "time",
+      "neap",
+      "rise",
+      "push",
+      "NOAA",
+      "read",
+      "sand",
+      "wind",
+      "part",
+      "ball",
+      "grow",
+      "bump"
+    ]
+  },
+  "replies": {
+    "i1": {
+      "say": "Got it! The Moon pulls, but not evenly: the close side gets a bigger tug. I'm writing it on my drip.",
+      "example": "Ooh, like a crowd where the front row gets yanked forward, the back row lags behind, and the whole crowd stretches out? I love it.",
+      "whenRight": "Yes! That's when I'd use it: the bulge on the far side. The FAR side! Who knew.",
+      "whenWrong": "Hmm, windy waves? I don't think the Moon does wind. Want to try another one?",
+      "checkRight": "So: the Moon tugs the near ocean hardest, the middle less, the far side least, and that difference stretches the water. Right?",
+      "why": "OH. Because gravity gets weaker the farther away you are! So the near side gets more. My whole blob is tingling.",
+      "whyAsk": "But WHY does the near side get pulled more than the far side?",
+      "fixed": "Ohhh. Not a magnet. An uneven tug that stretches. Thank you, coach!"
+    },
+    "i2": {
+      "say": "Got it! Two bulges, two high tides. My drip is doing a little wave.",
+      "example": "Like walking round a table with two cakes on it: cake, no cake, cake, no cake. Two cakes every lap!",
+      "whenRight": "Yes! Two high tides between one breakfast and the next. Now I can impress the fish.",
+      "whenWrong": "Salty sea? I don't think bulges make salt. Let me think again.",
+      "checkRight": "So the ocean has one bump toward the Moon and one on the far side, and Earth spins through both each day. Right?",
+      "why": "Because the far-side water gets pulled LESS and is left behind! Two bumps from one stretch. Clever ocean.",
+      "whyAsk": "But WHY is there a bulge on the far side, where the Moon isn't?",
+      "fixed": "Ahh, the Moon doesn't zoom around twice. Earth spins through two bumps. Got it for real."
+    },
+    "i3": {
+      "say": "Got it! The tide turns up a bit later every day. Like me on Mondays.",
+      "example": "So if high tide is at three today, tomorrow it's closer to ten to four, because the Moon wandered on and Earth has to catch up?",
+      "whenRight": "Yes! I can guess tomorrow's tide from today's. I'm basically a tide wizard now.",
+      "whenWrong": "Wave height? Hmm, I don't think lateness makes waves taller.",
+      "checkRight": "So the Moon keeps moving along its orbit while Earth spins, and Earth needs about 50 extra minutes to face it again. Right?",
+      "why": "Because the Moon moved on by about 13 degrees during the day! Earth has to turn extra to catch it. Sneaky Moon.",
+      "whyAsk": "But WHY does Earth need extra time to face the Moon again?",
+      "fixed": "Oh! The Earth isn't tired at all. The Moon just keeps walking ahead. Phew."
+    },
+    "i4": {
+      "say": "Got it! Spring tides big, neap tides small. Writing it down in ink. Well, I AM ink.",
+      "example": "Like two people pushing a swing: push together and it flies, push at different times and it barely moves. Sun and Moon pushing together!",
+      "whenRight": "Yes! The lowest low tide of the month, for a beach walk. I'll bring a bucket.",
+      "whenWrong": "Warm weather? I don't think the Sun's heat is the point here.",
+      "checkRight": "So when the Sun, the Moon and Earth line up, their tides add up and get big, and at right angles they partly cancel. Right?",
+      "why": "Because the Sun makes its own little tide that adds on, or works against the Moon's! Teamwork, or tug-of-war.",
+      "whyAsk": "But WHY do the Sun and the Moon make bigger tides when they line up?",
+      "fixed": "Ohh, 'spring' means leap, not the season. Big tides all year round! My drip is amazed."
+    },
+    "i5": {
+      "say": "Got it! The coast changes how big the tide gets. Same push, different beach.",
+      "example": "Like shouting into a long tube: the shape makes it louder. A funnel bay makes the tide louder too. I mean taller!",
+      "whenRight": "Yes! That explains two beaches with totally different tides on the same day.",
+      "whenWrong": "Blue ocean? Hmm, I don't think the shape changes the colour.",
+      "checkRight": "So the open-ocean bump is small, but funnel-shaped bays squeeze it and can make it rock higher and higher. Right?",
+      "why": "Because the bay sloshes back and forth at the same rhythm as the tide, so every tide pushes it higher, like a swing!",
+      "whyAsk": "But WHY does a funnel-shaped bay make the tide so much bigger?",
+      "fixed": "Oh! Not closer to the Moon. Just a shape that makes the push bigger. Ink-credible."
+    }
+  },
+  "bars": {
+    "i1": {
+      "say": 27,
+      "example": 74,
+      "when": 40,
+      "check": 40,
+      "why": 88
+    },
+    "i2": {
+      "say": 26,
+      "example": 71,
+      "when": 40,
+      "check": 40,
+      "why": 84
+    },
+    "i3": {
+      "say": 28,
+      "example": 76,
+      "when": 40,
+      "check": 40,
+      "why": 86
+    },
+    "i4": {
+      "say": 25,
+      "example": 70,
+      "when": 40,
+      "check": 40,
+      "why": 83
+    },
+    "i5": {
+      "say": 26,
+      "example": 72,
+      "when": 40,
+      "check": 40,
+      "why": 85
+    }
+  },
+  "exam": {
+    "i1": {
+      "right": "The Moon tugs the near ocean harder than the middle of the Earth, and the far ocean less. That uneven tug stretches the water.",
+      "partial": "The Moon pulls on the water... harder somewhere? It's the Moon, but I'm not sure why it stretches.",
+      "unknown": "The Moon... does something to the sea? I... don't know this one!",
+      "tip": "Say why the pull is uneven: gravity weakens with distance, so near side, middle and far side are pulled differently."
+    },
+    "i2": {
+      "right": "There is a bulge toward the Moon and one on the far side, and Earth spins through both, so two highs a day.",
+      "partial": "Two high tides happen because of bulges? I'm fuzzy on where the second one comes from.",
+      "unknown": "Two high tides? I... don't know this one!",
+      "tip": "Explain the far-side bulge: the water there is pulled less than the Earth and gets left behind."
+    },
+    "i3": {
+      "right": "The Moon moves on along its orbit, so Earth turns about 50 more minutes to face it. High tide slips later every day.",
+      "partial": "The tide comes later each day... something about the Moon moving? Not sure how much.",
+      "unknown": "Later tides? I... don't know this one!",
+      "tip": "Use the numbers: the Moon moves about 13 degrees a day, so a tidal day is about 24 hours 50 minutes."
+    },
+    "i4": {
+      "right": "When the Sun, the Moon and Earth line up, their tides add: spring tides. At right angles they partly cancel: neap tides.",
+      "partial": "Some tides are bigger because of the Sun? I'm not sure when or why.",
+      "unknown": "Spring and neap? I... don't know this one!",
+      "tip": "Tie it to the moon phases: new and full moon give spring tides, the quarter moons give neap tides."
+    },
+    "i5": {
+      "right": "The ocean bulge is small, but funnel bays and matching sloshing make it much bigger; narrow entrances keep tides out.",
+      "partial": "Some places have huge tides because of their shape? I'm not sure how the shape does it.",
+      "unknown": "Huge tides in some bays? I... don't know this one!",
+      "tip": "Use the swing picture: a bay whose slosh matches the tide's rhythm gets pushed higher every time."
+    }
+  },
+  "script": [
+    {
+      "ideaId": "i1",
+      "move": "say",
+      "text": "The Moon pulls the near side of the ocean harder than the far side of the Earth."
+    },
+    {
+      "ideaId": "i1",
+      "move": "check",
+      "tap": "no"
+    },
+    {
+      "ideaId": "i1",
+      "move": "say",
+      "text": "Not a magnet: the pull is uneven, stronger close to the Moon, and that difference stretches the water."
+    },
+    {
+      "ideaId": "i1",
+      "move": "example",
+      "text": "Like a line of runners tied together: the front one is pulled ahead, the back one lags, so the line stretches out."
+    },
+    {
+      "ideaId": "i2",
+      "move": "say",
+      "text": "There are two bulges of water, one toward the Moon and one on the far side."
+    },
+    {
+      "ideaId": "i2",
+      "move": "why",
+      "text": "The far side water is pulled less than the Earth itself, so it gets left behind as a second bulge."
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "High tide comes about fifty minutes later every day because the Moon moves on."
+    },
+    {
+      "ideaId": "i3",
+      "move": "check",
+      "tap": "no"
+    },
+    {
+      "ideaId": "i3",
+      "move": "say",
+      "text": "The Earth is not slowing down: the Moon moves along its orbit so Earth turns extra minutes to catch up."
+    },
+    {
+      "ideaId": "i3",
+      "move": "example",
+      "text": "If high tide is at noon today, tomorrow it is near ten to one, because Earth spins extra to face the Moon again."
+    },
+    {
+      "ideaId": "i4",
+      "move": "say",
+      "text": "Spring tides are the big ones when the Sun and Moon line up, neap tides are small."
+    },
+    {
+      "ideaId": "i4",
+      "move": "when",
+      "tap": 0
+    }
+  ]
+}

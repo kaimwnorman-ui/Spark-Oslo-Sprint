@@ -124,6 +124,8 @@ export interface ExamItem {
   /** In Blot's words, at most 40 words. */
   creatureAnswer: string;
   tip: string;
+  /** Revealed only after teaching, for the replay's "stronger" column. */
+  modelAnswer?: string;
 }
 
 /** Examiner output (SPEC §12.3). */
@@ -180,4 +182,36 @@ export interface Trait {
   ideaName: string;
   score: number;
   at: number;
+}
+
+// ---------------------------------------------------------------- demo rounds (demo/rounds/*.json)
+
+/** Blot's scripted lines for one idea in a canned round. */
+export interface DemoReplies {
+  say: string;
+  example: string;
+  whenRight: string;
+  whenWrong: string;
+  checkRight: string;
+  why: string;
+  whyAsk: string;
+  fixed: string;
+}
+
+export interface DemoRound {
+  id: string;
+  title: string;
+  /** Path of the demo page, relative to the extension root. */
+  page: string;
+  seed: number;
+  lesson: Lesson;
+  replies: Record<string, DemoReplies>;
+  /** Raw scores a good message of each move reaches, per idea. */
+  bars: Record<string, Partial<Record<Move, number>>>;
+  /** The examiner's words per belief, per idea. */
+  exam: Record<string, { right: string; partial: string; unknown: string; tip: string }>;
+  /** The scripted player (smoke test, presenter autoplay). */
+  script: TranscriptEntry[];
+  /** Stage round: ideas already taught when the round starts. */
+  pretaught?: TranscriptEntry[];
 }
