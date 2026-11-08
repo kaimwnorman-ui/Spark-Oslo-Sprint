@@ -16,12 +16,13 @@ import { setSpeed } from './anim.ts';
 import { newProgress, ownIdeaIds, scriptedIdeaIds, type RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { ComebackEngine, DemoEngine, LockedEngine, OfflineEngine, loadDemoRound, type RoundEngine } from './engine.ts';
+import { DeviceEngine, withDevice } from './device-engine.ts';
 import { linesFor } from './lines.ts';
 import { clearMyData, currentTraits, loadHistory, loadMemory, navUrl, now, recordRound, saveMemory, updateMemory } from './memory-store.ts';
 import { ServerEngine, ServerError, postJson, serverBase } from './server-engine.ts';
 import { initSound } from './sound.ts';
 import { getLocal, getSession, setLocal } from './storage.ts';
-import { primary, secondary, setLeaveGuard, showOfflineNote, showScreen } from './ui.ts';
+import { primary, secondary, setLeaveGuard, showDeviceNote, showOfflineNote, showScreen } from './ui.ts';
 import { formingScreen, homeScreen, pageScreen } from './screens/intro.ts';
 import { teachScreen } from './screens/teach.ts';
 import { boutScreen, eatScreen, examScreen, loseScreen } from './screens/fight.ts';
@@ -43,6 +44,20 @@ const LIVE = params.get('live') === '1';
 const TEACH = teachSeconds(params.get('teach'));
 /** A comeback is about one idea: one minute is plenty. */
 const COMEBACK_SECONDS = 60;
+/**
+ * On-device Blot (Opera WebAI): on by default for rounds from real pages, off for the scripted demo
+ * rounds. ?device=1 turns it on for a demo round, ?device=0 turns it off everywhere.
+ */
+const DEVICE = params.get('device');
+
+/**
+ * Blot on the device when this browser can, around `inner`; the label shows once it really is.
+ * `chatOnly` (comebacks, duels): only Blot's replies move to the device; scoring stays put.
+ */
+function onDevice(inner: RoundEngine, pageText: string, wanted: boolean, opts: { chatOnly?: boolean } = {}): RoundEngine {
+  if (!wanted || DEVICE === '0') return inner;
+  return withDevice(inner, pageText, () => showDeviceNote(linesFor(inner.language).onDevice), opts);
+}
 
 const go = (path: string) => {
   location.href = navUrl(path);
@@ -104,20 +119,25 @@ async function coachFocus(): Promise<FocusCode[]> {
  */
 function failOver(ctx: RoundCtx, canned: DemoRound | null): void {
   ctx.onEngineError = (err) => {
-    // Only the server engine can fail; the local engines (canned or offline Blot) never do.
-    if (!(ctx.engine instanceof ServerEngine)) return;
+    // Only the server engine can fail; the local engines (canned or offline Blot) never do. An
+    // on-device Blot keeps talking: only the engine behind it changes.
+    const device = ctx.engine instanceof DeviceEngine ? ctx.engine : null;
+    const server = device ? device.inner : ctx.engine;
+    if (!(server instanceof ServerEngine)) return;
     if (err instanceof ServerError && err.status === 410) {
       errorScreen(ctx.lines.expired, true);
       return;
     }
     const sameLesson = !!canned && canned.lesson.ideas.every((i, n) => ctx.lesson.ideas[n]?.name === i.name);
-    ctx.engine = sameLesson ? new DemoEngine(canned!, ctx.lesson) : new OfflineEngine(ctx.lesson, ctx.engine.seed);
+    const fallback = sameLesson ? new DemoEngine(canned!, ctx.lesson) : new OfflineEngine(ctx.lesson, server.seed);
+    if (device) device.inner = fallback;
+    else ctx.engine = fallback;
     // An offline Blot cannot reveal a hidden misreading, so it stops holding any.
     if (!sameLesson) {
       ctx.misreads = [];
       for (const p of Object.values(ctx.progress)) if (p.belief === 'misread') p.belief = 'right';
     }
-    showOfflineNote(ctx.lines.offline);
+    showOfflineNote(device?.onDevice ? ctx.lines.offlineDevice : ctx.lines.offline);
   };
 }
 
@@ -353,6 +373,8 @@ async function playDemo(id: string): Promise<void> {
   }
   const { boxes, text, frame, capture } = await pageScreen(ctx);
   ctx.pageText = text;
+  // ?live=1 wraps the server engine below instead (one device session per round).
+  ctx.engine = onDevice(ctx.engine, text, DEVICE === '1' && !LIVE);
   if (LIVE) {
     // ?live=1: the same demo page, but the lesson and Blot come from the server (real AI or AI_STUB).
     const server = await serverBase();
@@ -360,7 +382,7 @@ async function playDemo(id: string): Promise<void> {
       capture: { url: new URL(round.page, location.href).href, title: capture.title, text: capture.text, links: capture.links, source: 'page' },
     }, 60_000).catch(() => null);
     if (data) {
-      const live = baseCtx(new ServerEngine(server, data.lesson, data.seed, data.offline), ctx.traits, firstRound, ctx.teachSeconds, ctx.coach);
+      const live = baseCtx(onDevice(new ServerEngine(server, data.lesson, data.seed, data.offline), text, true), ctx.traits, firstRound, ctx.teachSeconds, ctx.coach);
       Object.assign(ctx, { engine: live.engine, lesson: live.lesson, misreads: live.misreads, progress: live.progress, monster: { ...live.monster, words: ctx.monster.words }, fullLesson: null, demoId: null, stage: null, focus: null });
       failOver(ctx, round);
     } else {
@@ -380,7 +402,7 @@ async function playDemo(id: string): Promise<void> {
 async function playLive(id: string): Promise<void> {
   const handoff = await getSession<RoundHandoff>(`round:${id}`);
   if (!handoff) throw new Error('This round has expired. Click the Spark button on a page to start a new one.');
-  const engine = new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline);
+  const engine = onDevice(new ServerEngine(handoff.server, handoff.lesson, handoff.seed, handoff.offline), handoff.capture.text, true);
   setSpeed(1);
   const firstRound = !(await getLocal('played', false));
   const ctx = baseCtx(engine, await currentTraits(), firstRound, TEACH ?? TEACH_SECONDS, await coachFocus());
@@ -415,7 +437,7 @@ async function playComeback(id: string): Promise<void> {
   const round = cb.demoId ? await loadDemoRound(cb.demoId).catch(() => null) : null;
   let inner: RoundEngine;
   if (round) {
-    inner = new DemoEngine(round);
+    inner = onDevice(new DemoEngine(round), '', DEVICE === '1', { chatOnly: true });
   } else {
     const lesson: SealedLesson = {
       lessonId: `comeback-${cb.id}`,
@@ -445,7 +467,8 @@ async function playComeback(id: string): Promise<void> {
       }
       return { score: gradeRecall(card, answer).score, feedback: '' };
     };
-    inner = new ComebackEngine(lesson, cb.createdAt >>> 0, { ideaId: cb.ideaId, ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints }, grade);
+    // On the device, Blot talks instead of repeating what it's told; /recall still grades.
+    inner = onDevice(new ComebackEngine(lesson, cb.createdAt >>> 0, { ideaId: cb.ideaId, ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints }, grade), '', true, { chatOnly: true });
   }
   setSpeed(FAST ? 12 : round ? DEMO_SPEED : 1);
   const ctx = baseCtx(new LockedEngine(inner, locks), await currentTraits(memory), false, TEACH ?? (FAST ? 30 : COMEBACK_SECONDS));
@@ -478,7 +501,7 @@ async function playDuel(token: string): Promise<void> {
     challenge = decodeLocalDuel(token);
     if (!challenge?.demo) throw new Error('This challenge link is broken. Ask your friend to send it again.');
     round = await loadDemoRound(challenge.demo);
-    engine = new DemoEngine(round);
+    engine = onDevice(new DemoEngine(round), '', DEVICE === '1', { chatOnly: true });
   } else if (isServerDuelCode(token)) {
     type Joined = { lesson: SealedLesson; seed: number; offline: boolean; roundId: string | null; page: typeof page; challenge: unknown };
     const data = await postJson<Joined>('/duel/join', { code: token }).catch((err: unknown) => {
@@ -487,7 +510,8 @@ async function playDuel(token: string): Promise<void> {
     challenge = readChallenge(data.challenge);
     if (!challenge) throw new Error('This challenge link is broken. Ask your friend to send it again.');
     page = data.page;
-    engine = new ServerEngine(await serverBase(), data.lesson, data.seed, data.offline);
+    // Blot's chat on the device; both Blots are still judged alike, on the server.
+    engine = onDevice(new ServerEngine(await serverBase(), data.lesson, data.seed, data.offline), '', true, { chatOnly: true });
     round = data.roundId ? await loadDemoRound(data.roundId).catch(() => null) : null;
   } else {
     throw new Error('This challenge link is broken. Ask your friend to send it again.');

@@ -127,6 +127,19 @@ export interface TranscriptEntry {
   caught?: boolean;
 }
 
+/**
+ * What an on-device Blot may ask the server (POST /reveal): only facts the game shows the player
+ * at that moment anyway. Whether a "when" tap was the right one (the button turns green or red),
+ * and the misreading Blot holds on an idea (Check it says it aloud). Never a model answer.
+ */
+export type RevealAsk = { kind: 'when'; tap: number } | { kind: 'misread' };
+export interface RevealReply {
+  /** kind "when": was that the right situation? */
+  right?: boolean;
+  /** kind "misread": Blot's wrong belief, or null when Blot holds no misreading on this idea. */
+  misread?: string | null;
+}
+
 export interface BarValue {
   id: string;
   value: number;

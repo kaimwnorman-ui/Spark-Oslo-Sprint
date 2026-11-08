@@ -1,6 +1,6 @@
 // The live round engine: the Spark server's /creature (streamed), /bars and /examine.
 // Also the small helpers every other server call uses (/recall, /duel).
-import type { BarValue, ExamResult, Language, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
+import type { BarValue, ExamResult, Language, RevealAsk, RevealReply, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 import { clientToken, serverUrl } from '../settings.ts';
 import type { BarsReply, CreatureRequest, RoundEngine } from './engine.ts';
 
@@ -112,5 +112,11 @@ export class ServerEngine implements RoundEngine {
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     const res = await this.post('/examine', { transcript, heldMisreads }, 45_000);
     return (await res.json()) as ExamResult;
+  }
+
+  /** No AI and no player text: one fact the game is about to show (see /reveal on the server). */
+  async reveal(ideaId: string, ask: RevealAsk): Promise<RevealReply> {
+    const res = await this.post('/reveal', { ideaId, ...ask }, 5_000);
+    return (await res.json()) as RevealReply;
   }
 }

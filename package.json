@@ -22,6 +22,8 @@
     "smoke:demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-demo.mjs",
     "smoke:ext": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-ext.mjs",
     "smoke:loop": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-loop.mjs",
+    "smoke:opera": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-opera.mjs",
+    "eval:device": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/eval-device.mjs",
     "smoke:small": "node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-small.mjs",
     "smoke:guest": "npm run build:guest && node --experimental-strip-types --disable-warning=ExperimentalWarning tools/smoke-guest.mjs",
     "assets:gen": "node tools/assets-gen.mjs",

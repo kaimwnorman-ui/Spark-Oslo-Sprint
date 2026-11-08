@@ -8,6 +8,7 @@ import { buildRoutes } from '../src/routes.ts';
 import { loadSettings } from '../src/settings.ts';
 import { CLIENT_TOKEN } from '../../shared/config.ts';
 import type { DemoRound } from '../../shared/types.ts';
+import { misreadIdeaIds } from '../../shared/round.ts';
 
 const pageText = readFileSync(new URL('../../demo/pages/tides.html', import.meta.url), 'utf8').replace(/<[^>]+>/g, ' ');
 const tides = JSON.parse(readFileSync(new URL('../../demo/rounds/tides.json', import.meta.url), 'utf8')) as DemoRound;
@@ -60,6 +61,28 @@ test('an unknown lesson says the round expired', async () => {
   await withStub(async (post) => {
     const res = await post('/bars', { lessonId: 'nope', ideaId: 'i1', transcript: [] });
     assert.equal(res.status, 410);
+  });
+});
+
+test('/reveal tells an on-device Blot only what the game shows anyway', async () => {
+  await withStub(async (post) => {
+    const capture = { url: 'http://localhost:8787/pages/tides.html', title: 'Tides', text: pageText, source: 'page', links: [] };
+    const { lesson, seed } = await (await post('/extract', { capture })).json();
+    const held = misreadIdeaIds(tides.lesson.ideas.map((i) => i.id), seed);
+    for (const idea of tides.lesson.ideas) {
+      const m = await (await post('/reveal', { lessonId: lesson.lessonId, ideaId: idea.id, kind: 'misread' })).json();
+      assert.deepEqual(m, { misread: held.includes(idea.id) ? idea.misread : null });
+      const right = idea.whenOptions.findIndex((o) => o.right);
+      for (let tap = 0; tap < idea.whenOptions.length; tap++) {
+        const w = await (await post('/reveal', { lessonId: lesson.lessonId, ideaId: idea.id, kind: 'when', tap })).json();
+        assert.deepEqual(w, { right: tap === right });
+      }
+    }
+    // Nothing else: no answers, and bad questions are refused.
+    assert.equal((await post('/reveal', { lessonId: lesson.lessonId, ideaId: 'i1', kind: 'answer' })).status, 400);
+    assert.equal((await post('/reveal', { lessonId: lesson.lessonId, ideaId: 'i1', kind: 'when', tap: 7 })).status, 400);
+    assert.equal((await post('/reveal', { lessonId: lesson.lessonId, ideaId: 'i9', kind: 'misread' })).status, 400);
+    assert.equal((await post('/reveal', { lessonId: 'nope', ideaId: 'i1', kind: 'misread' })).status, 410);
   });
 });
 

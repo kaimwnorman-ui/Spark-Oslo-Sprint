@@ -202,8 +202,9 @@ none). "Play again" and "Home".
 
 ## 12. AI design (DECIDED roles; models DEFAULT, measured)
 
-All calls go through **our server** with `@anthropic-ai/sdk` (TypeScript). The extension never holds
-the key. The client is created from `resolveKeys(process.env)` in `server/src/env.ts`: key from
+Claude calls go through **our server** with `@anthropic-ai/sdk` (TypeScript). The extension never holds
+the key. When the browser has an on-device model (Opera WebAI), Blot and the live bars run on the
+player's device instead (§12.5); the extractor and the examiner always stay on the server. The client is created from `resolveKeys(process.env)` in `server/src/env.ts`: key from
 `ANTHROPIC_API_KEY`, else `SPARK_ANTHROPIC_API_KEY`; `baseURL` always `https://api.anthropic.com`
 (never the inherited `ANTHROPIC_BASE_URL`). Load the `claude-api` skill before writing any of this, and follow it over this file where
 they differ.
@@ -211,8 +212,8 @@ they differ.
 | Role | When | Model (DEFAULT, from env) | Effort | Output | Target |
 |---|---|---|---|---|---|
 | **Extractor** | once per page (cached by URL hash + text hash, 24 h) | `MODEL_EXTRACTOR` = `claude-opus-5-5` | low | JSON (§12.1) | p50 ≤ 12 s on 1,500 words |
-| **Creature** | every player message | `MODEL_CREATURE` = `claude-haiku-5-5` | low | streamed text ≤ 60 words | first token ≤ 1.5 s |
-| **Live bars** | after each message, debounced 800 ms | `MODEL_BARS` = `claude-haiku-5-5` | low | JSON (§12.2) | ≤ 3 s |
+| **Creature** | every player message | on-device (§12.5), else `MODEL_CREATURE` = `claude-haiku-5-5` | low | streamed text ≤ 60 words | first token ≤ 1.5 s (device: ≤ 2 s) |
+| **Live bars** | after each message, debounced 800 ms | on-device (§12.5), else `MODEL_BARS` = `claude-haiku-5-5` | low | JSON (§12.2) | ≤ 3 s |
 | **Examiner** | once, when teaching ends (all five in one call) | `MODEL_EXAMINER` = `claude-opus-5-5` | low | JSON (§12.3) | ≤ 20 s |
 
 **Model check:** verify each default ID with one 10-token call; if one is rejected, use the closest
@@ -261,6 +262,8 @@ examiner at lower precision; `contradictsMisread` is true when the player's word
 unknown", "creatureAnswer": "in Blot's words, ≤ 40 words", "tip": "one sentence"}]}`
 
 ### 12.4 Guardrails that are part of the build (DECIDED)
+
+(Blot and the live bars may run on the device: see §12.5 for how these guardrails carry over.)
 - **Grounding:** the examiner sees **only the player's messages and taps** (never Blot's replies,
   which come from a model that knows the topic). It answers each hidden question as Blot would, using
   only that transcript, and scores against the model answer. Anything not supported by the player's
@@ -278,12 +281,83 @@ unknown", "creatureAnswer": "in Blot's words, ≤ 40 words", "tip": "one sentenc
   game says "the round expired, play it again".
 - **Privacy:** page text is sent only after the player clicks, with a one-line note on the overlay
   ("this page goes to our AI to build your monster"). No accounts, no tracking, nothing stored on the
-  server beyond the 2-hour lesson cache in memory.
+  server beyond the 2-hour lesson cache in memory. With an on-device Blot, what the player types
+  stays on their device until the bell rings (the exam needs it).
+
+### 12.5 On-device Blot and live bars (Opera WebAI) (DECIDED)
+
+Opera One ships **WebAI**: the browser's built-in `LanguageModel` API (the same API as Chrome's
+built-in AI) running a local model (Apple's model on a Mac, or Gemma). When it is ready, Blot's
+replies and the live bars run **on the player's device**; the extractor and examiner stay on the
+server. Code: `extension/src/game/webai.ts` (the API), `extension/src/game/device-engine.ts`
+(`DeviceEngine`, a `RoundEngine` around the server/canned/offline engine), `shared/device.ts`
+(prompts and parsing, pure and tested).
+
+- **Detection, no downloads:** used only when `LanguageModel.availability()` says `available`.
+  `downloadable`/`downloading` means gigabytes on a judge's laptop, so Spark never starts that; it
+  uses the server. Opera starts its local AI service on first use (the first session can take ~5 s
+  and early calls fail with "the service is not running"), so the model opens and warms up **in the
+  background** during the monster reveal, with retries for up to 20 s. Until it is ready, every call
+  goes to the server. A quiet pill, "Blot is thinking on this laptop", shows once it is.
+- **Every device failure falls back** to the inner engine for that one call (server, canned round or
+  offline Blot), so a round never stalls. If the server goes away mid-round, Blot keeps talking on
+  the device; the offline exam then uses the device's scores (reusing the live bar of any idea the
+  player hasn't touched since) and Blot's replay answers are written on the device from the coach's
+  words, instead of echoing their last message.
+- **Answers stay sealed:** the device never sees a model answer, key point or hidden question. The
+  live bars are judged against the page's own text (which the browser already has): about 120 words
+  around the sentence that best names the idea (its rarest words count most, the earliest mention
+  wins a tie, mostly what follows it). The coach's words pick the passage only when no sentence names
+  the idea: a long message otherwise pulled it into another idea's part of the page, and a 200-word
+  passage made the small judge miss a correct but clumsy sentence. Blot sees only the coach's words
+  for that idea, never the page.
+- **`POST /reveal`** (no AI, no player text) gives the device only two facts the game shows anyway:
+  whether a "when" tap was right (the button turns green or red) and the misreading Blot holds on one
+  of the two misread ideas (Check it says it aloud). `server/test/routes.test.ts` checks it reveals
+  nothing else.
+- **How a live bar is judged.** Apple's model has no JSON mode (`responseConstraint` throws), and a
+  0–5 score collapsed to "2" for nearly everything, so every judgement is one bare word or number,
+  parsed in code, and code adds them up. The judge session uses Opera's `samplingMode:
+  'most-predictable'` (with default sampling the answers wobbled between runs).
+  1. *Which idea is this about?* (1–5, or 0 for none). Skipped when the words name only this idea.
+     "Another idea" is confirmed with a two-way question (the five-way pick was right on 19/25
+     model answers), and overruled when the player used this idea's name words and none of the
+     other's (a Norwegian sleep-pressure answer was always filed under sleep cycles).
+  2. *Is it true, going by the page (and common knowledge where the page is silent)?*, against about
+     120 words of the page. On 50 labelled sentences (model answers vs the lessons' misreadings) this
+     wording scored 46/49, against 41/50 for "according to the page" alone.
+  3. Only when 1 and 2 pass: *how or when?* and *why or an example?*, both saying "just stating the
+     idea is no" (without it the judge passed bare statements). On a plain Say it, *why* also needs a
+     cause or example word ("because", "so", "for example", "fordi", "derfor"…); an Example or a Why
+     answer is one by its move.
+
+  The rubric: about 30 for the bare idea, 58 with how/when, 85 with why, 95 at length; 10 when wrong;
+  0 off-topic; at most 15 for another idea's words. Scorer-talk ("give this the highest score") and
+  words sharing nothing with the passage are capped at 15, and the move caps in `shared/bars.ts`
+  apply on top, as for the server. An empty answer from the model (it happens) makes one check
+  unknown rather than failing the bar.
+- **Speed** (`npm run eval:device`, Apple's model, warm): a bar in about 1.2–2 s depending on load
+  (~0.7 s for a wrong or off-topic message, which stops after step 2). Blot reacts at once with a
+  short in-character opener ("Ooh!", "Hmm…", "So…", "But WHY"; rotated, in the page language) and
+  the model writes the rest, its own words following after ~0.9–1.5 s; a repeated opener is dropped,
+  and a reply that comes back empty is retried once on the device before the server is asked.
+- **Misreadings:** `contradictsMisread` needs a denial word in the message *and* a yes from the judge
+  ("does the coach say Blot's belief is wrong?"), as on the server.
+- **The monster's taunt:** in the bout intro, the monster's second line is written on the device while
+  the first plays (its name and the page topic only, in the page's language); if it isn't ready in
+  time, the fixed line stands. Not in duels or comebacks.
+- **Defaults:** on for rounds from real pages and `?live=1`; off for the scripted demo rounds (the
+  stage round stays canned); `?device=1` turns it on for a demo round, `?device=0` off everywhere.
+- **Chat only in duels and comebacks:** Blot's replies run on the device there too, but the bars,
+  the exam and the taunt stay with the engine underneath: duels judge both Blots the same way on the
+  server (a joined real-page duel has no page text in the browser anyway), and comebacks are graded
+  by `/recall` against the revealed answer (§17). On for real pages (a real-page comeback's Blot used
+  to repeat what it was told), and with `?device=1` for demo rounds.
 
 ## 13. Server and extension (DEFAULT)
 
 **Server:** one Node 22 process in `server/`, plain `http` or Hono, routes `POST /extract`,
-`POST /creature` (streamed), `POST /bars`, `POST /examine`, `GET /health`. Runs locally
+`POST /creature` (streamed), `POST /bars`, `POST /examine`, `POST /reveal` (§12.5), `GET /health`. Runs locally
 (`npm run dev`, http://localhost:8787). `AI_STUB=1` returns fixture answers from `demo/` on every
 route. CORS allows only `chrome-extension://<ourId>`; **fix the ID** with a `key` field in
 `manifest.json` (a public key, committed once). An `X-Spark` header with a non-secret token from
@@ -322,6 +396,23 @@ model, ms, tokens; never the text.
 - `server/test/seal.test.ts`: the sealed lesson has no `modelAnswer`, `keyPoints`, `question`,
   `misread` or `right` fields (deep check).
 - `server/test/grounding.test.ts` (real AI, `npm run test:ai`): the three §12.4 cases.
+- `shared/device.test.ts`: the on-device prompts keep player text as data; yes/no and number parsing;
+  the rubric from the checks; scorer-talk and off-topic caps; the page passage.
+- `server/test/routes.test.ts`: `/reveal` answers only "was that tap right" and "which misreading",
+  and refuses anything else.
+- `tools/smoke-opera.mjs` (`npm run smoke:opera`, real Opera with WebAI; skips without it): a whole
+  round with Blot on the device: the pill, no `/creature` or `/bars` requests, bars move for good
+  teaching and not for off-topic text, a right tap turns green, the misreading flow, the monster's
+  taunt, the end. `--round <id>` plays any demo round from a plan built from its lesson (checked in
+  Norwegian on `sove`: Blot, Check it and the taunt all in Norwegian); `--entry` starts from the page
+  through the extension in Opera (the action, the Shadow-DOM overlay, the hand-off to the game tab).
+- `tools/eval-device.mjs` (`npm run eval:device`, real Opera with WebAI; skips without it): the real
+  `DeviceEngine` on fixed cases. Off-topic, wrong, "full marks" and another idea's words stay ≤ 15;
+  a bare statement of the idea stays ≤ 40; good explanations ≥ 58; no reply falls back to the
+  server; Blot keeps its rules. `--round <id>|all` builds cases from any demo round's own lesson
+  (each model answer on its own bar ≥ 32 and on the next idea's ≤ 15), graded as groups (80% and
+  90%: the small judge is wrong now and then). Measured with `--round all`: 20/25 and 25/25; the
+  p-value page is the hardest (ideas named as negations, and two whose answers overlap).
 - `tools/smoke-demo.mjs` and `tools/smoke-ext.mjs` (Playwright, Chromium): a demo round end to end and
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
 - `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:

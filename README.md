@@ -88,6 +88,20 @@ matching rejects an answer that denies the idea ("Earth never spins") and a list
 miss a good answer: it is a fallback, not a judge. `npm run smoke:loop` walks all of this and saves
 screenshots to `docs/shots/loop-*.png`.
 
+## Blot on your own laptop (Opera WebAI)
+
+In Opera One with WebAI switched on (Settings → Opera AI → **Enable Web AI API**, and a model enabled
+on `chrome://webai/`), Blot's replies, the live bars and the monster's taunt run on the device: a pill
+says **Blot is thinking on this laptop**, and what you type stays on your laptop until you ring the
+bell. The page's monster and the final exam still come from the server, and the model answers never
+leave it. In duels and comebacks only Blot's chat moves to the device (scoring stays where it was).
+If the server goes away mid-round, Blot keeps talking and the exam is scored on the device. Without
+WebAI, or before it has woken up, everything goes through the server as usual. `?device=1` turns it
+on for a demo round, `?device=0` turns it off. How it works and what was measured: `docs/SPEC.md`
+§12.5. `npm run smoke:opera` and `npm run eval:device` check it in a real Opera.
+
+![Blot on the device in Opera: the hidden misreading comes out on Check it](docs/shots/opera-device-check.png)
+
 ## Presenting
 
 **The 60-second moment.** `?demo=tides&teach=90` → **Turn into a monster** → **Teach Blot** → teach three
@@ -111,6 +125,9 @@ the fifth glow; the juror teaches it and the bout ends in a K.O. The stage round
 records no history or comeback, spends no power-ups and offers no duel, and only the idea the juror taught
 becomes a memory.
 
+**Blot on the device.** In Opera with WebAI, `?demo=stage&device=1` lets Blot answer the juror on the
+laptop (the green pill shows). The knockout still lands: the stage round's exam stays canned.
+
 **The presenter kit.** Open `game.html?seed=presenter` in a fresh browser profile (it never overwrites a
 real learner). It loads a learner who played two pages a few days ago and lists six ready tabs: the same
 trait shining (day 0), solid (day 4) and faded (day 7), Your Blot, a flashback, the returning monster and a
@@ -130,7 +147,7 @@ Spark has no accounts, no analytics and no ads.
 - **What is sent, and where.** The page's text (up to 6,000 words), title and links go to your Spark server,
   which asks Anthropic's AI for the five ideas. The addresses are cleaned first: no password, no
   fragment, and no secret or tracking parameter (`token`, `utm_*`, `session`, …); the AI sees only where each
-  link goes, never its query. While you teach, your messages go the same way; the examiner sees only your
+  link goes, never its query. While you teach, your messages go the same way (in Opera with WebAI they stay on your laptop until the bell); the examiner sees only your
   messages and taps. Anthropic processes them under its API terms.
 - **How long the server keeps it.** A round's page text, about two hours (swept every ten minutes; the oldest
   rounds go first when the server is full). A real page's challenge, 24 hours. The extracted lesson, 24 hours
@@ -182,6 +199,8 @@ A challenge for a real page lives on your server, so it opens the game your serv
 | `npm run smoke:loop` | The learning loop end to end: memories, flashback, coach, comeback, duel, resume after reload, the stage rehearsal, the presenter kit. |
 | `npm run smoke:small` | Every screen in a 640×480 window and on a phone: each control reachable and not covered. Runs with a wide fallback font forced (DejaVu Sans), so the result is the same on a machine without the page's fonts, CI included; `SMOKE_FONT=` keeps the page's own fonts and refreshes `docs/shots/small-*` and `phone-*`. |
 | `npm run smoke:guest` | The hosted guest game on a public host name: a whole round, a challenge opened on a phone, no request leaves the site. |
+| `npm run smoke:opera` | A whole round in a real Opera with WebAI: the "on this laptop" pill, no player text to `/creature` or `/bars`, bars move for good teaching and not for off-topic text, the misreading flow, the monster's on-device taunt, the end. `-- --round sove` plays the Norwegian round; `-- --entry` starts from the page through the extension (toolbar action, overlay, hand-off). Skips without Opera. |
+| `npm run eval:device` | The on-device Blot and live bars in a real Opera with WebAI: fixed cases (good, bare, wrong, off-topic, "full marks", another idea), latency, and Blot's rules. `-- --nb` for Norwegian. Skips without Opera; `OPERA_PROFILE` points at a profile with WebAI on (default `~/opera-webai-dev`). |
 | `npm run test:ai` | Grounding tests with the real examiner. |
 | `npm run models:check` | One 10-token call per configured model. |
 | `npm run measure` | Times 5 real calls per role (extractor, examiner). |
