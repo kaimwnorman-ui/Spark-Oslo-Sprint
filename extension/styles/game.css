@@ -680,6 +680,13 @@ button, a.primary { font: inherit; }
   .flash-blot { grid-template-columns: 1fr; justify-items: center; }
   .flash-blot .blot { order: 0; }
   .flash-bubble { text-align: center; }
+  /* Keep "Skip for now" inside a 480 px tall window without scrolling. */
+  .screen-flashback { padding-top: 44px; padding-bottom: 8px; }
+  .flash-card { gap: 6px; padding: 12px 16px; }
+  .flash-from { font-size: 14px; }
+  .flash-question { font-size: 21px; }
+  .flash-input { min-height: 52px; }
+  .flash-reward { font-size: 14px; }
 }
 
 @media (max-width: 599px) {
