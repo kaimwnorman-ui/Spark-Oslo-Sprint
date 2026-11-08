@@ -461,7 +461,9 @@ the comeback, the power-ups and the duel are left alone.
 **Small windows.** Every screen works at 640×480 and on a phone (390×844): single-column teaching with the ideas as
 a strip, replay and Your Blot as scrolling pages with their buttons fixed at the bottom. A first-time player opens
 on the first idea with one visible action (Say it); the other moves appear after the first message. Sound waits
-for the first click or key.
+for the first click or key. In a short window the flashback card sits beside Blot, tightened to fit the height,
+and a long verdict scrolls under a pinned Continue. The check forces a wide fallback font (DejaVu Sans), so it
+gives the same result on a machine without the page's own fonts: a stock CI runner has none of them.
 
 **Resume.** A reload or Back and Forward during a round offers to pick it up: what was taught, Blot's beliefs and
 the time left (at least ten seconds), kept in the tab for up to 30 minutes. Leaving mid-round asks first.

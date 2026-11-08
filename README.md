@@ -180,7 +180,7 @@ A challenge for a real page lives on your server, so it opens the game your serv
 | `npm run smoke:demo` | Plays a demo round end to end in Chromium; screenshots to `docs/shots/`. Flags: `--lose`, `--no-art`, `--reduced`, `--live` (AI_STUB server), `--real` (real AI), `--blocked` / `--drop` (server cut off), `--fast`. |
 | `npm run smoke:ext` | Loads the extension, checks the first-use notice, Cancel, the options page and token, and that the game tab's monster is built from the page's words. |
 | `npm run smoke:loop` | The learning loop end to end: memories, flashback, coach, comeback, duel, resume after reload, the stage rehearsal, the presenter kit. |
-| `npm run smoke:small` | Every screen in a 640×480 window and on a phone: each control reachable and not covered. |
+| `npm run smoke:small` | Every screen in a 640×480 window and on a phone: each control reachable and not covered. Runs with a wide fallback font forced (DejaVu Sans), so the result is the same on a machine without the page's fonts, CI included; `SMOKE_FONT=` keeps the page's own fonts and refreshes `docs/shots/small-*` and `phone-*`. |
 | `npm run smoke:guest` | The hosted guest game on a public host name: a whole round, a challenge opened on a phone, no request leaves the site. |
 | `npm run test:ai` | Grounding tests with the real examiner. |
 | `npm run models:check` | One 10-token call per configured model. |

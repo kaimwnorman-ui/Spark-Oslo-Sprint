@@ -1,12 +1,18 @@
 // smoke:small: the game in a small window (640x480) and on a phone (390x844), offline, in Chromium.
 // Every control a player needs must be inside the window and not covered (the judge found Send at x=751
-// in a 640 px window). Screenshots go to docs/shots/small-*.png and phone-*.png.
+// in a 640 px window).
 import { chromium } from 'playwright';
 import path from 'node:path';
 import { DIST, ROOT } from './lib.mjs';
 import { serveDir } from './serve.mjs';
 
-const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots');
+// The layout must hold with a wide fallback font, not only with the font on the developer's machine: a stock CI
+// runner has no Inter or Avenir, and DejaVu Sans is among the widest common fallbacks. This run forces it, so
+// the result is the same on every machine that has DejaVu Sans, CI included (SMOKE_FONT="" keeps the page's own fonts).
+const FONT = process.env.SMOKE_FONT ?? 'DejaVu Sans';
+// Screenshots: with the page's own fonts (SMOKE_FONT=) they go to docs/shots/small-*.png and phone-*.png, the pictures
+// the docs use; the wide-font run writes docs/shots/stress/ (not committed; CI uploads it when a check fails).
+const SHOTS = process.env.SMOKE_SHOTS ?? path.join(ROOT, 'docs', 'shots', FONT ? 'stress' : '');
 const SIZES = [
   { name: 'small', width: 640, height: 480, mobile: false },
   { name: 'phone', width: 390, height: 844, mobile: true },
@@ -54,6 +60,17 @@ async function blotDone(page) {
 
 for (const size of SIZES) {
   const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, hasTouch: size.mobile, isMobile: size.mobile });
+  if (FONT) {
+    await context.addInitScript((family) => {
+      const apply = () => {
+        const style = document.createElement('style');
+        style.textContent = `:root { --font-text: "${family}", sans-serif !important; --font-display: "${family}", sans-serif !important; }`;
+        document.head.append(style);
+      };
+      if (document.head) apply();
+      else document.addEventListener('DOMContentLoaded', apply, { once: true });
+    }, FONT);
+  }
   const page = await context.newPage();
   page.on('console', (m) => m.type() === 'error' && errors.push(`${size.name}: ${m.text()}`));
   page.on('pageerror', (e) => errors.push(`${size.name}: ${e.message}`));

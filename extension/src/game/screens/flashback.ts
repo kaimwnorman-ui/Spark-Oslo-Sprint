@@ -206,7 +206,7 @@ export async function flashbackScreen(opts: FlashbackOptions): Promise<Flashback
       ring,
       h(
         'div',
-        null,
+        { class: 'flash-verdict' },
         h('p', { class: 'card-kicker' }, kicker),
         h('p', { class: 'flash-feedback', id: 'flash-feedback' }, graded.feedback || feedbackFor(graded, gradeOf)),
         got.answer

@@ -16,6 +16,8 @@ dist/
 test-results/
 playwright-report/
 .cache/
+docs/shots/stress/
+docs/shots/*-99-failure.png
 
 # OS / editor
 .DS_Store

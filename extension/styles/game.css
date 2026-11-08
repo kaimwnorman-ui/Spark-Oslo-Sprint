@@ -625,14 +625,18 @@ button, a.primary { font: inherit; }
   .blot-foot { position: sticky; bottom: 0; z-index: 4; flex-wrap: wrap; justify-content: center; gap: 8px 16px; padding: 10px 0 12px; background: linear-gradient(rgba(247, 241, 227, 0), var(--paper) 28%); }
 
   /* flashback */
-  .screen-flashback { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 10px; padding: 54px 14px 14px; }
+  /* No bottom padding on the screen: a pinned button then sits flush with the window, and the card keeps its own margin. */
+  .screen-flashback { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 10px; padding: 54px 14px 0; }
   .flash-blot { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
   .flash-blot .blot { order: -1; width: 96px !important; height: 110px !important; }
   .flash-bubble { max-width: none; text-align: left; font-size: 17px; }
-  .flash-card { padding: 16px 16px; gap: 10px; max-width: 100%; }
+  .flash-card { padding: 16px 16px; gap: 10px; max-width: 100%; margin-bottom: 14px; }
   .flash-question { font-size: 26px; }
   .flash-input { min-height: 72px; }
   .flash-actions { gap: 8px; }
+  /* The verdict can be long (a sentence from the grader, the model answer): when the card is taller than the window the
+     rest scrolls and Continue stays pinned at the bottom. Its padding sits inside the card's own bottom padding. */
+  .flash-card.result .flash-actions { position: sticky; bottom: 0; z-index: 3; padding-bottom: 10px; margin-bottom: -10px; background: #fff; }
   .score-ring { width: 84px; height: 84px; }
   .score-ring span { width: 64px; height: 64px; font-size: 30px; }
 
@@ -674,12 +678,34 @@ button, a.primary { font: inherit; }
   .duel-result-card .duel-actions { flex-wrap: wrap; justify-content: center; }
 }
 
-/* A short, wide window (640x480): Blot beside the flashback card, not above it. */
+/* A short, wide window (640x480): Blot beside the flashback card, not above it, and a card made to fit the height
+   (question, answer box, the three buttons) even when the fallback font is wide. No text goes under 16 px. */
 @media (min-width: 600px) and (max-height: 560px) {
-  .screen-flashback { grid-template-columns: 170px minmax(0, 1fr); align-items: start; }
-  .flash-blot { grid-template-columns: 1fr; justify-items: center; }
-  .flash-blot .blot { order: 0; }
-  .flash-bubble { text-align: center; }
+  .screen-flashback { grid-template-columns: 128px minmax(0, 1fr); align-items: start; gap: 12px; padding: 52px 14px 0; }
+  .flash-blot { grid-template-columns: 1fr; justify-items: center; gap: 8px; }
+  .flash-blot .blot { order: 0; width: 80px !important; height: 92px !important; }
+  .flash-bubble { text-align: center; font-size: 16px; padding: 6px 8px; }
+  .flash-card { padding: 12px 16px; gap: 6px; }
+  .flash-from { margin: 0; font-size: 16px; }
+  .flash-question { font-size: 22px; }
+  .flash-input { height: 64px; min-height: 64px; }
+  #flash-note:empty { margin-top: -6px; }
+  .flash-reward { font-size: 16px; }
+  /* The verdict: the ring and the sentence side by side, the "checked by" line under both at the card's full width. */
+  .flash-result-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; align-items: center; }
+  .flash-verdict { display: contents; }
+  .flash-result-head .score-ring { grid-row: 1 / span 2; }
+  .flash-result-head .card-kicker { grid-column: 2; align-self: end; }
+  .flash-feedback { grid-column: 2; margin-top: 2px; font-size: 18px; }
+  .checked-by { grid-column: 1 / -1; margin-top: 4px; }
+  .score-ring { width: 72px; height: 72px; }
+  .score-ring span { width: 54px; height: 54px; font-size: 26px; }
+  .flash-answer { padding: 8px 12px; }
+  .flash-answer p { font-size: 17px; line-height: 1.35; }
+  .earned { gap: 10px; padding: 8px 12px; }
+  .earned-icon { width: 44px; height: 44px; font-size: 22px; }
+  .earned-name { font-size: 22px; }
+  .earned-what { font-size: 16px; }
 }
 
 @media (max-width: 599px) {
