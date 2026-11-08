@@ -44,6 +44,14 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
 
   let selected: string | null = null;
   let panel: Panel = { kind: 'pick' };
+  // A first-time player sees one action at first: say it. The other moves appear after the first message.
+  let movesShown = !(ctx.firstRound && ctx.kind === 'round' && !ctx.stage && ctx.transcript.length === 0);
+  const revealMoves = () => {
+    if (movesShown) return;
+    movesShown = true;
+    // Never wipe a message the player has already started typing.
+    if (!panelEl.querySelector<HTMLTextAreaElement>('#teach-input')?.value.trim()) renderPanel();
+  };
   let busy = false;
   const setBusy = (value: boolean) => {
     busy = value;
@@ -73,9 +81,12 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   const hint = h('p', { class: 'hint', id: 'hint' }, lines.hint);
   // Personalised from the player's history (SPEC §17): one line on what Blot will do differently.
   const focus = ctx.kind === 'round' ? ctx.coach[0] : undefined;
-  const coachNote = focus
-    ? h('p', { class: 'coach-note', id: 'coach-note' }, h('span', { class: 'coach-kicker' }, 'Coach'), COACH_NOTES[focus])
-    : null;
+  const stageIdea = ctx.stage && ctx.focus ? lesson.ideas.find((i) => i.id === ctx.focus) : undefined;
+  const coachNote = stageIdea
+    ? h('p', { class: 'coach-note', id: 'coach-note' }, h('span', { class: 'coach-kicker' }, 'Stage'), `Four ideas are already taught. Teach “${stageIdea.name}” to land the K.O.`)
+    : focus
+      ? h('p', { class: 'coach-note', id: 'coach-note' }, h('span', { class: 'coach-kicker' }, 'Coach'), COACH_NOTES[focus])
+      : null;
   const ideaList = h('div', { class: 'ideas', role: 'list' });
   const blot = createBlot(230);
   blot.setTraits(ctx.traits);
@@ -87,13 +98,17 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     h('div', { class: 'teach-body' }, h('aside', { class: 'idea-col' }, coachNote ?? (hasHint() ? hint : null), ideaList), h('div', { class: 'teach-main' }, stage, panelEl)),
   );
   bubble.set(
-    ctx.kind === 'comeback' && ctx.focus
+    ctx.resumeRemainingMs !== null
+      ? lines.resumed
+      : ctx.kind === 'comeback' && ctx.focus
       ? lines.comebackHello(nameOf(ctx.focus))
       : ctx.kind === 'duel' && ctx.duel && ctx.attempt === 1
         ? lines.duelHello(ctx.duel.name)
-        : ctx.attempt > 1 && ctx.focus
-          ? lines.rematch(nameOf(ctx.focus))
-          : lines.hello,
+        : ctx.stage && ctx.focus && ctx.attempt === 1
+          ? lines.stageHello(nameOf(ctx.focus))
+          : ctx.attempt > 1 && ctx.focus
+            ? lines.rematch(nameOf(ctx.focus))
+            : lines.hello,
   );
 
   function hasHint() {
@@ -186,6 +201,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
         p.value = Math.max(p.value, next);
         paintBars(id);
       }
+      persist();
       return reply;
     } catch (err) {
       ctx.onEngineError?.(err);
@@ -226,21 +242,22 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     panelEl.replaceChildren();
     panelEl.dataset.kind = panel.kind;
     if (panel.kind === 'pick') {
-      panelEl.append(h('p', { class: 'panel-prompt' }, '← Pick an idea to teach'));
+      panelEl.append(h('p', { class: 'panel-prompt pick-prompt' }, 'Pick an idea to teach'));
       return;
     }
     if (!selected) return;
     const current = idea(selected);
     if (panel.kind === 'move') {
       const moves = h('div', { class: 'moves', role: 'tablist' });
-      for (const m of Object.keys(MOVE_LABELS) as Exclude<Move, 'why'>[]) {
+      if (!movesShown) panelEl.append(h('p', { class: 'panel-prompt', id: 'first-prompt' }, `Say what “${current.name}” means, in your own words.`));
+      for (const m of movesShown ? (Object.keys(MOVE_LABELS) as Exclude<Move, 'why'>[]) : []) {
         // A real page's comeback has no situations to tap (they were never revealed).
         if (m === 'when' && !current.whenOptions.length) continue;
         moves.append(
           h('button', { class: 'move', 'data-move': m, role: 'tab', 'aria-selected': String(panel.move === m), onclick: () => selectMove(m) }, MOVE_LABELS[m]),
         );
       }
-      panelEl.append(moves);
+      if (movesShown) panelEl.append(moves);
       if (panel.move === 'say' || panel.move === 'example') {
         const move = panel.move;
         panelEl.append(composer(move, (text) => void submitTyped(move, text)));
@@ -376,6 +393,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     ctx.transcript.push(entry);
     const p = progress[entry.ideaId]!;
     if (entry.move !== 'same' && entry.move !== 'dontknow') p.moves.push(entry.move);
+    persist();
   }
 
   async function submitTyped(move: Move, rawText: string) {
@@ -421,6 +439,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     } finally {
       setBusy(false);
       renderPanelKeepInput();
+      revealMoves();
     }
   }
 
@@ -598,7 +617,8 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   }
 
   // ---------------------------------------------------------------- timer, pause, bell
-  let remaining = ctx.teachSeconds * 1000;
+  let remaining = ctx.resumeRemainingMs ?? ctx.teachSeconds * 1000;
+  const persist = () => ctx.persist?.(remaining);
   let lastTick = performance.now();
   let paused = false;
   let pausedForCard = false;
@@ -611,10 +631,12 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
     timerEl.classList.toggle('paused', paused);
   };
   paintTimer();
+  let ticks = 0;
   const ticker = window.setInterval(() => {
     const now = performance.now();
     if (!paused) remaining -= now - lastTick;
     lastTick = now;
+    if (++ticks % 15 === 0) persist(); // the time left, every three seconds
     if (remaining <= 10_000 && !warned) {
       warned = true;
       blotLine(lines.timeLow, 'excited');
@@ -689,6 +711,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   function finish() {
     if (finished) return;
     finished = true;
+    persist();
     clearInterval(ticker);
     clearTimeout(questionTimer);
     for (const t of barTimers.values()) clearTimeout(t);
@@ -700,6 +723,7 @@ export function teachScreen(ctx: RoundCtx): Promise<void> {
   }
 
   if (ctx.focus) selectIdea(ctx.focus);
+  else if (ctx.firstRound && ctx.kind === 'round') selectIdea(lesson.ideas[0]!.id);
   else renderPanel();
   return done;
 }

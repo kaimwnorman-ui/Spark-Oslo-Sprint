@@ -8,11 +8,14 @@ import type { Trait } from '../../../../shared/types.ts';
 import { createBlot } from '../blot.ts';
 import { h } from '../dom.ts';
 import { now } from '../memory-store.ts';
+import { sfx } from '../sound.ts';
 import { Bubble, primary, showScreen } from '../ui.ts';
 
-export type BlotAction = { kind: 'remind'; card: MemoryCard } | { kind: 'comeback'; id: string } | { kind: 'play' } | { kind: 'home' };
+export type BlotAction = { kind: 'remind'; card: MemoryCard } | { kind: 'comeback'; id: string } | { kind: 'play' } | { kind: 'home' } | { kind: 'clear' };
 
 const FRESH_LABEL = { fresh: 'Fresh', fading: 'Fading', faded: 'Faded' } as const;
+const LOOK_LABEL = { shining: 'shining', solid: 'solid', wobbly: 'wobbly', faded: 'faded' } as const;
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function inDays(at: number, t: number): string {
   const d = Math.ceil((at - t) / DAY_MS);
@@ -49,6 +52,56 @@ export async function yourBlotScreen(memory: MemoryState, history: RoundSummary[
   const tile = (value: string | number, label: string, id: string) => h('div', { class: 'stat', id }, h('span', { class: 'stat-value' }, String(value)), h('span', { class: 'stat-label' }, label));
   const power = (icon: string, name: string, n: number, id: string) =>
     h('div', { class: `power${n ? '' : ' none'}`, id }, h('span', { class: 'pu-icon', 'aria-hidden': 'true' }, icon), h('span', { class: 'power-name' }, name), h('span', { class: 'power-count' }, `×${n}`));
+  // Traits: each one belongs to the idea that earned it. Tap one to see which, and how fresh that memory is.
+  const detail = h('div', { class: 'trait-detail', id: 'trait-detail', 'aria-live': 'polite' });
+  const chips: HTMLButtonElement[] = [];
+  const showTrait = (t: Trait, chip: HTMLButtonElement) => {
+    const open = chip.getAttribute('aria-expanded') === 'true';
+    for (const c of chips) c.setAttribute('aria-expanded', 'false');
+    detail.replaceChildren();
+    detail.classList.toggle('open', !open);
+    if (open) return;
+    chip.setAttribute('aria-expanded', 'true');
+    const c = t.cardId ? memory.cards.find((x) => x.id === t.cardId) : undefined;
+    const f = c ? freshness(c, now()) : null;
+    detail.append(
+      ...[
+        h('p', { class: 'trait-detail-title' }, `${cap(t.word)} ${t.kind}`),
+        h('p', { class: 'trait-detail-from' }, `From “${t.ideaName}” · ${t.monsterName} · scored ${t.score}`),
+        c ? h('p', { class: 'trait-detail-idea' }, h('strong', null, 'The idea: '), c.modelAnswer) : null,
+        c && f
+          ? h('p', { class: `trait-detail-state fresh-${f}` }, `${FRESH_LABEL[f]}: ${dueAt(c) <= now() ? 'Blot is due to be reminded.' : `next check ${inDays(dueAt(c), now())}.`}`)
+          : h('p', { class: 'trait-detail-state' }, 'This trait has no memory behind it, so it will not fade.'),
+      ].filter((x): x is HTMLParagraphElement => x !== null),
+    );
+    if (c && f && f !== 'fresh') {
+      const again = h('button', { class: 'secondary', id: 'btn-trait-remind' }, 'Remind Blot');
+      again.addEventListener('click', () => leave({ kind: 'remind', card: c }));
+      detail.append(again);
+    }
+  };
+  const traitBlock = traits.length
+    ? h(
+        'div',
+        { class: 'traits-block' },
+        h('p', { class: 'section-title' }, 'Traits'),
+        h(
+          'div',
+          { class: 'trait-chips', id: 'trait-chips' },
+          ...traits.map((t) => {
+            const chip = h('button', { class: `trait-chip look-${t.look}`, 'aria-expanded': 'false', 'data-kind': t.kind }, `${cap(t.word)} ${t.kind}`, h('span', { class: 'trait-look' }, LOOK_LABEL[t.look]));
+            chip.addEventListener('click', () => {
+              sfx.tap();
+              showTrait(t, chip);
+            });
+            chips.push(chip);
+            return chip;
+          }),
+        ),
+        detail,
+      )
+    : null;
+
   const left = h(
     'section',
     { class: 'blot-left' },
@@ -105,6 +158,7 @@ export async function yourBlotScreen(memory: MemoryState, history: RoundSummary[
     { class: 'blot-right' },
     h('header', { class: 'blot-head' }, h('p', { class: 'card-kicker' }, 'Your Blot'), h('h1', null, 'What Blot remembers')),
     h('div', { class: 'blot-section' }, h('p', { class: 'section-title' }, 'What to work on'), tipList),
+    traitBlock ? h('div', { class: 'blot-section' }, traitBlock) : null,
     h('div', { class: 'blot-section grow' }, h('p', { class: 'section-title' }, 'Memories'), memList),
     memory.comebacks.length ? h('div', { class: 'blot-section' }, h('p', { class: 'section-title' }, 'Coming back'), h('ul', { class: 'comebacks', id: 'comebacks' }, ...memory.comebacks.map(comebackRow))) : null,
   );
@@ -125,7 +179,26 @@ export async function yourBlotScreen(memory: MemoryState, history: RoundSummary[
   }
   const go = primary('btn-blot-primary', label);
   const nextLine = !due && next !== null ? h('p', { class: 'small-note', id: 'next-check' }, `Blot’s next memory check: ${next <= 0 ? 'today' : next === 1 ? 'tomorrow' : `in ${next} days`}.`) : null;
-  root.append(left, right, h('footer', { class: 'blot-foot' }, nextLine ?? h('span'), go));
+  // Everything Spark remembers lives in this browser, and can be erased here (two taps, so it is never an accident).
+  const clear = h('button', { class: 'quiet clear-data', id: 'btn-clear-data', title: 'Erases your memories, history, traits, name and saved pages from this browser' }, 'Clear my data');
+  let armedUntil = 0;
+  clear.addEventListener('click', () => {
+    if (performance.now() < armedUntil) {
+      leave({ kind: 'clear' });
+      return;
+    }
+    armedUntil = performance.now() + 5000;
+    clear.textContent = 'Erase everything? Tap again';
+    clear.classList.add('armed');
+    setTimeout(() => {
+      if (performance.now() >= armedUntil) {
+        armedUntil = 0;
+        clear.textContent = 'Clear my data';
+        clear.classList.remove('armed');
+      }
+    }, 5100);
+  });
+  root.append(left, right, h('footer', { class: 'blot-foot' }, h('div', { class: 'blot-foot-left' }, nextLine, clear), go));
   go.focus();
 
   const chosen = await new Promise<BlotAction>((resolve) => {

@@ -4,7 +4,7 @@ import type { Language } from '../../../shared/types.ts';
 
 const en = {
   hello: "Hi coach! I'm Blot. I know NOTHING about your world. Teach me!",
-  hint: 'Pick an idea, then teach it in your own words.',
+  hint: 'Teach Blot each idea in your own words. Pick another idea any time.',
   gotIt: "Got it! Totally makes sense. I'm sure I understood that perfectly.",
   pasted: "Those are the page's words! Tell me in yours.",
   tooShort: (n: number) => `A few more words, please: ${n} to go.`,
@@ -33,6 +33,9 @@ const en = {
   duelHello: (name: string) => `${name}'s Blot wants a fight! Teach me well, coach!`,
   refill: 'Glug glug! Ink refill: +20 HP!',
   double: 'My ink is doubled! My first hit hits twice!',
+  stageHello: (name: string) => `Four ideas are already in my head! Teach me "${name}" and we win!`,
+  monsterWrong: (quote: string, truth: string) => `“${quote}”? Ha! No: ${truth}`,
+  resumed: 'Welcome back, coach! Everything you taught me is still here.',
   forgetting: 'Wait… I’m forgetting something you taught me!',
   remembered: 'It’s all coming back! Thank you, coach!',
   almost: 'Almost… I remember some of it.',
@@ -41,7 +44,7 @@ const en = {
 
 const nb: typeof en = {
   hello: 'Hei, trener! Jeg er Blot. Jeg vet INGENTING om verdenen din. Lær meg!',
-  hint: 'Velg en idé, og lær den bort med dine egne ord.',
+  hint: 'Lær Blot hver idé med dine egne ord. Velg en annen når som helst.',
   gotIt: 'Skjønner! Helt logisk. Jeg er sikker på at jeg forsto alt.',
   pasted: 'Det er sidens ord! Si det med dine egne.',
   tooShort: (n: number) => `Litt flere ord, takk: ${n} til.`,
@@ -70,6 +73,9 @@ const nb: typeof en = {
   duelHello: (name: string) => `Blot-en til ${name} vil slåss! Lær meg godt, trener!`,
   refill: 'Glugg glugg! Blekkpåfyll: +20 HP!',
   double: 'Blekket mitt er doblet! Første treff teller dobbelt!',
+  stageHello: (name: string) => `Fire ideer sitter allerede! Lær meg «${name}», så vinner vi!`,
+  monsterWrong: (quote: string, truth: string) => `«${quote}»? Ha! Nei: ${truth}`,
+  resumed: 'Velkommen tilbake, trener! Alt du lærte meg er her ennå.',
   forgetting: 'Vent… jeg glemmer noe du lærte meg!',
   remembered: 'Nå husker jeg alt! Takk, trener!',
   almost: 'Nesten… jeg husker litt av det.',

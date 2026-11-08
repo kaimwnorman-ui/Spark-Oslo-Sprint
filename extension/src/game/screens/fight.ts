@@ -1,13 +1,14 @@
 // The exam (masked by the monster's taunt), the bout, eating and the escape.
 import { EXAMINER_WAIT_MS, TRAITS_WORN } from '../../../../shared/config.ts';
 import { REFILL_HP } from '../../../../shared/memory.ts';
+import { clip, firstSentence } from '../../../../shared/text.ts';
 import { simulateBout } from '../../../../shared/bout.ts';
 import { boutIdeas, chooseTrait, finalBelief, weakestIdeaId } from '../../../../shared/round.ts';
 import type { BoutExchange, ExamResult } from '../../../../shared/types.ts';
 import { ease, getSpeed, mark, recordFrame, reducedMotion, tween, wait } from '../anim.ts';
 import { assetBackground } from '../assets.ts';
 import { createBlot } from '../blot.ts';
-import type { RoundCtx } from '../context.ts';
+import { ownIdeaIds, type RoundCtx } from '../context.ts';
 import { h } from '../dom.ts';
 import { Effects } from '../effects.ts';
 import { MonsterView } from '../monster.ts';
@@ -267,7 +268,8 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
       addLog(x.doubled ? `Blot used ${x.name} with double ink: ${x.dealt} damage!` : `Blot used ${x.name}: ${x.dealt} damage.`);
     } else if (x.kind === 'backfire') {
       // The misreading, in Blot's own words, acted out.
-      const misread = ctx.exam?.results.find((r) => r.id === x.ideaId)?.creatureAnswer || 'Wait, I thought…';
+      const result = ctx.exam?.results.find((r) => r.id === x.ideaId);
+      const misread = result?.creatureAnswer || 'Wait, I thought…';
       blot.setPose('excited', unit * 2);
       blotBubble.set(misread);
       await wait(unit * 1.8);
@@ -280,8 +282,12 @@ export async function boutScreen(ctx: RoundCtx): Promise<void> {
       effects.sparks(c.x, c.y, '#ff7a1a', 20, 1.1);
       await wait(unit * 1.4);
       blotBox.classList.remove('spin');
-      monsterBubble.set('Ha! That is not how it works.');
-      addLog(`Blot misread ${x.name}. Backfire!`);
+      // The counterattack quotes exactly what Blot believed, and says what is true: the correction lands when it hurts.
+      const quote = clip(misread, 14);
+      const truth = clip(firstSentence(result?.modelAnswer ?? ''), 18);
+      monsterBubble.set(truth ? ctx.lines.monsterWrong(quote, truth) : `“${quote}”? Ha! That is not how it works.`);
+      addLog(`Blot believed “${quote}”. Backfire!`);
+      await wait(unit * 1.8);
     } else {
       blot.setPose('confused', unit * 3);
       blotBubble.set(ctx.lines.fizzle);
@@ -388,8 +394,10 @@ export async function eatScreen(ctx: RoundCtx): Promise<'replay'> {
   monsterBox.remove();
 
   // The trait from the highest-scoring idea.
-  // In a comeback the trait comes from the idea just learned, not from the ones beaten before.
-  const open = { results: ctx.exam!.results.filter((r) => !(r.id in ctx.locked)) };
+  // The trait comes from an idea the player taught themselves: not one beaten in an earlier fight
+  // (a comeback), not one taught for them (the stage round).
+  const own = ownIdeaIds(ctx);
+  const open = { results: ctx.exam!.results.filter((r) => own.has(r.id)) };
   const chosen = chooseTrait(open.results.length ? open : ctx.exam!, ctx.lesson.ideas, { name: ctx.monster.name, color: ctx.monster.color }, Date.now());
   // The trait belongs to its idea's memory card: it fades when the memory does (SPEC §17).
   const best = chosen && ctx.lesson.ideas.find((i) => i.name === chosen.ideaName);

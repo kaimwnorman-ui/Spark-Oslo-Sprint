@@ -2,6 +2,7 @@
 // length-checked here and wrapped in data blocks before any model sees them.
 import { MAX_LINKS, MAX_PAGE_WORDS, MESSAGE_LIMIT } from '../../shared/config.ts';
 import { LANGUAGES, type Language, type PageCapture, type PageLink, type TranscriptEntry } from '../../shared/types.ts';
+import { cleanUrl } from '../../shared/url.ts';
 import { HttpError } from './http.ts';
 import type { RecallInput } from './prompts.ts';
 
@@ -13,11 +14,17 @@ export function readCapture(body: unknown): Pick<PageCapture, 'url' | 'title' | 
   const c = body.capture;
   const text = str(c.text, 200_000).split(/\s+/).slice(0, MAX_PAGE_WORDS).join(' ');
   if (text.split(/\s+/).length < 60) throw new HttpError(422, 'This page has too few words to make a monster. Try a longer article.');
+  // Whatever the browser sent, only clean addresses are used: no password, fragment or token.
+  const seen = new Set<string>();
   const links: PageLink[] = Array.isArray(c.links)
-    ? c.links.filter(isObj).slice(0, MAX_LINKS).map((l) => ({ text: str(l.text, 160), href: str(l.href, 2000) })).filter((l) => l.href)
+    ? c.links
+        .filter(isObj)
+        .slice(0, MAX_LINKS)
+        .map((l) => ({ text: str(l.text, 160), href: cleanUrl(str(l.href, 2000)) }))
+        .filter((l) => l.href && !seen.has(l.href) && !!seen.add(l.href))
     : [];
   return {
-    url: str(c.url, 2000),
+    url: cleanUrl(str(c.url, 2000)),
     title: str(c.title, 300),
     text,
     links,

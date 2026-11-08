@@ -1,33 +1,38 @@
 // Spark's game tab: home, demo rounds (?demo=tides), rounds from real pages (?round=), and the
 // learning loop (SPEC §17): Your Blot (?blot=1), comebacks (?comeback=), duels (?duel=).
 import { DEMO_SPEED, DEMO_TEACH_SECONDS, MISREAD_COUNT, MONSTER_WORDS, TEACH_SECONDS } from '../../../shared/config.ts';
+import { teachSeconds } from '../../../shared/params.ts';
 import { barValue } from '../../../shared/bars.ts';
 import { decodeLocalDuel, isLocalDuel, isServerDuelCode, readChallenge, type DuelChallenge } from '../../../shared/duel.ts';
 import { focusCodes, insights, summarizeRound, type FocusCode } from '../../../shared/insights.ts';
 import {
-  afterRematch, comebackId, dropComeback, dueCard, dueComebacks, intervalDays, lockedScore, planComeback, recallScore, recordCards,
+  afterRematch, comebackId, dropComeback, dueCard, dueComebacks, gradeRecall, intervalDays, lockedScore, planComeback, recordCards,
   spendPowerUps, upsertComeback,
 } from '../../../shared/memory.ts';
 import { misreadIdeaIds, monsterInk } from '../../../shared/round.ts';
 import type { DemoRound, Move, RoundHandoff, SealedLesson, Trait } from '../../../shared/types.ts';
 import { distinctiveWords } from '../../../shared/words.ts';
 import { setSpeed } from './anim.ts';
-import { newProgress, type RoundCtx } from './context.ts';
+import { newProgress, ownIdeaIds, scriptedIdeaIds, type RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { ComebackEngine, DemoEngine, LockedEngine, OfflineEngine, loadDemoRound, type RoundEngine } from './engine.ts';
 import { DeviceEngine, withDevice } from './device-engine.ts';
 import { linesFor } from './lines.ts';
-import { currentTraits, loadHistory, loadMemory, navUrl, now, recordRound, saveMemory, updateMemory } from './memory-store.ts';
+import { clearMyData, currentTraits, loadHistory, loadMemory, navUrl, now, recordRound, saveMemory, updateMemory } from './memory-store.ts';
 import { ServerEngine, ServerError, postJson, serverBase } from './server-engine.ts';
 import { initSound } from './sound.ts';
 import { getLocal, getSession, setLocal } from './storage.ts';
-import { primary, secondary, showDeviceNote, showOfflineNote, showScreen } from './ui.ts';
+import { primary, secondary, setLeaveGuard, showDeviceNote, showOfflineNote, showScreen } from './ui.ts';
 import { formingScreen, homeScreen, pageScreen } from './screens/intro.ts';
 import { teachScreen } from './screens/teach.ts';
 import { boutScreen, eatScreen, examScreen, loseScreen } from './screens/fight.ts';
 import { replayScreen } from './screens/replay.ts';
+import { resumeScreen } from './screens/resume.ts';
+import { RESUME_MIN_MS, clearRound, fingerprintOf, loadRound, saveRound, taughtCount, type RoundSave } from './resume.ts';
 import { flashbackScreen } from './screens/flashback.ts';
 import { yourBlotScreen } from './screens/your-blot.ts';
+import { presenterScreen } from './screens/presenter.ts';
+import { presenterSeed } from '../../../shared/presenter.ts';
 import { duelBoutScreen, duelIntroScreen, duelResultScreen } from './screens/duel.ts';
 
 const params = new URLSearchParams(location.search);
@@ -35,8 +40,8 @@ const params = new URLSearchParams(location.search);
 const FAST = params.has('fast');
 /** Demo page, but through the server (real AI, or AI_STUB). */
 const LIVE = params.get('live') === '1';
-/** Optional teaching time in seconds (presenters, tests). */
-const TEACH = Math.min(300, Math.max(20, Number(params.get('teach')) || 0)) || null;
+/** Optional teaching time in seconds (presenters, tests); null when absent, so the real default applies. */
+const TEACH = teachSeconds(params.get('teach'));
 /** A comeback is about one idea: one minute is plenty. */
 const COMEBACK_SECONDS = 60;
 /**
@@ -96,6 +101,9 @@ function baseCtx(engine: RoundEngine, traits: Trait[], firstRound: boolean, teac
     boosts: {},
     boostsUsed: [],
     cardIds: {},
+    stage: null,
+    resumeKey: null,
+    resumeRemainingMs: null,
     after: { comeback: null, tamed: false, recallDays: null, tip: null },
   };
 }
@@ -154,6 +162,11 @@ async function applyPretaught(ctx: RoundCtx, round: DemoRound): Promise<void> {
 
 // ---------------------------------------------------------------- the learning loop around a round
 
+/** Whether this round ran on the server's AI (a real page, or a demo page played through it): only then may a recall be graded there. */
+function isLive(ctx: RoundCtx): boolean {
+  return ctx.demoId === null && ctx.engine instanceof ServerEngine && !ctx.engine.offline;
+}
+
 /** Before teaching: if a memory from another page is fading, Blot asks about it (SPEC §17). */
 async function maybeFlashback(ctx: RoundCtx): Promise<void> {
   const memory = await loadMemory();
@@ -175,11 +188,13 @@ async function useBoosts(ctx: RoundCtx): Promise<void> {
 /** After the exam: what the player taught becomes memory cards (asked again in a few days). */
 async function rememberRound(ctx: RoundCtx): Promise<void> {
   const memory = await loadMemory();
-  // A comeback's beaten ideas were not taught again: their memories stay as they are.
-  const taught = { results: ctx.exam!.results.filter((r) => !(r.id in ctx.locked)) };
+  // Only what the player taught themselves becomes a memory: not a comeback's beaten ideas, not the
+  // stage round's pre-taught ones.
+  const own = ownIdeaIds(ctx);
+  const taught = { results: ctx.exam!.results.filter((r) => own.has(r.id)) };
   const rec = recordCards(
     memory,
-    { monster: { name: ctx.monster.name, color: ctx.monster.color }, topic: ctx.lesson.topic, language: ctx.lesson.language, ideas: ctx.lesson.ideas, exam: taught },
+    { live: isLive(ctx), monster: { name: ctx.monster.name, color: ctx.monster.color }, topic: ctx.lesson.topic, language: ctx.lesson.language, ideas: ctx.lesson.ideas, exam: taught },
     now(),
   );
   ctx.cardIds = { ...ctx.cardIds, ...rec.ids };
@@ -189,15 +204,19 @@ async function rememberRound(ctx: RoundCtx): Promise<void> {
 /** After the round: history (for insights), the monster's comeback, and what to tell the player. */
 async function closeRound(ctx: RoundCtx, outcome: 'win' | 'lose' | 'draw'): Promise<void> {
   const t = now();
+  ctx.after.recallDays = Object.keys(ctx.cardIds).length ? intervalDays(0) : null;
+  // The stage round is a rehearsal: it leaves no history and no comeback behind.
+  if (ctx.stage) return;
+  // A comeback counts only the idea it was about: the beaten ones were not taught again.
+  const own = ownIdeaIds(ctx);
+  const scripted = scriptedIdeaIds(ctx);
   const history = await recordRound(
-    // A comeback only counts the idea it was about: the beaten ones were not taught again.
     summarizeRound({
-      at: t, topic: ctx.lesson.topic, monsterName: ctx.monster.name, outcome, ideas: ctx.lesson.ideas.filter((i) => !(i.id in ctx.locked)),
+      at: t, topic: ctx.lesson.topic, monsterName: ctx.monster.name, outcome, ideas: ctx.lesson.ideas.filter((i) => own.has(i.id) || !scripted.has(i.id)),
       transcript: ctx.transcript, exam: ctx.exam!, kind: ctx.kind,
     }),
   );
   ctx.after.tip = insights(history)[0] ?? null;
-  ctx.after.recallDays = Object.keys(ctx.cardIds).length ? intervalDays(0) : null;
   const won = outcome === 'win';
   await updateMemory((memory) => {
     if (ctx.kind === 'comeback' && ctx.comeback) {
@@ -212,6 +231,7 @@ async function closeRound(ctx: RoundCtx, outcome: 'win' | 'lose' | 'draw'): Prom
     const previous = memory.comebacks.find((c) => c.id === id)?.ideas;
     const plan = planComeback(
       {
+        live: isLive(ctx),
         monster: { name: ctx.monster.name, shape: ctx.monster.shape, color: ctx.monster.color, words: ctx.monster.words },
         topic: ctx.lesson.topic,
         language: ctx.lesson.language,
@@ -228,12 +248,69 @@ async function closeRound(ctx: RoundCtx, outcome: 'win' | 'lose' | 'draw'): Prom
   });
 }
 
+// ---------------------------------------------------------------- resuming a round after a reload (SPEC §18)
+
+const fingerprintFor = (ctx: RoundCtx) => fingerprintOf(ctx.lesson.ideas.map((i) => i.name), ctx.engine.seed);
+
+/** Keeps this round in the tab as it is taught, so a reload (or Back and Forward) can pick it up again. */
+function makeResumable(ctx: RoundCtx, key: string): void {
+  ctx.resumeKey = key;
+  ctx.persist = (remainingMs) =>
+    saveRound(key, {
+      v: 1,
+      at: Date.now(),
+      fingerprint: fingerprintFor(ctx),
+      transcript: ctx.transcript,
+      progress: ctx.progress,
+      misreads: ctx.misreads,
+      remainingMs,
+      attempt: ctx.attempt,
+      focus: ctx.focus,
+      pageText: ctx.pageText,
+    });
+}
+
+/** What the player had taught is back, with the time that was left (at least ten seconds). */
+function restoreRound(ctx: RoundCtx, saved: RoundSave): void {
+  Object.assign(ctx, {
+    transcript: saved.transcript,
+    progress: saved.progress,
+    misreads: saved.misreads,
+    attempt: saved.attempt,
+    focus: saved.focus,
+    pageText: saved.pageText || ctx.pageText,
+    resumeRemainingMs: Math.max(RESUME_MIN_MS, saved.remainingMs),
+  } satisfies Partial<RoundCtx>);
+}
+
+/** Offers a saved round for this lesson; true when the player resumed it (the caller then skips the reveal). */
+async function offerResume(ctx: RoundCtx, key: string): Promise<boolean> {
+  const saved = loadRound(key, fingerprintFor(ctx));
+  if (!saved || taughtCount(saved) + saved.transcript.length === 0) return false;
+  const choice = await resumeScreen({
+    monsterName: ctx.monster.name,
+    taught: taughtCount(saved),
+    total: ctx.lesson.ideas.length,
+    remainingMs: Math.max(RESUME_MIN_MS, saved.remainingMs),
+    onHome: ctx.onHome,
+  });
+  if (choice === 'restart') {
+    clearRound(key);
+    return false;
+  }
+  restoreRound(ctx, saved);
+  return true;
+}
+
 /** Teach → exam → bout → eat or escape (→ rematch) → replay. A duel ends in Blot vs Blot. */
 async function playRound(ctx: RoundCtx): Promise<void> {
   let outcome: 'win' | 'lose' | 'draw' = 'lose';
+  // Leaving mid-round loses it, so the browser asks first (only once there is something to lose).
+  setLeaveGuard(() => ctx.transcript.length > (ctx.stage?.entries ?? 0) || !!document.querySelector<HTMLTextAreaElement>('#teach-input')?.value.trim());
   for (;;) {
     await teachScreen(ctx);
-    if (ctx.kind !== 'duel') await useBoosts(ctx);
+    // Power-ups belong to real fights: a rehearsal and a duel do not spend them.
+    if (ctx.kind !== 'duel' && !ctx.stage) await useBoosts(ctx);
     await examScreen(ctx);
     await rememberRound(ctx);
     if (ctx.kind === 'duel' && ctx.duel) {
@@ -254,6 +331,8 @@ async function playRound(ctx: RoundCtx): Promise<void> {
     ctx.attempt++;
   }
   await closeRound(ctx, outcome);
+  setLeaveGuard(null);
+  if (ctx.resumeKey) clearRound(ctx.resumeKey);
   const next = await replayScreen(ctx);
   if (next === 'again') ctx.onPlayAgain();
   else if (next === 'blot') go('game.html?blot=1');
@@ -274,6 +353,24 @@ async function playDemo(id: string): Promise<void> {
   ctx.demoId = round.id;
   ctx.fullLesson = round.lesson;
   ctx.pageSrc = round.page;
+  // The stage round: four ideas are taught for the player, one is left. Labelled before anything else is shown.
+  const setUpStage = () => {
+    if (!stage || !ctx.engine.offline) return;
+    const taught = [...new Set(round.pretaught!.map((e) => e.ideaId))];
+    ctx.stage = { ideas: taught, entries: round.pretaught!.length };
+    ctx.focus = ctx.lesson.ideas.find((i) => !taught.includes(i.id))?.id ?? null;
+  };
+  setUpStage();
+  if (!LIVE) {
+    // A reload or Back and Forward in the middle of a round offers to pick it up again (SPEC §18).
+    const key = `demo:${id}`;
+    makeResumable(ctx, key);
+    if (await offerResume(ctx, key)) {
+      await setLocal('played', true);
+      await playRound(ctx);
+      return;
+    }
+  }
   const { boxes, text, frame, capture } = await pageScreen(ctx);
   ctx.pageText = text;
   // ?live=1 wraps the server engine below instead (one device session per round).
@@ -286,13 +383,14 @@ async function playDemo(id: string): Promise<void> {
     }, 60_000).catch(() => null);
     if (data) {
       const live = baseCtx(onDevice(new ServerEngine(server, data.lesson, data.seed, data.offline), text, true), ctx.traits, firstRound, ctx.teachSeconds, ctx.coach);
-      Object.assign(ctx, { engine: live.engine, lesson: live.lesson, misreads: live.misreads, progress: live.progress, monster: { ...live.monster, words: ctx.monster.words }, fullLesson: null, demoId: null });
+      Object.assign(ctx, { engine: live.engine, lesson: live.lesson, misreads: live.misreads, progress: live.progress, monster: { ...live.monster, words: ctx.monster.words }, fullLesson: null, demoId: null, stage: null, focus: null });
       failOver(ctx, round);
     } else {
       // No server: this page has a canned round, so play it offline.
       showOfflineNote(ctx.lines.offline);
     }
   }
+  setUpStage();
   await formingScreen(ctx, boxes, frame);
   if (!stage) await maybeFlashback(ctx);
   if (ctx.engine.offline) await applyPretaught(ctx, round);
@@ -315,6 +413,12 @@ async function playLive(id: string): Promise<void> {
   if (pageWords.length >= 40) ctx.monster.words = pageWords;
   ctx.onPlayAgain = () => go(`game.html?round=${encodeURIComponent(id)}`);
   failOver(ctx, handoff.roundId ? await loadDemoRound(handoff.roundId).catch(() => null) : null);
+  makeResumable(ctx, `round:${id}`);
+  if (await offerResume(ctx, `round:${id}`)) {
+    await setLocal('played', true);
+    await playRound(ctx);
+    return;
+  }
   await formingScreen(ctx, [], null);
   await maybeFlashback(ctx);
   await setLocal('played', true);
@@ -351,13 +455,17 @@ async function playComeback(id: string): Promise<void> {
       })),
       words: cb.words,
     };
+    // A real page's rematch is graded by the server's AI when this comeback came from a live round; otherwise here.
     const grade = async (answer: string) => {
       const card = { ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints, language: cb.language };
-      try {
-        return await postJson<{ score: number; feedback: string }>('/recall', { ...card, answer }, 9000);
-      } catch {
-        return { score: recallScore(card, answer), feedback: '' };
+      if (cb.live ?? true) {
+        try {
+          return await postJson<{ score: number; feedback: string }>('/recall', { ...card, answer }, 9000);
+        } catch {
+          // The server is away: grade here.
+        }
       }
+      return { score: gradeRecall(card, answer).score, feedback: '' };
     };
     // On the device, Blot talks instead of repeating what it's told; /recall still grades.
     inner = onDevice(new ComebackEngine(lesson, cb.createdAt >>> 0, { ideaId: cb.ideaId, ideaName: cb.ideaName, question: cb.question, modelAnswer: cb.modelAnswer, keyPoints: cb.keyPoints }, grade), '', true, { chatOnly: true });
@@ -443,11 +551,34 @@ async function showYourBlot(): Promise<void> {
       await flashbackScreen({ card: action.card, traits, continueLabel: 'Back to Your Blot', onHome: goHome });
       continue;
     }
+    if (action.kind === 'clear') {
+      await clearMyData();
+      goHome();
+      return;
+    }
     if (action.kind === 'comeback') go(`game.html?comeback=${encodeURIComponent(action.id)}`);
     else if (action.kind === 'play') go('game.html?demo=tides');
     else goHome();
     return;
   }
+}
+
+/** ?seed=presenter: loads a learner who played two pages a few days ago (shared/presenter.ts), for the three-minute pitch. */
+async function loadPresenterKit(): Promise<void> {
+  setSpeed(1);
+  const memory = await loadMemory();
+  if (memory.cards.length || (await loadHistory()).length) {
+    // Never overwrite a real learner: the kit only loads into a browser with no history.
+    errorScreen('This browser already has learning history. Erase it first (Your Blot → Clear my data), or open this link in a fresh browser profile.', false, 'The presenter kit was not loaded');
+    return;
+  }
+  const [lost, won] = await Promise.all([loadDemoRound('tides'), loadDemoRound('pvalue')]);
+  const seed = presenterSeed({ lost, won, wonIdeas: ['i1', 'i2', 'i4'] }, Date.now());
+  await saveMemory(seed.memory);
+  await setLocal('history', seed.history);
+  await setLocal('traits', seed.traits);
+  await setLocal('played', true);
+  presenterScreen(seed, goHome);
 }
 
 async function showHome(): Promise<void> {
@@ -494,6 +625,7 @@ async function boot(): Promise<void> {
     else if (duel) await playDuel(duel);
     else if (comeback) await playComeback(comeback);
     else if (params.get('blot') === '1') await showYourBlot();
+    else if (params.get('seed') === 'presenter') await loadPresenterKit();
     else await showHome();
   } catch (err) {
     console.warn(err);

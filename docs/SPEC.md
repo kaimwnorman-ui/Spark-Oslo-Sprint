@@ -417,6 +417,9 @@ model, ms, tokens; never the text.
   the extension entry on a real local page, screenshots of every screen at 1280×720 to `docs/shots/`.
 - `shared/memory.test.ts`, `shared/insights.test.ts`, `shared/duel.test.ts` and `tools/smoke-loop.mjs`:
   the learning loop (§17).
+- `server/test/security.test.ts`, `shared/text.test.ts`, `shared/url.test.ts`, `shared/params.test.ts`,
+  `shared/demo.test.ts` (the pitch recipes), `shared/presenter.test.ts`; `tools/smoke-small.mjs` (small windows),
+  `tools/smoke-guest.mjs` (the hosted game); `npm run check:hidden` (§18).
 
 ## 15. Demo pages (written fresh)
 
@@ -435,7 +438,8 @@ model, ms, tokens; never the text.
 - The words-to-monster, bout and eating moments read from the back of a room at 1280×720, with no
   dropped frames.
 - Demo mode runs with Wi-Fi off. No console errors on the demo path. No key in the bundle.
-- `npm run check`, `npm run smoke:demo`, `npm run smoke:ext` and `npm run smoke:loop` are green.
+- `npm run check`, `npm run smoke:demo`, `npm run smoke:ext`, `npm run smoke:loop`, `npm run smoke:small` and
+  `npm run smoke:guest` are green.
 
 ## 17. The learning loop (DECIDED; built after M7)
 
@@ -508,3 +512,58 @@ tests (recall, duel, the answer reveal, `/app/`), and `npm run smoke:loop` (Play
 memories, a comeback and a duel link → four days later a fading memory on home and in Your Blot → a
 flashback that earns a power-up → a flashback before a new round and the coach's note → the comeback
 with the power-up → a friend accepts the duel in a second browser and the two Blots fight.
+
+## 18. Hardening and reach (DECIDED; built after §17)
+
+A review of the first full build found a short list of real problems. This section is what was decided and
+built in answer, and `npm run check` plus the smokes keep it true.
+
+**The server is private by default.** It listens on `127.0.0.1`. `Host` must be `localhost`, `127.x`, `::1` or an
+`ALLOWED_HOSTS` name (a page that rebinds its own name to 127.0.0.1 is refused). `Origin`, when a browser sends
+one, must be our extension, the game the server itself serves at `/app/` (same origin, allowed host), or, with
+`DEV_ORIGINS=1`, a `http://localhost` page: anything else is a 403 before any route runs, token or not. Opening it
+to a network (`HOST=…`) refuses to start until `SPARK_CLIENT_TOKEN` is the operator's own secret; the extension's
+options page holds the same token and the server address, and tests the connection. Paid routes are capped per
+round (150 creature, 250 bars, 12 exams) and per address (1,500 an hour): a round past its share gets a 429 before
+any streaming starts, and the game carries on offline. Expired rounds and challenges are swept every ten minutes
+and the oldest go first when memory is full.
+
+**Page text is sent only with consent, and cleaned.** Reading the page is local. The first capture shows a notice
+with the title, address, size and first words and waits for a yes (remembered; bump `CONSENT_VERSION` when what
+is sent changes). Cancel and Escape abort the request in flight. Addresses lose credentials, fragments and secret
+or tracking parameters in the browser and again on the server; the extractor sees where a link goes, never its
+query. The stored page text of a round is stamped, kept in memory only, and dropped after two hours.
+
+**Generated text is data.** What the extractor writes is cut to one short line, with angle brackets turned into
+‹ ›, hidden and direction-changing characters removed, and capped, before it is shown or used again; each data
+block neutralises every angle bracket in page and player text; values placed between quotes in an instruction
+are also stripped of quote characters. `npm run check:hidden` keeps invisible characters out of the source itself.
+
+**The learner owns their data.** Memories, history and traits are forgotten 180 days after last use; **Clear my
+data** on Your Blot erases them, the saved pages and the notice choice. A round in progress lives in the tab only.
+
+**Honest grading.** A flashback on a demo page is graded in the browser by word matching and says so. The offline
+grader rejects an answer that negates a word the idea asserts (the idea's own name included) and caps a list of
+keywords below a pass; only a round that ran on the server's AI is ever sent to `/recall`.
+
+**The stage round is a rehearsal.** The player's own idea becomes a memory; the four pre-taught ideas, the history,
+the comeback, the power-ups and the duel are left alone.
+
+**Small windows.** Every screen works at 640×480 and on a phone (390×844): single-column teaching with the ideas as
+a strip, replay and Your Blot as scrolling pages with their buttons fixed at the bottom. A first-time player opens
+on the first idea with one visible action (Say it); the other moves appear after the first message. Sound waits
+for the first click or key. In a short window the flashback card sits beside Blot, tightened to fit the height,
+and a long verdict scrolls under a pinned Continue. The check forces a wide fallback font (DejaVu Sans), so it
+gives the same result on a machine without the page's own fonts: a stock CI runner has none of them.
+
+**Resume.** A reload or Back and Forward during a round offers to pick it up: what was taught, Blot's beliefs and
+the time left (at least ten seconds), kept in the tab for up to 30 minutes. Leaving mid-round asks first.
+
+**Reach.** `npm run build:guest` makes the game a static folder; on a hosted copy there is no server and a challenge
+links to that same copy, so a friend plays on a phone with nothing installed. A GitHub Pages workflow publishes it
+and a CI workflow runs every check and smoke.
+
+**For the pitch.** The README's recipes are tested (`shared/demo.test.ts`), the default demo timer is 0:45
+(`?teach` once clamped a missing value to 20 s), and `game.html?seed=presenter` loads a learner four days in:
+the same trait shining, solid and faded, Your Blot, a flashback, a returning monster and a friend's challenge.
+When Blot's misreading backfires, the monster quotes it and says what is true.

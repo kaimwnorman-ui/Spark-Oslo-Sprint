@@ -3,7 +3,8 @@ import { spawn } from 'node:child_process';
 import { ROOT } from './lib.mjs';
 
 const procs = [
-  spawn(process.execPath, ['--watch', '--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server/src/main.ts'], { cwd: ROOT, stdio: 'inherit' }),
+  // DEV_ORIGINS=1: also answer demo pages opened from http://localhost (game.html?demo=tides&live=1).
+  spawn(process.execPath, ['--watch', '--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server/src/main.ts'], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, DEV_ORIGINS: '1' } }),
   spawn(process.execPath, ['tools/build.mjs', '--watch'], { cwd: ROOT, stdio: 'inherit' }),
 ];
 const stop = () => {

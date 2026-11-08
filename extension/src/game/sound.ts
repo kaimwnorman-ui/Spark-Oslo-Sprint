@@ -21,6 +21,8 @@ export async function setMuted(value: boolean): Promise<void> {
 
 function audio(): AudioContext | null {
   if (muted) return null;
+  // Browsers only allow sound after a click or key press; before that there is nothing to play (and no warning to log).
+  if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
   try {
     if (!ctx) {
       ctx = new AudioContext();

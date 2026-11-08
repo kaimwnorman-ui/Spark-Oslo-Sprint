@@ -4,24 +4,33 @@ import { challengeFrom, cleanName, encodeLocalDuel } from '../../../shared/duel.
 import type { RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { playerName, setPlayerName } from './memory-store.ts';
-import { ServerEngine, ServerError, postJson } from './server-engine.ts';
+import { ServerEngine, ServerError, postJson, serverBase } from './server-engine.ts';
 import { sfx } from './sound.ts';
 import { primary } from './ui.ts';
 
-export function duelLink(token: string): string {
-  return new URL(`game.html?duel=${encodeURIComponent(token)}`, location.href).href;
+/**
+ * A demo page's challenge is plain data in the link, so any copy of the game opens it: the hosted guest game
+ * (when this build knows where it is), else this page's own address. A real page's challenge lives on the
+ * server, so its link opens the game the server itself serves (/app/).
+ */
+export async function duelLink(token: string, demo: boolean): Promise<string> {
+  if (demo) {
+    const hosted = location.protocol === 'chrome-extension:' && __GUEST_URL__ ? __GUEST_URL__ : location.href;
+    return new URL(`game.html?duel=${encodeURIComponent(token)}`, hosted).href;
+  }
+  return `${await serverBase()}/app/game.html?duel=${encodeURIComponent(token)}`;
 }
 
 async function makeLink(ctx: RoundCtx, name: string): Promise<string> {
   const exam = ctx.exam!;
   if (ctx.demoId) {
     const challenge = challengeFrom({ name, demo: ctx.demoId, topic: ctx.lesson.topic, monsterName: ctx.monster.name, exam, seed: ctx.engine.seed, at: Date.now() });
-    return duelLink(encodeLocalDuel(challenge));
+    return duelLink(encodeLocalDuel(challenge), true);
   }
   if (!(ctx.engine instanceof ServerEngine)) throw new ServerError(0, 'offline');
   const ideas = exam.results.map((r) => ({ id: r.id, score: r.score, belief: r.belief }));
   const { code } = await postJson<{ code: string }>('/duel', { lessonId: ctx.lesson.lessonId, name, ideas });
-  return duelLink(code);
+  return duelLink(code, false);
 }
 
 /** Opens the share dialog over the current screen. Resolves when it closes. */
@@ -99,9 +108,15 @@ export function openShare(ctx: RoundCtx, opener?: HTMLElement): Promise<void> {
           copy.classList.add('copied');
         });
         body.replaceChildren(
-          h('label', { class: 'field-label', for: 'share-link' }, `Send this to a friend, ${clean}:`),
+          h('label', { class: 'field-label', for: 'share-link' }, 'Send this link to your friend:'),
           h('div', { class: 'share-row' }, field, copy),
-          h('p', { class: 'small-note' }, ctx.demoId ? 'It opens in Spark, offline. Your scores travel inside the link.' : 'It opens in Spark for 24 hours.'),
+          h(
+            'p',
+            { class: 'small-note', id: 'share-note' },
+            ctx.demoId
+              ? 'It opens in Spark, offline. Your name and scores travel inside the link, so send it only to people you trust.'
+              : 'It opens in Spark for 24 hours. Your name, scores and this page’s text stay on the server until then.',
+          ),
         );
         copy.focus();
         field.addEventListener('focus', () => field.select());

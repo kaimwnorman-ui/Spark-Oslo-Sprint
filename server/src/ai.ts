@@ -9,6 +9,7 @@ import { checkLesson } from '../../shared/lesson.ts';
 import { hashString, rng, shuffle } from '../../shared/random.ts';
 import type { BarValue, ExamItem, ExamResult, Lesson, Move, PageCapture, TranscriptEntry, WhenOption } from '../../shared/types.ts';
 import { distinctiveWords } from '../../shared/words.ts';
+import { tidy } from '../../shared/text.ts';
 import { HttpError } from './http.ts';
 import type { StoredLesson } from './lessons.ts';
 import {
@@ -220,7 +221,7 @@ export function makeLiveAi(client: Anthropic, settings: Settings, log: (line: st
 export function toLesson(out: ExtractorOutput, capture: Pick<PageCapture, 'text' | 'links'>): Lesson {
   const nb = out.language === 'nb' || out.language === 'nn';
   const ideas = IDEA_IDS.map((id) => {
-    const x = repairIdea(out.ideas[id], nb);
+    const x = repairIdea(tidyIdea(out.ideas[id]), nb);
     const options: WhenOption[] = shuffle(
       [
         { text: x.whenRight, right: true },
@@ -232,24 +233,39 @@ export function toLesson(out: ExtractorOutput, capture: Pick<PageCapture, 'text'
     const link = typeof x.sourceLink === 'number' ? capture.links[x.sourceLink - 1] : undefined;
     return {
       id,
-      name: x.name.trim(),
-      question: x.question.trim(),
-      modelAnswer: x.modelAnswer.trim(),
-      keyPoints: x.keyPoints.map((k) => k.trim()).filter(Boolean).slice(0, 4),
+      name: x.name,
+      question: x.question,
+      modelAnswer: x.modelAnswer,
+      keyPoints: x.keyPoints.filter(Boolean).slice(0, 4),
       whenOptions: options,
-      misread: x.misread.trim(),
+      misread: x.misread,
       sourceUrl: link?.href ?? null,
-      sourceTitle: link?.text ?? null,
+      sourceTitle: link ? tidy(link.text, 160) : null,
     };
   });
   return checkLesson({
-    topic: out.topic.trim(),
-    monsterName: out.monsterName.trim(),
+    topic: tidy(out.topic, 100),
+    monsterName: tidy(out.monsterName, 60),
     monsterShape: out.monsterShape,
     language: out.language,
     ideas,
     words: distinctiveWords(capture.text, MONSTER_WORDS),
   });
+}
+
+/** What the extractor wrote is page-derived data: one short line each, no tags, no hidden characters. */
+function tidyIdea(x: ExtractorOutput['ideas'][(typeof IDEA_IDS)[number]]): ExtractorOutput['ideas'][(typeof IDEA_IDS)[number]] {
+  return {
+    ...x,
+    name: tidy(x.name, 60),
+    question: tidy(x.question, 200),
+    modelAnswer: tidy(x.modelAnswer, 420),
+    keyPoints: (Array.isArray(x.keyPoints) ? x.keyPoints : []).map((k) => tidy(k, 120)).filter(Boolean),
+    whenRight: tidy(x.whenRight, 120),
+    whenWrong1: tidy(x.whenWrong1, 120),
+    whenWrong2: tidy(x.whenWrong2, 120),
+    misread: tidy(x.misread, 200),
+  };
 }
 
 /** A rare empty field from the model gets a safe, in-character stand-in instead of failing the page. */

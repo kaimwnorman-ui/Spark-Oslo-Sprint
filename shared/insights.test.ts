@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addRound, focusCodes, insights, moveImpact, stats, summarizeRound, MAX_HISTORY, type RoundSummary } from './insights.ts';
+import { addRound, focusCodes, insights, moveImpact, pruneHistory, stats, summarizeRound, MAX_HISTORY, type RoundSummary } from './insights.ts';
 import type { ExamResult, Move, TranscriptEntry } from './types.ts';
 
 const names = [1, 2, 3, 4, 5].map((n) => ({ id: `i${n}`, name: `Idea ${n}` }));
@@ -86,4 +86,12 @@ test('history is capped', () => {
   for (let i = 0; i < MAX_HISTORY + 7; i++) h = addRound(h, round([], [], { at: i }));
   assert.equal(h.length, MAX_HISTORY);
   assert.equal(h.at(-1)!.at, MAX_HISTORY + 6);
+});
+
+test('rounds older than the retention window are forgotten', () => {
+  const day = 86_400_000;
+  const now = 400 * day;
+  const h = [round([], [], { at: now - 200 * day }), round([], [], { at: now - 30 * day })];
+  assert.deepEqual(pruneHistory(h, now).map((r) => r.at), [now - 30 * day]);
+  assert.equal(pruneHistory(h, now, 365).length, 2);
 });

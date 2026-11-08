@@ -4,6 +4,17 @@ import { isMuted, setMuted, sfx } from './sound.ts';
 
 window.__screens = [];
 
+// Leaving mid-round loses it: ask first, but only when there is something to lose.
+let leaveGuard: (() => boolean) | null = null;
+export function setLeaveGuard(hasWork: (() => boolean) | null): void {
+  leaveGuard = hasWork;
+}
+window.addEventListener('beforeunload', (e) => {
+  if (!leaveGuard?.()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
 export interface ScreenOptions {
   /** Keep the previous screen underneath (the forming overlay sits on the page). */
   overlay?: boolean;
