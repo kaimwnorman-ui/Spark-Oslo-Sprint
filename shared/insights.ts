@@ -4,7 +4,7 @@ import { RETAIN_DAYS } from './config.ts';
 import type { Belief, BoutOutcome, ExamResult, Move, TranscriptEntry } from './types.ts';
 
 /** What the coach adapts to, in priority order. */
-export const FOCUS_CODES = ['trust', 'examples', 'why', 'coverage', 'paste'] as const;
+export const FOCUS_CODES = ['trust', 'why', 'coverage', 'paste'] as const;
 export type FocusCode = (typeof FOCUS_CODES)[number];
 
 /** Rounds the insights look at. */
@@ -112,6 +112,18 @@ export function moveImpact(rounds: readonly RoundSummary[], move: Move): { with:
   };
 }
 
+/** Like moveImpact, for Blot's third question: ideas where the player answered why or gave an example. */
+export function deepImpact(rounds: readonly RoundSummary[]): { with: number | null; without: number | null; used: number; taught: number } {
+  const taught = taughtIdeas(rounds);
+  const deep = (i: (typeof taught)[number]) => i.moves.includes('why') || i.moves.includes('example');
+  return {
+    with: avg(taught.filter(deep).map((i) => i.score)),
+    without: avg(taught.filter((i) => !deep(i)).map((i) => i.score)),
+    used: taught.filter(deep).length,
+    taught: taught.length,
+  };
+}
+
 // ---------------------------------------------------------------- insights
 
 export interface Insight {
@@ -145,39 +157,26 @@ export function insights(history: readonly RoundSummary[]): Insight[] {
     out.push({
       code: 'trust',
       title: 'Blot fooled you',
-      action: 'Use Check it, and press ✗ when Blot gets it wrong.',
+      action: 'Read what Blot says back, and press ✗ when it’s wrong.',
       detail:
         fooled > 0
-          ? `You said ✓ to a wrong explanation ${plural(fooled, 'time')} lately. When Blot explains back, check every word.`
-          : `Blot went into the fight with ${plural(held, 'mix-up')} you never caught. Use Check it before you ring the bell.`,
+          ? `You said ✓ to a wrong explanation ${plural(fooled, 'time')} lately. When Blot says an idea back, check every word.`
+          : `Blot went into the fight with ${plural(held, 'mix-up')} you never caught. Read every word Blot says back.`,
     });
   }
 
-  // examples: the player rarely gives one, and it shows in their scores.
+  // why: the player rarely answers Blot's third question (why, or an example), and it shows in their scores.
   const ex = moveImpact(recent, 'example');
-  if (ex.taught >= 2 && ex.used / ex.taught < 0.4) {
-    out.push({
-      code: 'examples',
-      title: 'Give more examples',
-      action: 'Give each idea a real-life example.',
-      detail:
-        ex.with !== null && ex.without !== null && ex.with > ex.without
-          ? `Ideas with an example scored ${ex.with} on average. Without one: ${ex.without}.`
-          : `You gave an example for ${ex.used} of the ${ex.taught} ideas you taught. An example lifts an idea's limit from 40 to 100.`,
-    });
-  }
-
-  // why: the player rarely says why.
-  const why = moveImpact(recent, 'why');
-  if (why.taught >= 3 && why.used / why.taught < 0.3) {
+  const deep = deepImpact(recent);
+  if (deep.taught >= 3 && deep.used / deep.taught < 0.5) {
     out.push({
       code: 'why',
-      title: 'Say why',
-      action: 'Tell Blot why, not just what.',
+      title: 'Answer Blot’s why',
+      action: 'Answer Blot’s “but why?” on every idea.',
       detail:
-        why.with !== null && why.without !== null && why.with > why.without
-          ? `Ideas where you said why scored ${why.with}. The rest: ${why.without}.`
-          : `You said why for ${why.used} of ${why.taught} ideas. The why is what makes an idea stick.`,
+        deep.with !== null && deep.without !== null && deep.with > deep.without
+          ? `Ideas where you answered why scored ${deep.with} on average. The rest: ${deep.without}.`
+          : `You answered Blot’s why on ${deep.used} of ${deep.taught} ideas. The why is what lifts an idea from Ready to Mastered.`,
     });
   }
 
@@ -196,8 +195,8 @@ export function insights(history: readonly RoundSummary[]): Insight[] {
     out.push({
       code: 'paste',
       title: 'Use your own words',
-      action: 'Copied text only counts as Say it.',
-      detail: `${plural(pasted, 'message')} lately were the page's own words. Those count as Say it only (limit 30).`,
+      action: 'Copied text is capped: say it your way.',
+      detail: `${plural(pasted, 'message')} lately were the page's own words. Copied text is capped at 30.`,
     });
   }
 
@@ -224,9 +223,8 @@ export function focusCodes(history: readonly RoundSummary[]): FocusCode[] {
 
 /** What the coach changes, said to the player once at the start of teaching. */
 export const COACH_NOTES: Record<FocusCode, string> = {
-  trust: 'Blot will try to fool you more this time. Use Check it, and press ✗ when it’s wrong.',
-  examples: 'Blot will ask you for examples. Real ones score higher.',
-  why: 'Blot will ask why sooner. Ideas with a why score higher.',
+  trust: 'Blot will try to fool you more this time. Read what it says back, and press ✗ when it’s wrong.',
+  why: 'Answer Blot’s “but why?” on every idea: that is how Blot masters it.',
   coverage: 'Teach all five: an empty idea fizzles in the fight.',
   paste: 'Your own words only: pasted text is capped.',
 };

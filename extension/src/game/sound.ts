@@ -115,6 +115,16 @@ export const sfx = {
     tone('sine', 200, 30, 700, 0.6);
     noise(600, 500, 0.7, 0.4, 0, 80);
   },
+  /** Time earned: a bright two-note chime. */
+  bonus: () => {
+    tone('triangle', 988, 988, 120, 0.14);
+    tone('triangle', 1319, 1319, 240, 0.14, 100);
+  },
+  /** Blot's mix-up caught: a comic boing. */
+  caught: () => {
+    tone('sine', 260, 820, 200, 0.18);
+    tone('triangle', 820, 620, 160, 0.1, 190);
+  },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 260, 0.16, i * 110)),
   lose: () => [392, 330, 262].forEach((f, i) => tone('triangle', f, f * 0.98, 320, 0.14, i * 160)),
 };

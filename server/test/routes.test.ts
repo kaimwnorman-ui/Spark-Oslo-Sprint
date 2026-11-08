@@ -41,14 +41,18 @@ test('AI_STUB: extract returns a sealed lesson; the other routes answer from it'
     // Only the one link the page had survives as a source.
     assert.deepEqual(lesson.ideas.map((i: { sourceUrl: string | null }) => i.sourceUrl).filter(Boolean), ['https://en.wikipedia.org/wiki/Tidal_force']);
 
-    const cr = await post('/creature', { lessonId: lesson.lessonId, ideaId: 'i2', event: 'say', belief: 'right', transcript: [] });
-    assert.equal(cr.status, 200);
-    assert.equal(await cr.text(), tides.replies.i2!.say, 'Blot answers with the canned reply');
-
     const transcript = [{ ideaId: 'i2', move: 'say', text: tides.lines?.i2?.say ?? 'There are two bulges of water, one toward the Moon and one on the far side.' }];
-    const bars = await (await post('/bars', { lessonId: lesson.lessonId, ideaId: 'i2', transcript })).json();
-    assert.equal(bars.bars.length, 5);
-    assert.ok(bars.bars.find((b: { id: string }) => b.id === 'i2').value > 0);
+    const cr = await post('/creature', { lessonId: lesson.lessonId, ideaId: 'i2', event: 'check', belief: 'right', transcript });
+    assert.equal(cr.status, 200);
+    assert.equal(await cr.text(), tides.replies.i2!.checkRight, 'Blot says it back with the canned reply');
+    const mixed = await post('/creature', { lessonId: lesson.lessonId, ideaId: 'i2', event: 'check', belief: 'misread', transcript });
+    assert.ok((await mixed.text()).startsWith(tides.lesson.ideas[1]!.misread), 'a misread idea is said back wrong');
+    assert.equal((await post('/creature', { lessonId: lesson.lessonId, ideaId: 'i2', event: 'say', belief: 'right', transcript })).status, 400, 'old events are refused');
+
+    const { grade } = await (await post('/grade', { lessonId: lesson.lessonId, ideaId: 'i2', transcript })).json();
+    assert.equal(grade.id, 'i2');
+    assert.ok(grade.score > 0);
+    assert.equal(typeof grade.tip, 'string');
 
     const exam = await (await post('/examine', { lessonId: lesson.lessonId, transcript, heldMisreads: [] })).json();
     assert.equal(exam.results.length, 5);
@@ -58,7 +62,7 @@ test('AI_STUB: extract returns a sealed lesson; the other routes answer from it'
 
 test('an unknown lesson says the round expired', async () => {
   await withStub(async (post) => {
-    const res = await post('/bars', { lessonId: 'nope', ideaId: 'i1', transcript: [] });
+    const res = await post('/grade', { lessonId: 'nope', ideaId: 'i1', transcript: [] });
     assert.equal(res.status, 410);
   });
 });
@@ -110,8 +114,8 @@ test('a real page’s duel: stored by code, joined as a fresh sealed round on th
     assert.deepEqual(joined.challenge.ideas.map((i: { score: number }) => i.score), [0, 20, 40, 60, 80]);
     assert.equal(joined.page.title, 'Why the sea breathes');
     // The joined round works like any other.
-    const bars = await post('/bars', { lessonId: joined.lesson.lessonId, ideaId: 'i1', transcript: [] });
-    assert.equal(bars.status, 200);
+    const graded = await post('/grade', { lessonId: joined.lesson.lessonId, ideaId: 'i1', transcript: [] });
+    assert.equal(graded.status, 200);
     assert.equal((await post('/duel/join', { code: 'zzzzzzzz' })).status, 410);
     assert.equal((await post('/duel/join', { code: '../../x' })).status, 400);
     assert.equal((await post('/duel', { lessonId: ex.lesson.lessonId, name: 'K', ideas: [] })).status, 400);

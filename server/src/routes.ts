@@ -2,7 +2,7 @@
 // demo round that matches the page (offline mode). Live AI: ai.ts.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { CALLS_PER_HOUR, DUELS_PER_HOUR, EXTRACTS_PER_HOUR, RECALLS_PER_HOUR } from '../../shared/config.ts';
-import { demoAllBars, demoBars, demoExam, demoReply, type CreatureEvent } from '../../shared/demo.ts';
+import { CREATURE_EVENTS, demoExam, demoGrade, demoReply, type CreatureEvent } from '../../shared/demo.ts';
 import { readChallenge } from '../../shared/duel.ts';
 import { sealLesson } from '../../shared/lesson.ts';
 import { gradeRecall } from '../../shared/memory.ts';
@@ -18,7 +18,6 @@ import type { Settings } from './settings.ts';
 import { keepPageLinksOnly } from './validate.ts';
 import type { LiveAi } from './ai.ts';
 
-const EVENTS: CreatureEvent[] = ['say', 'example', 'why', 'fix', 'when', 'check', 'askWhy'];
 const BELIEFS: TeachBelief[] = ['none', 'right', 'misread'];
 
 export interface RouteOptions {
@@ -81,11 +80,9 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     const ideaId = readString(body, 'ideaId', 8);
     if (!stored.lesson.ideas.some((i) => i.id === ideaId)) throw new HttpError(400, 'Unknown idea.');
     const event = readString(body, 'event', 10) as CreatureEvent;
-    if (!EVENTS.includes(event)) throw new HttpError(400, 'Unknown event.');
+    if (!CREATURE_EVENTS.includes(event)) throw new HttpError(400, 'Unknown event.');
     const belief = (BELIEFS.includes(readString(body, 'belief', 10) as TeachBelief) ? readString(body, 'belief', 10) : 'none') as TeachBelief;
-    const tapRaw = (body as Record<string, unknown>).tap;
-    const tap = typeof tapRaw === 'number' && Number.isInteger(tapRaw) ? tapRaw : undefined;
-    const request = { ideaId, event, text: readString(body, 'text', 400) || undefined, tap, belief, transcript: readTranscript(body) };
+    const request = { ideaId, event, text: readString(body, 'text', 400) || undefined, belief, transcript: readTranscript(body) };
     const canned = cannedFor(stored);
     // A round that has used up its share is told so (429) before any streaming starts.
     if (live && !canned) spend(body, req, 'creature');
@@ -99,17 +96,19 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     return undefined;
   };
 
-  const bars: RouteHandler = async (body, req) => {
+  /** One idea's grade (SPEC §12.2): the live bar, and later the exam's score for that idea. */
+  const grade: RouteHandler = async (body, req) => {
     const stored = lessonFor(body);
     const ideaId = readString(body, 'ideaId', 8);
+    if (!stored.lesson.ideas.some((i) => i.id === ideaId)) throw new HttpError(400, 'Unknown idea.');
     const transcript = readTranscript(body);
     const canned = cannedFor(stored);
     if (!live || canned) {
       if (!canned) throw new HttpError(503, 'Offline.');
-      return { bars: demoAllBars(canned, transcript), whenRight: demoBars(canned, ideaId, transcript).whenRight };
+      return { grade: demoGrade(canned, ideaId, transcript) };
     }
-    spend(body, req, 'bars');
-    return live.bars(stored, ideaId, transcript);
+    spend(body, req, 'grade');
+    return { grade: await live.grade(stored, ideaId, transcript) };
   };
 
   const examine: RouteHandler = async (body, req) => {
@@ -161,7 +160,7 @@ export function buildRoutes(settings: Settings, opts: RouteOptions = {}): Record
     };
   };
 
-  return { '/extract': extract, '/creature': creature, '/bars': bars, '/examine': examine, '/recall': recall, '/duel': duel, '/duel/join': duelJoin };
+  return { '/extract': extract, '/creature': creature, '/grade': grade, '/examine': examine, '/recall': recall, '/duel': duel, '/duel/join': duelJoin };
 }
 
 /** Builds the live AI roles when there is a key and AI_STUB is off. */

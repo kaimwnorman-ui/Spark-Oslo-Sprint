@@ -277,8 +277,6 @@
     "i1": {
       "say": "Så hjernecellene jobber, og da hoper det seg opp adenosin gjennom dagen, som små kuler i en sekk! Det demper de delene som holder meg våken, og når jeg sover blir sekken tømt. Hvorfor, tro?",
       "example": "Jeg forstår! Når hjernecellene jobber, samler det seg adenosin, og det demper de delene som holder oss våkne. Under søvn blir det ryddet bort, som å tørke tavla rein, hehe!",
-      "whenRight": "Aha, da vet jeg det! Når dagen har vært lang og jeg er helt utslitt, har adenosinet hopet seg opp som sand i timeglasset mitt, og søvnen er da det som snur det og tømmer det igjen!",
-      "whenWrong": "Hmm, jeg tror ikke det er dette, for det du sa meg var at adenosinet ryddes bort under søvn, så timeglasset snus. Når du ikke har fått nok ryddet, er det kanskje ikke det som skjer ved et godt søvnlig morgenvåkning?",
       "checkRight": "Jeg tror dette er riktig! Adenosin samler seg i hjernen mens vi jobber, og det demper de delene som holder oss våkne, og når vi sover blir det ryddet bort. Som en tung skolesekk som blir lettere når vi legger oss. Right?",
       "why": "Åh, så hjernecellene mine jobber og drysser ut små klissete adenosin-prikker gjennom dagen, og de demper de delene som vil holde meg våken! Når jeg sover, blir prikkene feid bort, og det føles som å snu et timeglass!",
       "whyAsk": "Men HVORFOR blir jeg mer og mer trøtt jo lenger jeg er våken, coach? Hva gjør at timeglasset fylles mer og mer?",
@@ -287,8 +285,6 @@
     "i2": {
       "say": "Så kroppen har en indre klokke som tikker litt over døgnet, og den leser lyset gjennom øynene. Når det blir mørkt, kommer melatonin og sier \"natt!\", som en liten ink-kompis som ringer kirkeklokken min.",
       "example": "Så kroppen har en indre klokke som tikker litt over 24 timer, og den lytter etter lys gjennom øynene. Når det blir mørkt, sender den melatonin, som hvisker til resten av meg at nå er det natt!",
-      "whenRight": "Å ja! Så den indre klokka er den som er ute av takt når jeg får jetlag og blir søvnig midt på dagen? Jeg tegner den som en liten klokke med lyse øyne, og den tikker feil etter en lang reise, hehe.",
-      "whenWrong": "Hmm, I don't think that's it! My inner clock only listens to light through the eyes, not how far anyone has run. Could a long run really tell my clock what time it is, though? I'm not sure, but I don't think that's it.",
       "checkRight": "Okei, så kroppen har en indre klokke som går ca. 24 timer, og den tar imot lys gjennom øynene. Når det blir mørkt, sier melatonin at det er natt. Riktig?",
       "why": "Så kroppen har en indre klokke som går på omtrent tjuefire timer, og den lærer seg dag og natt av lyset i øynene. Når det blir mørkt, sender den melatonin, som er som et lite nattevaktsignal, og da vet hele kroppen at det er leggetid!",
       "whyAsk": "Men HVORFOR blir vi trøtte om kvelden og ikke midt på dagen, når klokka mi er så smart?",
@@ -297,8 +293,6 @@
     "i3": {
       "say": "Oi, så natten er som runder på omtrent halvannen time, med lett søvn, dyp søvn og REM-søvn! Og det er lurt å våkne mot slutten av en runde, da blir jeg visst mindre grøtete, hihi.",
       "example": "Oi, så natten er som små runder på en halvtime-to, hvor jeg glir fra lett til dyp til drømmesøvn og tilbake igjen! Og det lureste er å våkne mot slutten av en runde, så jeg ikke blir klumpete som en blot som har sølt seg ut på gulvet.",
-      "whenRight": "Å ja, da stiller jeg vekkerklokka til slutten av en runde, der det er lettest å våkne! Jeg ville våkne som en fjær, ikke som en klump av grøt.",
-      "whenWrong": "Hmm, I don't think that's quite it, coach! My little ink brain is still tangled up in the cycles. Could you tell me more about how the night is shaped?",
       "checkRight": "Så natten er som runder på omtrent halvannen time, med lett søvn, dyp søvn og REM-søvn. Det lureste er å våkne mot slutten av en runde, for da er jeg ikke så tung og forvirret. Right?",
       "why": "Så natten er som runder på omtrent halvannen time, med lett søvn, dyp søvn og REM. Det er lurt å våkne mot slutten av en runde, for da er det lettere å kjenne seg frisk. Jeg tenker på det som å hoppe av et karusell akkurat når den stopper!",
       "whyAsk": "Men hvorfor føler jeg meg så grumsete og klumpete når jeg våkner midt i en dyp runde, coach? Kan en blekksøl være groggy også?",
@@ -307,8 +301,6 @@
     "i4": {
       "say": "Oi, så når jeg sover, flyter hjernevæsken mellom cellene og vasker bort søppelet fra dagen! Jeg tenker med glede på en liten vaskemaskin inni hodet, selv om jeg ikke har hode.",
       "example": "Å, så når jeg sover, går det en liten vaskemaskin i hjernen og skyller bort alt skitten fra dagen! Den vasker mye mer når jeg sover enn når jeg er våken, og vætsken glir lettere mellom cellene.",
-      "whenRight": "Å, så hjernen har sin egen nattvask, og den skyller bort søppelet fra dagen mens jeg sover! Så når hjernen trenger å bli ryddet, er det natten den gjør det på, ikke om dagen.",
-      "whenWrong": "Hmm, I don't think that's the right one for the night wash, coach! My sudsy brain is still soaking up the rinsing part. Can you tell me more about where the waste goes?",
       "checkRight": "Jeg tror nattvasken går slik: mens vi sover, flyter hjernevæsken lettere mellom hjernecellene og skyller bort søppel fra dagen. Det skjer mye mer når vi sover enn når vi er våkne, som om nattevakten vasker gulvet mens kontoret er tomt. Riktig?",
       "why": "Så når jeg sover, renner hjernevæsken lettere mellom cellene og skyller bort dagens søppel. Det vaskeriet går mye hardere om natten enn om dagen, altså en skikkelig nattvask for hjernen min!",
       "whyAsk": "Men WHY sklir hjernevæsken mellom cellene bare når vi sover? Må den ha det skikkelig stille for å vaske, liksom en tørke på fri dag?",
@@ -317,8 +309,6 @@
     "i5": {
       "say": "Oi, så dagens minner sitter fast midlertidig, og om natten, særlig i dyp søvn, spilles de av igjen og flyttes til mer varig lagring! Jeg ser for meg at de blir pakket ned i en ekstra stor skuff mens jeg blunker.",
       "example": "Jeg forstår! Dagens nye ting ligger først i en liten lomme, og om natten i dyp søvn blir de spilt av igjen og flyttet til en mye tryggere hylle. Som en bokstavhylle i hodet mitt som sover!",
-      "whenRight": "Å, da skal jeg huske det! Hvis du pugger i kveld og sover godt, flyttes lærdommen fra midlertidig til varig lagring, så du husker den til prøven i morgen. Det er derfor det er klokt å sove før prøven!",
-      "whenWrong": "Hmm, that doesn't feel like it fits, my coach! I only know that new things get saved for a little while during the day, then replayed and moved to longer keeping at night, in deep sleep.",
       "checkRight": "Jeg tror jeg har det: nye ting du lærer, lagres først bare midlertidig om dagen. Når du sover, særlig dypt, spilles de av igjen og flyttes til lagring som varer. Som glosene dine, da, de sitter bedre etter en god natt. Right?",
       "why": "Åh, så dagens minner ligger i en liten kurv, og natten er når de blir sortert og lagt i den store hylla! Jeg blir så glad av det, for jeg vil ikke at noe viktig skal blåse bort som en flekk.",
       "whyAsk": "Men hvorfor husker man det bedre etter en natts søvn, coach? Hva gjør søvnen med minnene mine?",
@@ -403,7 +393,8 @@
     {
       "ideaId": "i1",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i1",
@@ -412,13 +403,18 @@
     },
     {
       "ideaId": "i1",
-      "move": "example",
-      "text": "Etter en lang skoledag føler du deg tung og trøtt fordi det har samlet seg mye adenosin, men etter en natts søvn er du uthvilt."
+      "move": "why",
+      "text": "Jo mer hjernen har brukt energi, desto mer adenosin finnes det, og det gir et søvnpress som får oss til å ville sove."
     },
     {
       "ideaId": "i2",
       "move": "say",
       "text": "Kroppen har en indre klokke som går på omtrent 24 timer og bruker lys fra øynene som signal. Når det blir mørkt, kommer melatonin og sier at det er natt."
+    },
+    {
+      "ideaId": "i2",
+      "move": "check",
+      "tap": "yes"
     },
     {
       "ideaId": "i2",
@@ -432,8 +428,13 @@
     },
     {
       "ideaId": "i3",
-      "move": "example",
-      "text": "Hvis alarmen ringer midt i dyp søvn, føler du deg tung og forvirret, men våkner du helt mot slutten av en runde, kommer du lettere opp."
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i3",
+      "move": "why",
+      "text": "Hjernen er mest nedsunket i dyp søvn, og da er det vanskelig å skifte til våken tilstand, så man blir groggy."
     },
     {
       "ideaId": "i4",
@@ -443,7 +444,8 @@
     {
       "ideaId": "i4",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i4",
@@ -452,8 +454,8 @@
     },
     {
       "ideaId": "i4",
-      "move": "when",
-      "tap": 2
+      "move": "why",
+      "text": "Hjernecellene lager avfall når de jobber, og det må fjernes for at hjernen skal fungere godt dagen etter, og det skjer best i søvn."
     }
   ],
   "lines": {

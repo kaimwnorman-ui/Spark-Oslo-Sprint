@@ -1,12 +1,12 @@
-// The round engine: where Blot's replies, live bars and the exam come from.
+// The round engine: where Blot's replies, the grades and the exam come from.
 // DemoEngine answers from a canned round (offline); ServerEngine talks to the Spark server.
-import type { DemoRound, ExamItem, ExamResult, Language, Move, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
+import type { Belief, DemoRound, ExamItem, ExamResult, IdeaGrade, Language, Move, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 import { barValue } from '../../../shared/bars.ts';
 import { sealLesson } from '../../../shared/lesson.ts';
-import { demoBars, demoExam, demoReply, type BarsReply, type CreatureRequest } from '../../../shared/demo.ts';
+import { demoExam, demoGrade, demoReply, type CreatureRequest } from '../../../shared/demo.ts';
 import { wait } from './anim.ts';
 
-export type { BarsReply, CreatureEvent, CreatureRequest } from '../../../shared/demo.ts';
+export type { CreatureEvent, CreatureRequest } from '../../../shared/demo.ts';
 
 export interface RoundEngine {
   readonly offline: boolean;
@@ -15,8 +15,8 @@ export interface RoundEngine {
   readonly seed: number;
   /** Blot's reply, as streamed text chunks. */
   creature(req: CreatureRequest): AsyncIterable<string>;
-  /** Live bars for one idea, from everything the player did on it. */
-  bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply>;
+  /** One idea's grade, from everything the player did on it: the live bar (the exam reuses it). */
+  grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade>;
   /** The exam, from the player's messages and taps only, plus the misreads Blot still holds. */
   examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult>;
 }
@@ -29,6 +29,8 @@ async function* stream(text: string): AsyncIterable<string> {
     if (part.trim()) await wait(28);
   }
 }
+
+const beliefFor = (score: number): Belief => (score < 10 ? 'unknown' : score >= 60 ? 'right' : 'partial');
 
 export class DemoEngine implements RoundEngine {
   readonly offline = true;
@@ -49,9 +51,9 @@ export class DemoEngine implements RoundEngine {
     yield* stream(demoReply(this.round, req));
   }
 
-  async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
-    await wait(120);
-    return demoBars(this.round, ideaId, transcript);
+  async grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade> {
+    await wait(200);
+    return demoGrade(this.round, ideaId, transcript);
   }
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
@@ -82,67 +84,64 @@ export class OfflineEngine implements RoundEngine {
     this.seed = seed;
   }
 
+  private get nb(): boolean {
+    return this.language === 'nb' || this.language === 'nn';
+  }
+
   private name(id: string): string {
     return this.lesson.ideas.find((i) => i.id === id)?.name ?? '';
   }
 
   async *creature(req: CreatureRequest): AsyncIterable<string> {
-    const nb = this.language === 'nb' || this.language === 'nn';
     const last = req.transcript.filter((e) => e.text).at(-1)?.text ?? req.text ?? '';
     const quote = last.split(/\s+/).slice(0, 14).join(' ');
-    const line: Record<string, string> = nb
+    const line: Record<string, string> = this.nb
       ? {
-          say: `Skjønner! «${quote}…» Det skriver jeg på dryppen min.`,
-          example: 'Å, et eksempel! Nå ser jeg det for meg.',
-          why: 'Så DET er grunnen! Hele klatten min kribler.',
-          fix: 'Åh, takk for at du rettet meg!',
-          when: 'Da skal jeg bruke den? Notert!',
           check: `Du sa: «${quote}…» Stemmer det?`,
+          fix: 'Åh, takk for at du rettet meg!',
           askWhy: `Men HVORFOR er «${this.name(req.ideaId)}» sånn?`,
+          why: 'Så DET er grunnen! Hele klatten min kribler.',
+          example: 'Å, et eksempel! Nå ser jeg det for meg.',
         }
       : {
-          say: `Got it! "${quote}…" I'm writing that on my drip.`,
-          example: 'Ooh, an example! Now I can picture it.',
-          why: "So THAT's why! My whole blob is tingling.",
-          fix: 'Ohh, thank you for fixing that!',
-          when: "That's when I'd use it? Noted!",
           check: `You told me: "${quote}…" Right?`,
+          fix: 'Ohh, thank you for fixing that!',
           askWhy: `But WHY does "${this.name(req.ideaId)}" work like that?`,
+          why: "So THAT's why! My whole blob is tingling.",
+          example: 'Ooh, an example! Now I can picture it.',
         };
     await wait(200);
-    yield* stream(line[req.event] ?? line.say!);
+    yield* stream(line[req.event] ?? line.check!);
   }
 
-  async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
+  /** Without the answers Blot cannot judge correctness, so it is cautious: an explanation is Ready, never Mastered. */
+  async grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade> {
     const words = (t?: string) => (t ?? '').split(/\s+/).filter(Boolean).length;
-    let raw = 0;
-    for (const e of transcript.filter((x) => x.ideaId === ideaId)) {
-      if (e.move === 'say' && words(e.text) >= 6) raw = Math.max(raw, 28);
-      if (e.move === 'example' && words(e.text) >= 8) raw = Math.max(raw, 62);
-      if (e.move === 'why' && words(e.text) >= 8) raw = Math.max(raw, 72);
-      if (e.move === 'when') raw = Math.max(raw, 30);
-      if (e.move === 'check' && e.tap === 'yes') raw = Math.max(raw, 40);
+    let score = 0;
+    const mine = transcript.filter((x) => x.ideaId === ideaId);
+    for (const e of mine) {
+      if (e.move === 'say' && words(e.text) >= 4) score = Math.max(score, 45);
+      if ((e.move === 'why' || e.move === 'example') && words(e.text) >= 4) score = Math.max(score, 70);
     }
-    return { raw, contradictsMisread: false };
+    const said = mine.filter((e) => e.text).at(-1)?.text;
+    return {
+      id: ideaId,
+      score,
+      belief: beliefFor(score),
+      grounded: score > 0,
+      contradictsMisread: false,
+      creatureAnswer: said ? said.split(/\s+/).slice(0, 30).join(' ') : this.nb ? 'Jeg... kan ikke denne!' : "I... don't know this one!",
+      tip: this.nb ? 'Si hvorfor, med dine egne ord.' : 'Say why, in your own words.',
+    };
   }
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
-    const nb = this.language === 'nb' || this.language === 'nn';
-    const results = [];
+    const results: ExamItem[] = [];
     for (const idea of this.lesson.ideas) {
-      const mine = transcript.filter((e) => e.ideaId === idea.id);
-      const moves = mine.map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
-      const score = barValue(moves, (await this.bars(idea.id, transcript)).raw);
-      const belief = heldMisreads.includes(idea.id) ? 'wrong' : score < 10 ? 'unknown' : score >= 60 ? 'right' : 'partial';
-      const said = mine.filter((e) => e.text).at(-1)?.text;
-      results.push({
-        id: idea.id,
-        score,
-        grounded: score > 0,
-        belief: belief as ExamItem['belief'],
-        creatureAnswer: said ? said.split(/\s+/).slice(0, 30).join(' ') : nb ? 'Jeg... kan ikke denne!' : "I... don't know this one!",
-        tip: nb ? 'Gi et eksempel og si hvorfor.' : 'Give an example and say why.',
-      });
+      const moves = transcript.filter((e) => e.ideaId === idea.id).map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
+      const grade = await this.grade(idea.id, transcript);
+      const score = barValue(moves, grade.score);
+      results.push({ ...grade, score, belief: heldMisreads.includes(idea.id) ? 'wrong' : beliefFor(score), grounded: score > 0 });
     }
     return { results };
   }
@@ -174,9 +173,12 @@ export class LockedEngine implements RoundEngine {
   creature(req: CreatureRequest): AsyncIterable<string> {
     return this.inner.creature(req);
   }
-  bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
-    if (ideaId in this.locks) return Promise.resolve({ raw: this.locks[ideaId]!, contradictsMisread: false });
-    return this.inner.bars(ideaId, transcript);
+  grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade> {
+    if (ideaId in this.locks) {
+      const score = this.locks[ideaId]!;
+      return Promise.resolve({ id: ideaId, score, belief: 'right', grounded: true, contradictsMisread: false, creatureAnswer: '', tip: '' });
+    }
+    return this.inner.grade(ideaId, transcript);
   }
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     const exam = await this.inner.examine(transcript, heldMisreads);
@@ -203,26 +205,34 @@ export interface ComebackIdea {
  */
 export class ComebackEngine extends OfflineEngine {
   private readonly idea: ComebackIdea;
-  private readonly grade: (answer: string) => Promise<{ score: number; feedback: string }>;
+  private readonly gradeAnswer: (answer: string) => Promise<{ score: number; feedback: string }>;
   constructor(lesson: SealedLesson, seed: number, idea: ComebackIdea, grade: (answer: string) => Promise<{ score: number; feedback: string }>) {
     super(lesson, seed);
     this.idea = idea;
-    this.grade = grade;
+    this.gradeAnswer = grade;
   }
   private taught(transcript: TranscriptEntry[]): string {
     return transcript.filter((e) => e.ideaId === this.idea.ideaId && e.text).map((e) => e.text).join(' ');
   }
-  override async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
-    if (ideaId !== this.idea.ideaId) return super.bars(ideaId, transcript);
+  override async grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade> {
+    if (ideaId !== this.idea.ideaId) return super.grade(ideaId, transcript);
     const text = this.taught(transcript);
-    return { raw: text ? (await this.grade(text)).score : 0, contradictsMisread: false };
+    const graded = text ? await this.gradeAnswer(text) : { score: 0, feedback: '' };
+    return {
+      id: ideaId,
+      score: graded.score,
+      belief: beliefFor(graded.score),
+      grounded: graded.score > 0,
+      contradictsMisread: false,
+      creatureAnswer: text ? text.split(/\s+/).slice(0, 30).join(' ') : '',
+      tip: graded.feedback,
+    };
   }
   override async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {
     const exam = await super.examine(transcript, heldMisreads);
     const mine = transcript.filter((e) => e.ideaId === this.idea.ideaId);
     const moves = mine.map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
-    const text = this.taught(transcript);
-    const graded = text ? await this.grade(text) : { score: 0, feedback: '' };
+    const graded = await this.grade(this.idea.ideaId, transcript);
     const score = barValue(moves, graded.score);
     return {
       results: exam.results.map((r) =>
@@ -231,8 +241,8 @@ export class ComebackEngine extends OfflineEngine {
               ...r,
               score,
               grounded: score > 0,
-              belief: score < 10 ? 'unknown' : score >= 60 ? 'right' : 'partial',
-              tip: graded.feedback || r.tip,
+              belief: beliefFor(score),
+              tip: graded.tip || r.tip,
               modelAnswer: this.idea.modelAnswer,
               question: this.idea.question,
               keyPoints: this.idea.keyPoints,

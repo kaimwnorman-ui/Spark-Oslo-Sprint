@@ -1,6 +1,6 @@
 // Spark's game tab: home, demo rounds (?demo=tides), rounds from real pages (?round=), and the
 // learning loop (SPEC §17): Your Blot (?blot=1), comebacks (?comeback=), duels (?duel=).
-import { DEMO_SPEED, DEMO_TEACH_SECONDS, MISREAD_COUNT, MONSTER_WORDS, TEACH_SECONDS } from '../../../shared/config.ts';
+import { COMEBACK_SECONDS, DEMO_SPEED, MISREAD_COUNT, MONSTER_WORDS, TEACH_SECONDS } from '../../../shared/config.ts';
 import { teachSeconds } from '../../../shared/params.ts';
 import { barValue } from '../../../shared/bars.ts';
 import { decodeLocalDuel, isLocalDuel, isServerDuelCode, readChallenge, type DuelChallenge } from '../../../shared/duel.ts';
@@ -13,7 +13,7 @@ import { misreadIdeaIds, monsterInk } from '../../../shared/round.ts';
 import type { DemoRound, Move, RoundHandoff, SealedLesson, Trait } from '../../../shared/types.ts';
 import { distinctiveWords } from '../../../shared/words.ts';
 import { setSpeed } from './anim.ts';
-import { newProgress, ownIdeaIds, scriptedIdeaIds, type RoundCtx } from './context.ts';
+import { newProgress, ownIdeaIds, scriptedIdeaIds, type IdeaProgress, type RoundCtx } from './context.ts';
 import { h } from './dom.ts';
 import { ComebackEngine, DemoEngine, LockedEngine, OfflineEngine, loadDemoRound, type RoundEngine } from './engine.ts';
 import { linesFor } from './lines.ts';
@@ -41,8 +41,6 @@ const FAST = params.has('fast');
 const LIVE = params.get('live') === '1';
 /** Optional teaching time in seconds (presenters, tests); null when absent, so the real default applies. */
 const TEACH = teachSeconds(params.get('teach'));
-/** A comeback is about one idea: one minute is plenty. */
-const COMEBACK_SECONDS = 60;
 
 const go = (path: string) => {
   location.href = navUrl(path);
@@ -121,7 +119,7 @@ function failOver(ctx: RoundCtx, canned: DemoRound | null): void {
   };
 }
 
-/** Stage round: some ideas arrive already taught (SPEC §13). */
+/** Stage round: some ideas arrive already taught (SPEC §13): done, with their grades, and no time left to earn on them. */
 async function applyPretaught(ctx: RoundCtx, round: DemoRound): Promise<void> {
   if (!round.pretaught?.length) return;
   ctx.misreads = [];
@@ -129,13 +127,13 @@ async function applyPretaught(ctx: RoundCtx, round: DemoRound): Promise<void> {
     ctx.transcript.push(e);
     const p = ctx.progress[e.ideaId]!;
     if (e.move !== 'same' && e.move !== 'dontknow') p.moves.push(e.move as Move);
-    p.said = true;
-    p.asked = true;
-    p.belief = 'right';
+    Object.assign(p, { belief: 'right', step: 'done', earned: { ready: true, mastered: true, caught: true } } satisfies Partial<IdeaProgress>);
   }
   for (const id of new Set(round.pretaught.map((e) => e.ideaId))) {
     const p = ctx.progress[id]!;
-    p.raw = (await ctx.engine.bars(id, ctx.transcript)).raw;
+    const grade = await ctx.engine.grade(id, ctx.transcript);
+    p.raw = grade.score;
+    p.tip = grade.tip;
     p.value = barValue(p.moves, p.raw);
   }
 }
@@ -237,7 +235,7 @@ function makeResumable(ctx: RoundCtx, key: string): void {
   ctx.resumeKey = key;
   ctx.persist = (remainingMs) =>
     saveRound(key, {
-      v: 1,
+      v: 2,
       at: Date.now(),
       fingerprint: fingerprintFor(ctx),
       transcript: ctx.transcript,
@@ -328,7 +326,7 @@ async function playDemo(id: string): Promise<void> {
   const firstRound = !(await getLocal('played', false));
   // The stage round is for presenters: no coaching, no flashback.
   const stage = !!round.pretaught?.length;
-  const ctx = baseCtx(demoEngine, await currentTraits(), firstRound, TEACH ?? (FAST ? 30 : DEMO_TEACH_SECONDS), stage ? [] : await coachFocus());
+  const ctx = baseCtx(demoEngine, await currentTraits(), firstRound, TEACH ?? (FAST ? 30 : TEACH_SECONDS), stage ? [] : await coachFocus());
   ctx.demo = round;
   ctx.demoId = round.id;
   ctx.fullLesson = round.lesson;
@@ -460,8 +458,10 @@ async function playComeback(id: string): Promise<void> {
     fullLesson: round?.lesson ?? null,
     monster: { name: cb.monsterName, shape: cb.shape, color: cb.color, words: cb.words.length >= 40 ? cb.words : ctx.lesson.words },
   } satisfies Partial<RoundCtx>);
-  // The beaten ideas start full.
-  for (const [ideaId, value] of Object.entries(locks)) Object.assign(ctx.progress[ideaId]!, { value, raw: value, belief: 'right', said: true, asked: true });
+  // The beaten ideas start full, done, and with no time left to earn.
+  for (const [ideaId, value] of Object.entries(locks)) {
+    Object.assign(ctx.progress[ideaId]!, { value, raw: value, belief: 'right', step: 'done', earned: { ready: true, mastered: true, caught: true } } satisfies Partial<IdeaProgress>);
+  }
   ctx.onPlayAgain = () => (ctx.after.tamed ? go(cb.demoId ? `game.html?demo=${encodeURIComponent(cb.demoId)}` : 'game.html') : location.reload());
   await formingScreen(ctx, [], null);
   await playRound(ctx);
@@ -495,7 +495,7 @@ async function playDuel(token: string): Promise<void> {
   setSpeed(FAST ? 12 : local ? DEMO_SPEED : 1);
   const firstRound = !(await getLocal('played', false));
   // A fair fight: the same teaching time the challenger had, and no coaching or power-ups.
-  const ctx = baseCtx(engine, await currentTraits(), firstRound, TEACH ?? (FAST ? 30 : local ? DEMO_TEACH_SECONDS : TEACH_SECONDS));
+  const ctx = baseCtx(engine, await currentTraits(), firstRound, TEACH ?? (FAST ? 30 : TEACH_SECONDS));
   ctx.kind = 'duel';
   ctx.duel = challenge;
   ctx.demoId = local ? challenge.demo : null;

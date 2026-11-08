@@ -3,6 +3,7 @@ import type {
   BoutResult, DemoRound, ExamResult, Lesson, MonsterShape, Move, PageCapture, SealedLesson, TranscriptEntry, Trait,
 } from '../../../shared/types.ts';
 import type { TeachBelief } from '../../../shared/round.ts';
+import type { Earned, Step } from '../../../shared/teach.ts';
 import type { BoutBoosts } from '../../../shared/bout.ts';
 import type { DuelChallenge } from '../../../shared/duel.ts';
 import type { FocusCode, Insight } from '../../../shared/insights.ts';
@@ -12,13 +13,21 @@ import type { Lines } from './lines.ts';
 
 export interface IdeaProgress {
   moves: Move[];
+  /** The latest grade's raw score (0..100, before the move caps). */
   raw: number;
+  /** The bar: the raw score under the move caps (shared/bars.ts). The exam uses the same grade. */
   value: number;
   belief: TeachBelief;
-  said: boolean;
-  asked: boolean;
-  askedWhen?: boolean;
-  askedExample?: boolean;
+  /** Where the teach-back is for this idea (shared/teach.ts). */
+  step: Step;
+  /** The time this idea has earned (each kind once). */
+  earned: Earned;
+  /** The grader's one-line tip on the latest grade. */
+  tip?: string;
+  /** What Blot said back at the check step (shown again when the player returns to this idea). */
+  saidBack?: string;
+  /** Blot's why (or example) question for this idea, once asked. */
+  blotAsked?: string;
 }
 
 /** A normal round, a monster's comeback, or a duel against a friend's Blot (SPEC §17). */
@@ -99,6 +108,6 @@ export function scriptedIdeaIds(ctx: Pick<RoundCtx, 'locked' | 'stage'>): Set<st
 
 export function newProgress(lesson: SealedLesson): Record<string, IdeaProgress> {
   return Object.fromEntries(
-    lesson.ideas.map((i) => [i.id, { moves: [], raw: 0, value: 0, belief: 'none', said: false, asked: false } satisfies IdeaProgress]),
+    lesson.ideas.map((i) => [i.id, { moves: [], raw: 0, value: 0, belief: 'none', step: 'explain', earned: {} } satisfies IdeaProgress]),
   );
 }

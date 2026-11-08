@@ -70,8 +70,9 @@ test('message limit: 400 characters, counter from 320', () => {
 });
 
 test('minimum words per typed move', () => {
-  assert.equal(wordsMissing('say', 'tides are big'), 3);
+  assert.equal(wordsMissing('say', 'tides are big'), 1);
   assert.equal(wordsMissing('say', 'the moon tugs the near side more'), 0);
-  assert.equal(wordsMissing('example', 'one two three four five six seven'), 1);
+  assert.equal(wordsMissing('why', 'because gravity fades'), 1);
+  assert.equal(wordsMissing('example', 'one two three four'), 0);
   assert.equal(wordsMissing('when', ''), 0);
 });

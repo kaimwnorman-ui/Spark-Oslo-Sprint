@@ -291,6 +291,9 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
         h('span', null, ctx.kind === 'comeback' ? `${count} ${noun} already beaten. Teach the glowing one to tame it.` : `${count} ${noun} already taught for you. Teach the glowing one to land the K.O.`),
       ),
     );
+  } else {
+    // How to win, in one line, before the first click.
+    attacks.append(h('li', { class: 'attack-note', id: 'attack-note' }, h('span', null, 'Its attacks are the page’s ideas. Every idea you teach Blot becomes a hit back.')));
   }
   for (const idea of ctx.lesson.ideas) {
     // A comeback crosses out the ideas already beaten; the stage round ticks the ones taught for you.

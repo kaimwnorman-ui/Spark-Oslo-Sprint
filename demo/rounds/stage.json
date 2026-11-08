@@ -277,8 +277,6 @@
     "i1": {
       "say": "Ooh, so the Moon tugs the near water harder than the far water, and that uneven tugging stretches the whole Earth out like taffy instead of just sliding it along! Wobbly taffy, very silly, very wet.",
       "example": "Oh! So the Moon tugs the near water harder than the far water, and that uneven tugging stretches the whole Earth out, like taffy pulled by one hand harder than the other. I'm a blot, so I'd stretch into a long, wobbly wiggle!",
-      "whenRight": "Oooh, so the Moon pulls the near water harder and the far water less, and that uneven tugging stretches the whole Earth like a rubber band! A pushed band just slides along, but a stretched one changes shape, and that is why I would use this idea to explain it.",
-      "whenWrong": "Hmm, I don't think waves breaking is the same thing, Coach. My ink says the Moon's pull is stronger on near water and weaker on far water, which stretches the whole Earth, so I'm not sure waves are what we're talking about.",
       "checkRight": "Ooh, so the Moon tugs the nearby water harder than the faraway water, and that uneven tug stretches the whole Earth like taffy! Right?",
       "why": "Oh! So the Moon tugs the water closer to it harder than the far water, and that uneven tug stretches the whole Earth like taffy. Stretchy Earth, my favourite kind of blot!",
       "whyAsk": "But WHY does the uneven pull stretch the whole Earth, and not just slide the entire planet over like a rug?",
@@ -287,8 +285,6 @@
     "i2": {
       "say": "Oh! So the water stretches into two fat bumps, one leaning toward the Moon and one on the far side, and as the planet spins, my beach gets carried through both like a sock going through a wringer. I love that image, though I might be a little squished afterward!",
       "example": "Oooh, so the water stretches into two big bumps, one leaning toward the Moon and one on the far side! Then the spinning Earth carries each beach through both, like a sandwich being squished by a very slow hand.",
-      "whenRight": "Two bulges, one facing the Moon and one on the far side, and the spinning Earth carries each beach through both! So that is why I can count two high tides today, my coach. I would use it to predict how many high tides a beach gets each day, and I am wildly delighted!",
-      "whenWrong": "Hmm, I don't think that's it, my coach! Summer and winter sound like a different puzzle, and I only know about the two bulges and the spinning. Could you tell me how the bulges meet the beach?",
       "checkRight": "Oh! So the Moon stretches the sea into two bumps, one toward the Moon and one on the far side. Then the spinning Earth carries your beach through each bump, so you get high, low, high, low in one day. Right?",
       "why": "Two bulges, got it! So the water grows a hump facing the Moon and another hump on the far side, and my beach gets carried through both as Earth spins. Two highs and two lows a day, like I'm riding a very wet seesaw!",
       "whyAsk": "But WHY does the spinning Earth carry the beach through two bulges, and not just one?",
@@ -297,8 +293,6 @@
     "i3": {
       "say": "Oh! So the Moon keeps scooting along its path while Earth spins, so Earth has to keep turning for about fifty more minutes to get my beach back under it. That's why the tides arrive later each day, like me always arriving at the party a little late!",
       "example": "Ooh, so the Moon keeps wandering along its path while Earth spins, which means Earth has to keep turning a bit more, about fifty extra minutes, before the beach faces the Moon again. So the tides show up later each day, like I'm always running late to the same party!",
-      "whenRight": "Oooh, so yesterday's high tide time is too early today! Because the Moon keeps sliding along its path, I have to wait about fifty more minutes before the beach turns to face it. So I should check a fresh tide time before my beach walk!",
-      "whenWrong": "Hmm, I don't think a cake's baking time fits that one, coach! My little brain is still holding on to the Moon moving along while Earth spins, so high tide keeps slipping later. Can you show me another moment?",
       "checkRight": "The Moon keeps drifting along its path while I spin, so the beach needs about fifty more minutes to turn back to face it. That's why high tide slides later each day! Right?",
       "why": "Oh! So the Moon keeps wandering along while Earth spins, like a friend who keeps walking ahead, so Earth has to turn about fifty extra minutes to catch up and face it again. That's why the tides come later every day, Coach!",
       "whyAsk": "But WHY does the Moon have to keep moving along its path while Earth spins, if the Moon is already up there pulling the water?",
@@ -307,8 +301,6 @@
     "i4": {
       "say": "Ooh, so the Sun has its own little tide, and when Sun and Moon line up the water gets BIG, like a leaping splash! But when they pull at right angles, the sea just gently tiptoes about. Big leaps, soft tiptoes, got it!",
       "example": "Ooh, so when the Sun and Moon stand in a line, the sea gets big and bouncy, like a puddle jumping high! But when they pull at right angles, the tides go all gentle and sleepy, like a puddle taking a nap.",
-      "whenRight": "Oh! So big tides come when the Sun and Moon line up, and gentle ones when they pull at right angles. Then for a sailing trip, I'd pick a big spring-tide week, when the water runs deepest, like a bath filled to the brim!",
-      "whenWrong": "Hmm, my coach, I don't think picking spring flowers is it. Spring tides don't have anything to do with flowers or the season, from what you told me, so let's try another situation.",
       "checkRight": "Ooh, so when the Sun and Moon line up, like at new or full moon, the sea climbs super high and drops super low! But when they pull at right angles, like at a half moon, the tides are gentle and the difference is small. Right?",
       "why": "Oh! So when the Sun and Moon hold hands in a line, their tide pulls stack into a big sloshy tide, but when they pull at right angles they sort of cancel each other out and make a gentle little tide. Like two kids pushing a swing together versus pushing it from opposite sides!",
       "whyAsk": "But WHY do the tides get big and then small again, like they're taking turns every two weeks?",
@@ -317,8 +309,6 @@
     "i5": {
       "say": "Oh! So a coast can make the sea puff up bigger, like a funnel squeezing water higher! And if a bay sloshes just right with the tide, every push adds more, like a kid on a swing getting a perfect shove!",
       "example": "Oh! So a coast can make the tide bigger, like a funnel squeezing water up higher. And if a bay sloshes at the tide's own rhythm, each tide gives it another little shove, like pushing a swing at just the right moment. I'm picturing a puddle giggling on a swing!",
-      "whenRight": "Oh! So a bay is like a funnel that squeezes the water up, and if it sloshes in time with the tide, every push adds more, like a swing! That's why one bay gets giant tides and another gets tiny ones, I think?",
-      "whenWrong": "Hmm, I don't think the horizon moon is about coasts shaping tides, coach! My ink says that one's a different puzzle, so let's look at the funnel bay again.",
       "checkRight": "Oooh, so a bay shaped like a funnel squeezes the water up higher, like a swing you keep pushing at just the right moment! Right?",
       "why": "Oh! So the Moon gives the same gentle nudge everywhere, but a funnel-shaped bay squeezes the water up higher, like pinching a squeezy bottle! And if the bay sloshes in time with the tide, each push makes the slosh bigger, like a swing getting higher.",
       "whyAsk": "But WHY does a funnel-shaped bay squeeze the water higher, Coach? Is it like squishing a sponge, or does the water just get bored and climb up?",
@@ -402,8 +392,13 @@
     },
     {
       "ideaId": "i5",
-      "move": "example",
-      "text": "Like pushing a child on a swing at just the right moment, tiny pushes from the Moon build into a huge tide in a narrowing bay."
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i5",
+      "move": "why",
+      "text": "The Moon's push is the same everywhere, but local geometry and natural sloshing timing decide how much that gentle push is magnified."
     }
   ],
   "lines": {

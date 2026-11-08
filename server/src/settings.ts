@@ -9,7 +9,7 @@ export interface Settings {
   /** AI_STUB=1: every AI route answers from demo/ fixtures. */
   stub: boolean;
   models: Record<Role, string>;
-  /** output_config.effort per role (SPEC §12: low; the examiner may need medium on Sonnet). */
+  /** output_config.effort per role (SPEC §12: low unless a measurement says otherwise). */
   efforts: Record<Role, 'low' | 'medium' | 'high'>;
   keys: ServerKeys;
   clientToken: string;
@@ -32,15 +32,13 @@ export function loadSettings(env: Env): Settings {
     models: {
       extractor: pick('MODEL_EXTRACTOR', DEFAULT_MODELS.extractor),
       creature: pick('MODEL_CREATURE', DEFAULT_MODELS.creature),
-      bars: pick('MODEL_BARS', DEFAULT_MODELS.bars),
-      examiner: pick('MODEL_EXAMINER', DEFAULT_MODELS.examiner),
+      grader: pick('MODEL_GRADER', DEFAULT_MODELS.grader),
       recall: pick('MODEL_RECALL', DEFAULT_MODELS.recall),
     },
     efforts: {
       extractor: effort(env.EFFORT_EXTRACTOR),
       creature: effort(env.EFFORT_CREATURE),
-      bars: effort(env.EFFORT_BARS),
-      examiner: effort(env.EFFORT_EXAMINER),
+      grader: effort(env.EFFORT_GRADER),
       recall: effort(env.EFFORT_RECALL),
     },
     keys: resolveKeys(env),

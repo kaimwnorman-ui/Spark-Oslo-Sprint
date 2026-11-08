@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addRound, focusCodes, insights, moveImpact, pruneHistory, stats, summarizeRound, MAX_HISTORY, type RoundSummary } from './insights.ts';
+import { addRound, deepImpact, focusCodes, insights, moveImpact, pruneHistory, stats, summarizeRound, MAX_HISTORY, type RoundSummary } from './insights.ts';
 import type { ExamResult, Move, TranscriptEntry } from './types.ts';
 
 const names = [1, 2, 3, 4, 5].map((n) => ({ id: `i${n}`, name: `Idea ${n}` }));
@@ -46,11 +46,14 @@ test('trust comes first when Blot fooled the player', () => {
   assert.equal(focusCodes(h)[0], 'trust');
 });
 
-test('examples: uses the player’s own numbers when they show the gap', () => {
-  const h = [round([['say', 'example'], ['say'], ['say'], ['say', 'when'], ['say']], [80, 30, 25, 35, 20])];
-  const ex = insights(h).find((i) => i.code === 'examples')!;
-  assert.match(ex.detail, /scored 80 on average\. Without one: 28/);
-  assert.deepEqual(moveImpact(h, 'example'), { with: 80, without: 28, used: 1, taught: 5 });
+test('why: answering Blot’s third question (why or an example) uses the player’s own numbers when they show the gap', () => {
+  const h = [round([['say', 'check', 'why'], ['say', 'check'], ['say', 'check'], ['say', 'example'], ['say']], [80, 30, 25, 70, 20])];
+  const why = insights(h).find((i) => i.code === 'why')!;
+  assert.match(why.detail, /answered why scored 75 on average\. The rest: 25/);
+  assert.deepEqual(deepImpact(h), { with: 75, without: 25, used: 2, taught: 5 });
+  assert.deepEqual(moveImpact(h, 'example'), { with: 70, without: 39, used: 1, taught: 5 });
+  // Answering why on most ideas: no tip.
+  assert.equal(insights([round([['say', 'why'], ['say', 'why'], ['say', 'example'], ['say']], [80, 75, 70, 20])]).some((i) => i.code === 'why'), false);
 });
 
 test('coverage and paste tips; at most three insights; focus is the top two tips', () => {

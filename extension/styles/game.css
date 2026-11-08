@@ -118,6 +118,12 @@ button, a.primary { font: inherit; }
 .timer { font: 900 54px/1 var(--font-display); font-variant-numeric: tabular-nums; padding: 6px 20px; border-radius: 16px; border: 3px solid var(--ink); background: #fff; }
 .timer.low { color: var(--warning); border-color: var(--warning); animation: pulse 0.8s ease-in-out infinite; }
 .timer.paused { opacity: 0.5; }
+/* The clock column: the time, a pop when good answers earn more, and how many ideas Blot can fight with. */
+.clock { position: relative; display: grid; justify-items: center; gap: 4px; }
+.ready-count { margin: 0; font: 800 18px/1 var(--font-text); color: var(--success); }
+.time-bonus { position: absolute; left: 100%; top: 8px; margin-left: 12px; white-space: nowrap; padding: 6px 12px; border-radius: 999px; background: var(--success); color: #fff; font: 900 20px/1 var(--font-display); opacity: 0; pointer-events: none; }
+.time-bonus.show { animation: bonus-pop 2400ms ease-out both; }
+@keyframes bonus-pop { 0% { opacity: 0; transform: translateY(10px) scale(0.8); } 10% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-12px); } }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 .bell { justify-self: end; min-height: 56px; padding: 10px 22px; border-radius: 999px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 800 22px/1 var(--font-display); cursor: pointer; }
 .bell:hover { background: #fff8ec; }
@@ -148,15 +154,29 @@ button, a.primary { font: inherit; }
 .bubble.typing::after { content: '▍'; animation: blink 0.8s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes bubble-pop { from { transform: scale(0.85); } to { transform: none; } }
-.teach-bubble { order: 2; align-self: center; margin-bottom: 60px; }
+/* The bubble keeps its width while Blot talks, so Blot never jumps as words stream in. */
+.teach-bubble { order: 2; align-self: center; margin-bottom: 60px; flex: 0 1 520px; }
 .teach-bubble::before { content: ''; position: absolute; left: -16px; top: 50%; width: 22px; height: 22px; background: #fff; border-left: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: translateY(-50%) rotate(45deg); }
-.panel { min-height: 168px; padding: 14px 16px; border-radius: 20px; background: rgba(255, 255, 255, 0.75); border: 3px solid rgba(29, 26, 47, 0.18); display: grid; gap: 10px; align-content: start; }
+/* One height for every step (explain, check, thinking, done), so nothing on screen moves between them. */
+.panel { min-height: 268px; padding: 14px 16px; border-radius: 20px; background: rgba(255, 255, 255, 0.75); border: 3px solid rgba(29, 26, 47, 0.18); display: grid; gap: 10px; align-content: start; }
 .panel-prompt { margin: 0; font-weight: 700; font-size: 20px; }
 .panel[data-kind='pick'] { place-items: center; }
 .panel[data-kind='pick'] .panel-prompt { font: 900 30px/1 var(--font-display); color: rgba(29, 26, 47, 0.75); }
-.moves { display: flex; flex-wrap: wrap; gap: 8px; }
-.move { min-height: 48px; padding: 8px 18px; border-radius: 999px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 800 19px/1 var(--font-display); cursor: pointer; }
-.move[aria-selected='true'] { background: var(--ink); color: var(--paper); }
+/* Where this idea is: Explain → Check → Why → Done. */
+.stepper { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.stepper li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 3px; border-radius: 999px; background: #ece5d3; color: rgba(29, 26, 47, 0.8); font: 700 16px/1 var(--font-text); }
+.step-dot { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; font: 800 16px/1 var(--font-text); }
+.stepper li.now { background: var(--ink); color: var(--paper); }
+.stepper li.now .step-dot { background: var(--accent); color: var(--ink); }
+.stepper li.past { background: #dff3e8; color: #17603c; }
+.stepper li.past .step-dot { background: #17603c; color: #fff; }
+.panel-status { display: flex; align-items: center; gap: 12px; margin: 0; min-height: 64px; font-weight: 700; font-size: 20px; color: rgba(29, 26, 47, 0.85); }
+.think-dots { display: inline-flex; gap: 6px; }
+.think-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-glow); animation: think 1s ease-in-out infinite; }
+.think-dots i:nth-child(2) { animation-delay: 0.15s; }
+.think-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes think { 0%, 100% { transform: translateY(0); opacity: 0.45; } 50% { transform: translateY(-6px); opacity: 1; } }
+.check-help { margin: 0; font-size: 17px; font-weight: 700; color: #4a3be0; }
 .composer-row { display: flex; gap: 10px; align-items: stretch; }
 .composer-input { flex: 1; min-height: 64px; max-height: 120px; resize: none; padding: 12px 14px; border-radius: 14px; border: 3px solid var(--ink); font: 600 20px/1.35 var(--font-text); color: var(--ink); background: #fff; }
 .send { min-width: 112px; border-radius: 14px; border: 3px solid var(--ink); background: var(--accent); color: var(--ink); font: 900 24px/1 var(--font-display); cursor: pointer; box-shadow: 0 4px 0 var(--ink); }
@@ -166,15 +186,26 @@ button, a.primary { font: inherit; }
 .counter { font-size: 17px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .options.two { grid-template-columns: 1fr 1fr; }
-.when-option, .confirm { min-height: 64px; padding: 10px 14px; border-radius: 14px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 700 18px/1.25 var(--font-text); cursor: pointer; text-align: left; }
-.when-option:hover, .confirm:hover { background: #fff8ec; }
-.when-option.chosen { box-shadow: 0 0 0 4px var(--ink-glow); }
-.when-option.right { background: #dff3e8; border-color: var(--success); }
-.when-option.wrong { background: #fde3e6; border-color: var(--warning); }
-.confirm { font: 900 22px/1 var(--font-display); text-align: center; }
+.confirm { min-height: 64px; padding: 10px 14px; border-radius: 14px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 900 22px/1 var(--font-display); cursor: pointer; text-align: center; box-shadow: 0 4px 0 currentColor; }
+.confirm:hover { background: #fff8ec; }
+.confirm:active { transform: translateY(3px); box-shadow: 0 1px 0 currentColor; }
 .confirm.yes { border-color: var(--success); color: var(--success); }
 .confirm.no { border-color: var(--warning); color: var(--warning); }
-.question { padding: 4px 0; display: grid; gap: 8px; }
+/* An idea done: how well Blot knows it, the grader's tip, the time it earned, and one next step. */
+.done-card { display: grid; gap: 8px; justify-items: start; padding: 14px 18px; border-radius: 16px; background: #fff; border: 3px solid var(--ink); animation: pop-in 300ms both; }
+.done-card.level-signature { border-color: var(--ink-glow); box-shadow: 0 0 0 4px rgba(91, 75, 255, 0.18); }
+.done-card.level-solid { border-color: var(--success); }
+.done-badge { margin: 0; padding: 5px 12px; border-radius: 999px; background: #ece5d3; color: var(--ink); font: 900 18px/1 var(--font-display); }
+.level-signature .done-badge { background: var(--ink-glow); color: #fff; }
+.level-solid .done-badge { background: var(--success); color: #fff; }
+.done-card h3 { margin: 0; font: 900 26px/1.15 var(--font-display); }
+.done-tip { margin: 0; font-size: 18px; line-height: 1.35; }
+.done-earned { margin: 0; font-size: 17px; font-weight: 800; color: var(--success); }
+.done-actions, .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 4px; }
+.done-actions .primary { min-height: 56px; padding: 10px 26px; font-size: 24px; }
+.idea.mixed { border-color: var(--warning); }
+.idea.mixed .idea-level { color: var(--warning); }
+.screen-teach[data-busy='1'] .idea { cursor: progress; }
 .source-card { display: grid; gap: 6px; justify-items: start; padding: 14px 18px; border-radius: 16px; background: #fff; border: 3px solid var(--ink-glow); }
 .source-card h3 { margin: 0; font: 900 26px/1.1 var(--font-display); }
 .card-url { margin: 0; font-size: 17px; color: rgba(29, 26, 47, 0.75); }
@@ -569,13 +600,23 @@ button, a.primary { font: inherit; }
   .panel { min-height: 0; padding: 8px 10px; gap: 8px; border-width: 2px; }
   .panel-prompt { font-size: 18px; }
   .panel[data-kind='pick'] .panel-prompt { font-size: 22px; }
-  .moves { gap: 6px; }
-  .move { min-height: 44px; padding: 6px 12px; font-size: 17px; }
+  .clock { justify-self: center; gap: 2px; }
+  .ready-count { font-size: 16px; }
+  .time-bonus { left: 50%; top: 100%; margin: 4px 0 0; translate: -50% 0; padding: 4px 10px; font-size: 16px; z-index: 2; }
+  .stepper { gap: 4px; }
+  .stepper li { padding: 2px 10px 2px 2px; }
+  .step-dot { width: 22px; height: 22px; }
+  .panel-status { min-height: 48px; font-size: 17px; }
+  .check-help { font-size: 16px; }
+  .done-card { padding: 10px 12px; gap: 6px; border-width: 2px; }
+  .done-card h3 { font-size: 20px; }
+  .done-badge, .done-tip, .done-earned { font-size: 16px; }
+  .done-actions .primary { min-height: 48px; padding: 8px 18px; font-size: 20px; }
   .composer-row { gap: 8px; }
   .composer-input { min-height: 56px; max-height: 96px; font-size: 18px; padding: 8px 10px; }
   .send { min-width: 84px; font-size: 22px; }
-  .options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .when-option, .confirm { min-height: 48px; padding: 8px 12px; font-size: 16px; }
+  .options { gap: 8px; }
+  .confirm { min-height: 48px; padding: 8px 12px; font-size: 18px; }
 
   /* the reveal: the name sits below the top bar, the chips are smaller */
   .monster-name { top: 52px; font-size: 44px; }
@@ -708,8 +749,8 @@ button, a.primary { font: inherit; }
   .earned-what { font-size: 16px; }
 }
 
-@media (max-width: 599px) {
-  .options { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 380px) {
+  .options.two { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -729,4 +770,6 @@ button, a.primary { font: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  /* The time-earned pop stays in view instead of floating away. */
+  .time-bonus.show { animation: none; opacity: 1; }
 }

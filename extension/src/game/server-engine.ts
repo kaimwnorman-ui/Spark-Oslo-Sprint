@@ -1,8 +1,8 @@
-// The live round engine: the Spark server's /creature (streamed), /bars and /examine.
+// The live round engine: the Spark server's /creature (streamed), /grade and /examine.
 // Also the small helpers every other server call uses (/recall, /duel).
-import type { BarValue, ExamResult, Language, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
+import type { ExamResult, IdeaGrade, Language, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
 import { clientToken, serverUrl } from '../settings.ts';
-import type { BarsReply, CreatureRequest, RoundEngine } from './engine.ts';
+import type { CreatureRequest, RoundEngine } from './engine.ts';
 
 /**
  * A hosted copy of the game (GitHub Pages, any static host) is a guest: it plays the demo pages and duel links
@@ -102,11 +102,9 @@ export class ServerEngine implements RoundEngine {
     }
   }
 
-  async bars(ideaId: string, transcript: TranscriptEntry[]): Promise<BarsReply> {
-    const res = await this.post('/bars', { ideaId, transcript }, 10_000);
-    const body = (await res.json()) as { bars: BarValue[]; whenRight?: boolean };
-    const bar = body.bars.find((b) => b.id === ideaId);
-    return { raw: bar?.value ?? 0, contradictsMisread: !!bar?.contradictsMisread, whenRight: body.whenRight };
+  async grade(ideaId: string, transcript: TranscriptEntry[]): Promise<IdeaGrade> {
+    const res = await this.post('/grade', { ideaId, transcript }, 20_000);
+    return ((await res.json()) as { grade: IdeaGrade }).grade;
   }
 
   async examine(transcript: TranscriptEntry[], heldMisreads: string[]): Promise<ExamResult> {

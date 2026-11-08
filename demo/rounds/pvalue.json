@@ -277,8 +277,6 @@
     "i1": {
       "say": "Ooh, so first we pretend the fertiliser is a dud, doing absolutely nothing, like a tomato sulking in the dark! Then the p-value counts how often plain luck could make tomatoes differ this much or more.",
       "example": "Oooh, so first we pretend the fertiliser does absolutely nothing, like a tomato sitting in a dark cupboard! Then we ask how often plain luck alone would make a gap that big between the plants. Luck, the sneaky little gardener, does all the work!",
-      "whenRight": "Oh! So we pretend the fertiliser is a useless lump, then ask how often luck alone would make tomatoes this heavy. I'd use it whenever I wonder if one bed just got lucky, like a tomato that rolled into a sunny spot!",
-      "whenWrong": "Hmm, counting tomatoes sounds like a different sort of puzzle to me! I don't think that goes with \"assume nothing happens\" yet. Could you tell me again how that boring starting idea fits in?",
       "checkRight": "Ooh, so first we pretend the fertiliser does nothing, like a tomato that just sits there doing absolutely nothing! Then we ask how often plain luck would make a gap that big between the plants. Right?",
       "why": "Oh! So we pretend the fertiliser does absolutely nothing, like a tomato that naps all day. Then we ask how often plain luck alone would make a gap this big. I think that is the p-value, and I am very proud of myself for remembering it!",
       "whyAsk": "But WHY do we pretend the fertiliser does nothing? If I start by guessing it works, wouldn't the p-value just agree with me?",
@@ -287,8 +285,6 @@
     "i2": {
       "say": "Oh! So the p-value is not a \"how likely is the fertiliser a dud\" number, it is more like how surprised my tomatoes would be if the fertiliser did nothing at all. I'd only be squinting at a surprised tomato, not a guilty one!",
       "example": "Oh! So the p-value isn't a chance I'm wrong, it's just how weird my tomato data would look if the fertiliser did nothing at all. Like a squeaky floorboard in an empty house, but it doesn't tell me who's sneaking around!",
-      "whenRight": "Ooh, so the p-value is a surprise meter, not a \"how wrong am I\" meter! I would use it when a sugar pill cure shows one small p-value, because a surprising fluke is still more believable than a miracle.",
-      "whenWrong": "Hmm, weighing a tomato on a scale doesn't feel like the same idea to me. I'm still a bit muddled, though, so could you tell me more about the surprise part again?",
       "checkRight": "Ooh, so the p-value is not a chance that I am wrong! It only tells me how surprising my tomato data would be if the fertiliser did nothing. A tiny ink blot like me is definitely not a 97 percent sure fertiliser. Right?",
       "why": "Oooh, so the p-value is not a guess about whether the fertiliser is a dud! It just tells me how odd our tomato numbers would look if the fertiliser did nothing at all. And it can't tell me how likely the do-nothing idea is, because it assumed that idea from the start, like a pancake judging its own flip.",
       "whyAsk": "But WHY is a p of 0.03 not a 3 percent chance the fertiliser is a dud? Does the number just get stuck to the wrong side of the sentence, like a sock on a cat?",
@@ -297,8 +293,6 @@
     "i3": {
       "say": "Oooh, so the 0.05 line is just a habit people picked up, like a favourite mug! Nothing magic about it. And a result just above it and one just below are pretty much the same, like two tomatoes that are almost exactly the same weight.",
       "example": "Ooh, so the 0.05 line is just a handy habit, like a number someone drew on a wall for fun! A result at 0.049 and one at 0.051 are practically twins, even though one gets cheered and the other gets ignored. Silly, isn't it?",
-      "whenRight": "Oh! So p = 0.051 and p = 0.049 are almost the same, and 0.05 is just a habit, not a magic wall. So I should not toss out a study just because it missed the line by a whisker, right? I would use that when a study lands at 0.051 and everyone wants to ignore it!",
-      "whenWrong": "Hmm, a birthday party? My coach says 0.05 is only a habit, so I don't think picking a round number for a party is the same thing, Coach. I'm not sure how they fit together!",
       "checkRight": "The 0.05 line is just a habit, not a magic wall! My coach says a p of 0.049 and 0.051 are almost the same, so one shouldn't get cheered while the other gets ignored, like two wobbly tomatoes on either side of a fence. Right?",
       "why": "Oh! So 0.05 is just a habit, like a round number that stuck around. A p of 0.049 and 0.051 are practically twins, like two tomatoes of nearly the same weight. And the line has no secret magic to tell real from fake, which is a shame, because I was hoping it had a little wand.",
       "whyAsk": "But WHY do people treat 0.05 like a magic line, when a result at 0.049 and one at 0.051 are basically the same? Did it just stick around by accident?",
@@ -307,8 +301,6 @@
     "i4": {
       "say": "Ooh, so \"significant\" just means the effect probably isn't pure luck, like a sneeze that's too loud to ignore! But it doesn't tell me how BIG the effect is, so I have to look at the size too, not just the sparkly word.",
       "example": "Ooh, so \"significant\" just means the effect is probably not pure luck, but it doesn't say how big the effect is! Like weighing ten thousand tomatoes: a tiny two-gram boost can look impressive on paper, yet no gardener would ever notice it. I'm a blot, so I notice everything, but even I can't spot two grams!",
-      "whenRight": "Oooh, so significant just means probably not luck, and it does not mean big! Like when tomatoes get heavier, I should ask HOW MUCH heavier, not just if they did. A tiny tomato win still counts as a win, yes?",
-      "whenWrong": "Hmm, I don't think weather guessing is the same thing, coach! My ink can't see how it fits the \"significant isn't important\" idea. Could you show me another situation where a result is real but too small to matter?",
       "checkRight": "Oooh, so \"significant\" just means the gap probably isn't pure luck, like a sneaky ghost ruled out! But it doesn't say the gap is big, so I have to check how big it is. Like two extra grams on a tomato: no gardener would notice that, even if it's a real gap. Right?",
       "why": "Ooh, so \"significant\" just means the result probably isn't pure luck, like a coin that keeps landing the same way! But it doesn't say the effect is big or useful. I'd have to measure how big it actually is, like weighing each tomato.",
       "whyAsk": "But WHY does a huge sample make a tiny, boring effect look significant? Does bigness make the luck go away, or just make it harder to hide?",
@@ -317,8 +309,6 @@
     "i5": {
       "say": "Oh! So if I poke a useless fertiliser at lots of plants, one in twenty pokes might look like it works, just by luck. And the more plants I poke, the more lucky sparkles I get, like a blot full of confetti!",
       "example": "Oooh, so if I test a fertiliser that does nothing, about one test in twenty might look like a winner by pure luck! And the more tests I run, the more lucky winners sneak in, so if I only show the one that glowed, I'm basically waving a shiny coin at everyone.",
-      "whenRight": "Ooh, a lucky blot! So if you test twenty crops with a useless fertiliser, one might look special just by chance, like a spot that wandered onto the page! That's why a study testing twenty crops and showing just one should make me squint, my coach says.",
-      "whenWrong": "Hmm, weighing one tomato twice doesn't feel like my lucky hits idea to me! My coach said lots of tests bring more chances for a fluke, and that tomato weighing doesn't really fit that. I'm not sure what to make of it yet, so could you tell me more?",
       "checkRight": "Ooh, so if I test a fertiliser that does nothing, each test has about a one in twenty chance of looking like a winner by pure luck. Test twenty crops and one will probably shine for no reason, like a sock that finds its way into the washing machine. Right?",
       "why": "Ooh, so if I poke a useless fertiliser lots of times, about one poke in twenty might look like a winner just by luck! The more pokes I take, the more lucky winners pop up, like a bag of marbles where I keep pulling out a shiny one by chance.",
       "whyAsk": "But WHY does testing lots of crops make a lucky hit more likely? If one test only has a one in twenty chance, shouldn't more tests just be more tests, not more lucky ones?",
@@ -402,13 +392,23 @@
     },
     {
       "ideaId": "i1",
-      "move": "example",
-      "text": "If treated and untreated plants differ by 50 grams, p asks how often random plant variation alone would create a gap that big."
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i1",
+      "move": "why",
+      "text": "We need a boring baseline to compare against, so we can judge whether our result looks unusual or just ordinary luck."
     },
     {
       "ideaId": "i2",
       "move": "say",
       "text": "The p-value does not tell us how likely the fertiliser is a dud. It only shows how surprising our data would be if the fertiliser did nothing."
+    },
+    {
+      "ideaId": "i2",
+      "move": "check",
+      "tap": "yes"
     },
     {
       "ideaId": "i2",
@@ -423,7 +423,8 @@
     {
       "ideaId": "i3",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i3",
@@ -432,8 +433,8 @@
     },
     {
       "ideaId": "i3",
-      "move": "example",
-      "text": "One garden study gets p of 0.049 and another gets 0.051; they tell nearly the same story, yet one gets called a success."
+      "move": "why",
+      "text": "Early textbooks picked a round number and people kept using it, so the line has no deep power to separate real from fake."
     },
     {
       "ideaId": "i4",
@@ -442,8 +443,13 @@
     },
     {
       "ideaId": "i4",
-      "move": "when",
-      "tap": 0
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i4",
+      "move": "why",
+      "text": "Big samples can detect very small differences, so a tiny p-value can come from an effect that is real but trivial."
     }
   ],
   "lines": {

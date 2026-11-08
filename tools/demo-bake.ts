@@ -1,7 +1,7 @@
 // npm run demo:bake [id ...]: bakes demo/rounds/<id>.json from one real AI run per demo page
 // (SPEC §13), then derives the stage round. Pages: tides, pvalue, solar, sove, ai-answer.
 // Each round: the real extractor's lesson, a scripted player written in its own words, Blot's real
-// replies for every event, live-bar values per move, and the examiner's words per belief.
+// replies for every event, the grader's raw scores per move, and its words per belief.
 import Anthropic from '@anthropic-ai/sdk';
 import * as esbuild from 'esbuild';
 import { chromium } from 'playwright';
@@ -13,6 +13,7 @@ import { makeLiveAi, supportsFallbacks } from '../server/src/ai.ts';
 import { dataBlock, IDEA_IDS } from '../server/src/prompts.ts';
 import type { StoredLesson } from '../server/src/lessons.ts';
 import { misreadIdeaIds } from '../shared/round.ts';
+import { scriptedPlayer } from '../shared/demo.ts';
 import { hashString } from '../shared/random.ts';
 import { checkLesson } from '../shared/lesson.ts';
 import type { DemoReplies, DemoRound, Lesson, PageCapture, TranscriptEntry } from '../shared/types.ts';
@@ -141,38 +142,38 @@ async function bake(id: string, capture: PageCapture): Promise<DemoRound> {
   for (const idea of lesson.ideas) {
     const l = lines[idea.id]!;
     const say: TranscriptEntry = { ideaId: idea.id, move: 'say', text: l.say };
-    const right = idea.whenOptions.findIndex((o) => o.right);
-    const wrong = idea.whenOptions.findIndex((o) => !o.right);
-    const ask = (event: Parameters<typeof ai.creature>[1]['event'], belief: 'right' | 'misread', transcript: TranscriptEntry[], extra: { text?: string; tap?: number } = {}) =>
-      collect(ai.creature(stored, { ideaId: idea.id, event, belief, transcript, ...extra }));
+    const ask = (event: Parameters<typeof ai.creature>[1]['event'], belief: 'right' | 'misread', transcript: TranscriptEntry[], text?: string) =>
+      collect(ai.creature(stored, { ideaId: idea.id, event, belief, transcript, text }));
     replies[idea.id] = {
-      say: await ask('say', 'right', [say], { text: l.say }),
-      example: await ask('example', 'right', [say, { ideaId: idea.id, move: 'example', text: l.example }], { text: l.example }),
-      whenRight: await ask('when', 'right', [say], { tap: right }),
-      whenWrong: await ask('when', 'right', [say], { tap: wrong }),
-      checkRight: await ask('check', 'right', [say, { ideaId: idea.id, move: 'example', text: l.example }]),
-      why: await ask('why', 'right', [say, { ideaId: idea.id, move: 'why', text: l.why }], { text: l.why }),
+      say: await ask('fix', 'right', [say], l.say),
+      checkRight: await ask('check', 'right', [say], l.say),
       whyAsk: await ask('askWhy', 'right', [say]),
-      fixed: await ask('fix', 'right', [say, { ideaId: idea.id, move: 'say', text: l.fix }], { text: l.fix }),
+      why: await ask('why', 'right', [say, { ideaId: idea.id, move: 'why', text: l.why }], l.why),
+      example: await ask('example', 'right', [say, { ideaId: idea.id, move: 'example', text: l.example }], l.example),
+      fixed: await ask('fix', 'misread', [say, { ideaId: idea.id, move: 'say', text: l.fix }], l.fix),
     };
   }
   process.stdout.write(', Blot');
 
-  // Live-bar values per move (one call scores all five ideas at once).
+  // Raw grades per move, from the real grader (the same one that fills the live bars).
+  const score = async (entries: TranscriptEntry[]) => (await ai.grade(stored, entries[0]!.ideaId, entries)).score;
+  const bars: DemoRound['bars'] = {};
+  for (const i of lesson.ideas) {
+    const l = lines[i.id]!;
+    const say: TranscriptEntry = { ideaId: i.id, move: 'say', text: l.say };
+    bars[i.id] = {
+      say: Math.max(20, await score([say])),
+      example: Math.max(55, await score([say, { ideaId: i.id, move: 'example', text: l.example }])),
+      when: 40,
+      check: 40,
+      why: Math.max(60, await score([say, { ideaId: i.id, move: 'why', text: l.why }])),
+    };
+  }
+  process.stdout.write(', grades');
+
+  // The grader's words: a well-taught round (right) and an explained-only round (partial, and the tips).
   const all = (pick: (l: PlayerLines[string], i: string) => TranscriptEntry[]) => lesson.ideas.flatMap((i) => pick(lines[i.id]!, i.id));
   const sayOnly = all((l, i) => [{ ideaId: i, move: 'say', text: l.say }]);
-  const withExample = all((l, i) => [{ ideaId: i, move: 'say', text: l.say }, { ideaId: i, move: 'example', text: l.example }]);
-  const withWhy = all((l, i) => [{ ideaId: i, move: 'say', text: l.say }, { ideaId: i, move: 'why', text: l.why }]);
-  const [b1, b2, b3] = [await ai.bars(stored, 'i1', sayOnly), await ai.bars(stored, 'i1', withExample), await ai.bars(stored, 'i1', withWhy)];
-  const bars: DemoRound['bars'] = Object.fromEntries(
-    lesson.ideas.map((i) => {
-      const v = (b: typeof b1) => b.bars.find((x) => x.id === i.id)?.value ?? 0;
-      return [i.id, { say: Math.max(20, v(b1)), example: Math.max(55, v(b2)), when: 40, check: 40, why: Math.max(60, v(b3)) }];
-    }),
-  );
-  process.stdout.write(', bars');
-
-  // The examiner's words: a well-taught round (right) and a say-only round (partial, and the tips).
   const full = all((l, i) => [{ ideaId: i, move: 'say', text: l.say }, { ideaId: i, move: 'example', text: l.example }, { ideaId: i, move: 'why', text: l.why }]);
   const [good, thin] = [await ai.examine(stored, full, []), await ai.examine(stored, sayOnly, [])];
   const unknown = UNKNOWN[lesson.language] ?? UNKNOWN.en!;
@@ -185,19 +186,8 @@ async function bake(id: string, capture: PageCapture): Promise<DemoRound> {
   );
   process.stdout.write(', exam');
 
-  // The scripted player: like a good presenter, with the misread ideas caught by Check it.
-  const script: TranscriptEntry[] = [];
-  lesson.ideas.slice(0, 4).forEach((idea, n) => {
-    const l = lines[idea.id]!;
-    script.push({ ideaId: idea.id, move: 'say', text: l.say });
-    if (misreads.includes(idea.id)) {
-      script.push({ ideaId: idea.id, move: 'check', tap: 'no' });
-      script.push({ ideaId: idea.id, move: 'say', text: l.fix });
-    }
-    if (n === 1) script.push({ ideaId: idea.id, move: 'why', text: l.why });
-    else if (n === 3) script.push({ ideaId: idea.id, move: 'when', tap: idea.whenOptions.findIndex((o) => o.right) });
-    else script.push({ ideaId: idea.id, move: 'example', text: l.example });
-  });
+  // The scripted player: four ideas taught the way the game asks, Blot's mix-ups caught; the fifth left for later.
+  const script = scriptedPlayer({ lesson, lines }, lesson.ideas.slice(0, 4).map((i) => i.id), misreads);
 
   checkLesson(lesson);
   console.log(` (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
@@ -209,7 +199,7 @@ async function bake(id: string, capture: PageCapture): Promise<DemoRound> {
 const asked = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const ids = asked.length ? asked : Object.keys(PAGES);
 for (const id of ids) if (!PAGES[id]) throw new Error(`Unknown demo page: ${id}`);
-console.log(`Baking ${ids.join(', ')} with ${settings.models.extractor} / ${settings.models.creature} / ${settings.models.examiner}…`);
+console.log(`Baking ${ids.join(', ')} with ${settings.models.extractor} / ${settings.models.creature} / ${settings.models.grader}…`);
 const captures = await capturePages(ids);
 for (const id of ids) {
   const round = await bake(id, captures[id]!);

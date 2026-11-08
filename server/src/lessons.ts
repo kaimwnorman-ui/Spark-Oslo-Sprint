@@ -3,7 +3,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { DUEL_TTL_MS, EXTRACT_CACHE_MS, LESSON_CALL_CAPS, LESSON_TTL_MS, MAX_DUELS, MAX_LESSONS } from '../../shared/config.ts';
 import type { DuelChallenge } from '../../shared/duel.ts';
-import type { Lesson, PageCapture } from '../../shared/types.ts';
+import type { IdeaGrade, Lesson, PageCapture } from '../../shared/types.ts';
 
 export interface StoredLesson {
   lesson: Lesson;
@@ -15,6 +15,11 @@ export interface StoredLesson {
   /** The page's address and title (for a duel's "read the page first" link). */
   page: { url: string; title: string } | null;
   expires: number;
+  /**
+   * Each idea's latest grade, keyed by what the player did on it (SPEC §12.2): the exam reuses the grades the bars
+   * showed. A grade still being worked out is shared, so it is never asked for twice.
+   */
+  grades?: Map<string, { key: string; grade: Promise<IdeaGrade> }>;
 }
 
 export function pageKey(capture: Pick<PageCapture, 'url' | 'text'>): string {
@@ -53,7 +58,7 @@ export class LessonStore {
 
   /** Counts one paid call for this round; false once the round has used its share (LESSON_CALL_CAPS). */
   spend(lessonId: string, kind: CallKind): boolean {
-    const used = this.calls.get(lessonId) ?? { creature: 0, bars: 0, examine: 0 };
+    const used = this.calls.get(lessonId) ?? { creature: 0, grade: 0, examine: 0 };
     if (used[kind] >= LESSON_CALL_CAPS[kind]) return false;
     used[kind]++;
     this.calls.set(lessonId, used);

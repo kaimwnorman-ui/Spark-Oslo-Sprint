@@ -277,8 +277,6 @@
     "i1": {
       "say": "Ooh, so both the computer and the website wrap their messages up tight before they leave, like sealing letters in a box! Anyone peeking along the way just sees a squiggly mess of bytes, like gibberish soup.",
       "example": "Oh! So my computer and the website both lock the data before it travels, and anyone listening only hears a jumble of nonsense bytes. It's like a locked box in the post, and I'd squish the postman's ears flat trying to read it!",
-      "whenRight": "Oh! So when I type my password at the café, the scrambling keeps it safe from the Wi-Fi snoopers? I see now: only jumbled bytes reach them, never my secret words. Thank you, coach!",
-      "whenWrong": "Hmm, I don't think that's quite it! Your coach said the scrambling hides what the data says, not whether I visited the site. Could the scramble hide the visit too? I'm just a blot, so I'm not sure.",
       "checkRight": "So both my computer and the website lock the data before it zooms along the wires, meaning a snooper just sees scrambled gibberish, like a letter in a locked box that the postman can't read. Right?",
       "why": "Ooh, so both of us lock our words into a wiggly jumble before they zoom off, and a snoop on the line just sees squiggles that mean nothing, like alphabet soup nobody can spoon! Because people sharing the Wi-Fi can copy traffic, the lock keeps passwords safe even when they're peeking.",
       "whyAsk": "But WHY does scrambling the data keep it safe on café Wi-Fi, coach? Like, if the Wi-Fi people can see the jumble, what stops them from unscrambling it too?",
@@ -287,8 +285,6 @@
     "i2": {
       "say": "Ooh, so at the very start, each of us picks a random number like tossing a dice in secret, and then some clever math lets us both end up holding the exact same secret key. I'd wobble like jelly trying to juggle that many numbers!",
       "example": "Oooh, so each side picks a secret random number of its own, and by a clever mixing trick they both end up with the exact same secret key! Like two friends mixing paint, I'm told, so they match perfectly, Coach!",
-      "whenRight": "Oooh, so two strangers in a crowded room each pick a secret number and, by a clever trick, end up with the very same secret key, even though the crowd is listening! I would use that whenever two sides have never met but need a private code of their own.",
-      "whenWrong": "Hmm, I don't think that's the right fit, Coach. Changing a page's contents is a different trick, not the handshake. Could you tell me more about how the two sides first agree on their secret?",
       "checkRight": "Ooh, so at the start, each side picks a random value of its own. Then, like mixing paint, they swap their colors and both end up with the exact same secret shade, the session key. Right?",
       "why": "Oooh, so each side tosses in a random value, and with a special key-making trick they both end up holding the very same secret! And since the key never travels openly, a spy watching everything still can't rebuild it, and a brand new key each visit keeps things safe. I feel like a tiny ink-blot secret keeper!",
       "whyAsk": "But WHY can't the eavesdropper work out the secret, even after watching the whole handshake? How does the math keep it hidden from them?",
@@ -297,8 +293,6 @@
     "i3": {
       "say": "Ooh, so a certificate is a signed note from a trusted grown-up saying this key belongs to this website name, so I know who I'm really talking to! It's like a name tag I can check, Coach, even if the monster wears a fake mustache.",
       "example": "Ooh, so a certificate is a signed paper saying \"this key belongs to this website name,\" and a trusted authority stamps it! My ink-brain pictures a passport: the name has to match the face, so no sneaky impostor gets through the border.",
-      "whenRight": "Oh! So a certificate is like a signed ID card, and when I visit my bank, my browser checks that card so I'm not chatting with a sneaky impostor. Is that why the bank's site gets a padlock and a dodgy one gets a scary warning?",
-      "whenWrong": "Hmm, I don't think that's the one, my coach! A bit changing in a download sounds more like a tamper seal to me, not a certificate. Try another situation for me?",
       "checkRight": "So a certificate is a paper that says this key belongs to this website's name, and a trusted authority signed it, like a stamp. And like a passport, the name has to match the one I'm talking to, so no stranger can pretend to be my bank. Right?",
       "why": "Oh! So a certificate is a signed paper saying this key belongs to this website's name, vouched for by someone trusted. Then I know who I'm really chatting with, so the impostor can't sneak in like a crumb in my pocket!",
       "whyAsk": "But WHY does my browser even bother checking that paper during the handshake, coach? Is it trying to catch a sneaky pretender before we say anything secret?",
@@ -307,8 +301,6 @@
     "i4": {
       "say": "Oooh, so every little bundle of scrambled stuff wears a tiny seal, like a wax stamp on a letter! If even one single bit gets poked, the seal breaks and the whole connection gets snipped shut.",
       "example": "Ooh, so every bit of scrambled data wears a tiny tamper seal! If even one bit gets changed, the seal breaks and the connection gets snipped shut, like a jar lid that pops its button. I would throw that jar away too!",
-      "whenRight": "Oh! So if a sneaky network tries to slip ads into my page, the tamper seal catches the change and cuts the connection, like a jar lid that pops if someone fiddles with it! I would use that whenever a network might meddle with a page on its way to me.",
-      "whenWrong": "Hmm, I don't think that's it, coach! A strong password is about guarding your account, not about spotting a changed bit. My brain is still wobbling on this, so tell me more about the seal?",
       "checkRight": "So every bit of scrambled data wears a tamper seal, like a jar lid with a popped safety button! If even one bit gets changed, the seal breaks and the connection gets cut off. Right?",
       "why": "Oh! So every bit of encrypted data wears a little tamper seal, like a wax stamp on a letter. If even one dot gets smudged, the whole connection gets snipped shut, and nobody can secretly swap your payment amount!",
       "whyAsk": "But WHY does the tamper seal break if just one tiny bit changes, coach? Does it count every bit like a tiny sheep?",
@@ -317,8 +309,6 @@
     "i5": {
       "say": "So the padlock means my chat with the site is private, just between me and whoever owns that domain! But it doesn't tell me if that owner is nice, like a locked box might still hold a sneaky goblin inside.",
       "example": "Oh! So the padlock only means my visit is private, like a sealed letter, but it doesn't mean the person who wrote the letter is nice. A scam shoe shop can wear a padlock too, and my network can still see I knocked on its door!",
-      "whenRight": "Oh! So the padlock is like a locked box delivered only to the shop, but a sneaky shop can still lock up a bad box! I should not trust a shop just because of its padlock, right?",
-      "whenWrong": "Hmm, my coach, I think that card is a different puzzle piece! The padlock talk is about privacy and not about trust, so the signature chain card doesn't quite fit here. Could we try another one?",
       "checkRight": "The padlock only means my chat with that site is private, between me and whoever owns the domain. It doesn't mean the owner is good, like a scam shoe shop still getting a padlock. Right?",
       "why": "Ooh, so the padlock only keeps my chat private between me and whoever owns the website, like a sealed letter that still tells the postman who it's for. It doesn't tell me if that owner is a nice one, so I have to decide that myself!",
       "whyAsk": "But WHY doesn't the padlock mean the site is honest, coach? Couldn't a sneaky site just wear the padlock like a fancy hat?",
@@ -402,8 +392,13 @@
     },
     {
       "ideaId": "i1",
-      "move": "example",
-      "text": "It's like mailing a letter in a locked box: the postman sees the box and who it's going to, but can't read the letter."
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i1",
+      "move": "why",
+      "text": "People on shared networks can copy traffic, so scrambling keeps passwords and messages private even if someone is snooping."
     },
     {
       "ideaId": "i2",
@@ -413,7 +408,8 @@
     {
       "ideaId": "i2",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i2",
@@ -433,7 +429,8 @@
     {
       "ideaId": "i3",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i3",
@@ -442,8 +439,8 @@
     },
     {
       "ideaId": "i3",
-      "move": "example",
-      "text": "It's like a passport checked by border officers: the name must match the person, so a stranger can't claim to be my bank."
+      "move": "why",
+      "text": "Without proof of identity, someone on the network could pose as the site, and my encrypted chat would go straight to the impostor."
     },
     {
       "ideaId": "i4",
@@ -452,8 +449,13 @@
     },
     {
       "ideaId": "i4",
-      "move": "when",
-      "tap": 1
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i4",
+      "move": "why",
+      "text": "This stops attackers from quietly changing messages in transit, like swapping a payment amount, because any change is noticed immediately."
     }
   ],
   "lines": {

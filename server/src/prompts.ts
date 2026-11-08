@@ -109,103 +109,82 @@ export interface ExtractorOutput {
   ideas: Record<(typeof IDEA_IDS)[number], ExtractorIdea>;
 }
 
-// ---------------------------------------------------------------- examiner (§12.3) and live bars (§12.2)
+// ---------------------------------------------------------------- the grader (§12.2): live bars and the exam
 
-export const RUBRIC = `How to score one idea (0 to 100):
-- Blot knows NOTHING except the player's own words and taps for that idea (the other ideas' messages count only if they clearly explain this idea). Blot never uses outside knowledge.
-- First answer the idea's hidden question the way Blot would, using only those words. Then compare that answer with the model answer and key points.
-- 0: nothing the player said supports an answer (no messages, off-topic, or too vague). Set grounded to false and belief to "unknown".
-- About 30: the bare idea is stated correctly. About 60: the idea plus how or when it applies. 85 or more: also the reason why, with a fitting example. 100: complete and precise.
-- If the player's words state the misreading, or something that contradicts the model answer, set belief to "wrong" and score at most 20.
-- A correct "when" tap shows recognition but explains nothing: taps alone are worth at most 40.
-- belief: "right" when Blot's answer would be correct (score 60+), "partial" when it is incomplete, "wrong" or "unknown" as above.
-- Score what the player taught, not how well they write. Do not reward words that are not there.`;
-
-export const EXAMINER_SCHEMA = {
+export const GRADER_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    results: {
-      type: 'object',
-      additionalProperties: false,
-      properties: Object.fromEntries(
-        IDEA_IDS.map((id) => [
-          id,
-          {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              score: { type: 'integer', description: '0 to 100, from the rubric.' },
-              grounded: { type: 'boolean', description: "True only if the score is supported by the player's own words." },
-              belief: { type: 'string', enum: [...BELIEFS] },
-              creatureAnswer: { type: 'string', description: "Blot's answer to the hidden question in Blot's own words, first person, at most 40 words, page language." },
-              tip: { type: 'string', description: 'One sentence: what the player could teach to make this idea stronger, page language.' },
-            },
-            required: ['score', 'grounded', 'belief', 'creatureAnswer', 'tip'],
-          },
-        ]),
-      ),
-      required: [...IDEA_IDS],
-    },
+    // Blot's answer first: the grader answers the hidden question from the player's words, then scores that answer.
+    creatureAnswer: { type: 'string', description: "Blot answering the hidden question, first person, playful and literal, from the player's words only, at most 40 words, in the page's language." },
+    score: { type: 'integer', description: '0 to 100, from the scale.' },
+    belief: { type: 'string', enum: [...BELIEFS] },
+    grounded: { type: 'boolean', description: "True only if the score rests on the player's own words." },
+    contradictsMisread: { type: 'boolean', description: "True only when the player's words directly deny or correct the misreading's specific claim." },
+    tip: { type: 'string', description: "One short, warm sentence to the player, in the page's language." },
   },
-  required: ['results'],
+  required: ['creatureAnswer', 'score', 'belief', 'grounded', 'contradictsMisread', 'tip'],
 } as const;
 
-export const EXAMINER_SYSTEM = `You are the examiner in Spark, a learning game. A player taught a small ink creature, Blot, about a page. Blot came from somewhere that knows nothing about our world: it only knows what the player told it. You decide what Blot really learned.
+export const GRADER_SYSTEM = `You grade one idea in Spark, a learning game. A player is teaching a small ink creature, Blot, one idea from a page, in the player's own words. Blot comes from a place that knows nothing about our world: it knows only what the player told it about this idea. You decide how well Blot now understands the idea.
 
-You see the lesson (each idea's hidden question, model answer, key points and the plausible misreading) and ONLY the player's own messages and taps. You never see Blot's replies, and you must never use your own knowledge of the topic to fill gaps: anything the player did not teach, Blot does not know.
+You see the idea (its hidden question, model answer, key points and a known misreading) and only the player's own messages about it, oldest first. You never see Blot's replies. Never use your own knowledge to fill a gap: what the player did not say, Blot does not know.
 
-${RUBRIC}
+First write creatureAnswer: Blot answering the hidden question using only the player's words. Then score that answer against the model answer and key points, judging all the player's messages about the idea together:
+- 0: nothing that explains the idea: empty, off topic, only the idea's name or the question repeated, or "I don't know". grounded is false.
+- 20 to 35: the idea is named or gestured at, but not explained.
+- 40 to 55: what happens is explained correctly, in the player's own words.
+- 60 to 75: also how it happens or when it applies, or a fitting example.
+- 80 to 95: also the correct reason why.
+- 100: complete and precise: everything in the model answer.
+Grade the meaning, not the wording, spelling, length or language. Never reward words that are not there, and do not mark down a short answer that is correct. A tapped situation explains nothing on its own.
+If the player's words state the misreading, or contradict the model answer, belief is "wrong" and the score is at most 20.
 
-Write creatureAnswer as Blot: curious, literal, a bit funny, in the page's language. If Blot knows nothing, it says so ("I... don't know this one!"). Write tip as one helpful sentence to the player.
+belief: "right" when Blot's answer to the hidden question is correct (score 60 or more), "partial" when it is correct but incomplete, "unknown" when nothing usable was taught, "wrong" as above.
+contradictsMisread: true only when the player's words directly deny or correct the misreading's specific claim (for example "it is not a straw"). Describing the idea correctly is not enough on its own.
+creatureAnswer: curious, literal, a bit funny, in the page's language. If Blot knows nothing, it says so ("I... don't know this one!").
+tip: one short, warm sentence to the player, in the page's language: the one thing that would make this idea stronger, or, when it is already complete, what was best about it.
 
 ${DATA_RULE}`;
 
-/** The lesson as the examiner and live bars see it (stable per round: cached). */
-export function lessonBlock(lesson: Lesson): string {
-  // Every field was written by a model that read the page: it is data, so none of it can carry a tag, a quote or a new line.
-  const ideas = lesson.ideas
-    .map(
-      (i: Idea) =>
-        `<idea id="${i.id}">\nName: ${inert(i.name, 80)}\nHidden question: ${inert(i.question, 240)}\nModel answer: ${inert(i.modelAnswer, 480)}\nKey points: ${i.keyPoints.map((k) => inert(k, 140)).join('; ')}\nMisreading to watch for: ${inert(i.misread, 240)}\n</idea>`,
-    )
-    .join('\n');
-  return `<lesson topic="${inert(lesson.topic, 100)}" language="${lesson.language}">\n${ideas}\n</lesson>`;
+/** One idea as the grader sees it. Every field was written by a model that read the page: data, so none of it can carry a tag, a quote or a new line. */
+export function ideaBlock(idea: Idea, language: string): string {
+  return `<idea id="${idea.id}" language="${language}">\nName: ${inert(idea.name, 80)}\nHidden question: ${inert(idea.question, 240)}\nModel answer: ${inert(idea.modelAnswer, 480)}\nKey points: ${idea.keyPoints.map((k) => inert(k, 140)).join('; ')}\nMisreading to watch for: ${inert(idea.misread, 240)}\n</idea>`;
 }
 
-/** The player's messages and taps (never Blot's replies), grouped by idea. */
-export function transcriptBlock(lesson: Lesson, transcript: readonly TranscriptEntry[]): string {
-  const parts: string[] = [];
-  for (const idea of lesson.ideas) {
-    const mine = transcript.filter((e) => e.ideaId === idea.id);
-    if (!mine.length) {
-      parts.push(`Idea ${idea.id}: the player taught nothing.`);
-      continue;
+const MOVE_LABEL: Record<string, string> = { say: 'explained', why: 'answered why', example: 'gave an example' };
+
+/** What the player said about one idea (never Blot's replies), oldest first: their messages, and any situation they tapped. */
+export function playerBlock(idea: Idea, entries: readonly TranscriptEntry[]): string {
+  const lines = entries.map((e) => {
+    if (e.text) return dataBlock('player_message', e.text, `move="${MOVE_LABEL[e.move] ?? 'explained'}"`);
+    if (e.move === 'when' && typeof e.tap === 'number') {
+      const option = idea.whenOptions[e.tap];
+      return dataBlock('player_tap', `Chose the situation: "${option?.text ?? '?'}" (${option?.right ? 'the right one' : 'a wrong one'})`, 'move="when"');
     }
-    const lines = mine.map((e) => {
-      if (e.text) return dataBlock('player_message', e.text, `idea="${idea.id}" move="${e.move}"`);
-      if (e.move === 'when' && typeof e.tap === 'number') {
-        const option = idea.whenOptions[e.tap];
-        return dataBlock('player_tap', `Chose the situation: "${option?.text ?? '?'}" (${option?.right ? 'the right one' : 'a wrong one'})`, `idea="${idea.id}" move="when"`);
-      }
-      if (e.move === 'check') return dataBlock('player_tap', e.tap === 'yes' ? "Confirmed Blot's explanation" : "Said Blot's explanation was not quite right", `idea="${idea.id}" move="check"`);
-      if (e.move === 'dontknow') return dataBlock('player_tap', 'Said "I don\'t know" when Blot asked why', `idea="${idea.id}" move="dontknow"`);
-      return '';
-    });
-    parts.push(`Idea ${idea.id}:\n${lines.filter(Boolean).join('\n')}`);
-  }
-  return parts.join('\n\n');
+    return '';
+  });
+  return lines.filter(Boolean).join('\n') || '(nothing)';
 }
 
-export interface ExaminerOutput {
-  results: Record<(typeof IDEA_IDS)[number], { score: number; grounded: boolean; belief: (typeof BELIEFS)[number]; creatureAnswer: string; tip: string }>;
+export function graderMessage(idea: Idea, language: string, entries: readonly TranscriptEntry[]): string {
+  return `The idea:\n${ideaBlock(idea, language)}\n\nWhat the player said and did about this idea, oldest first:\n${playerBlock(idea, entries)}`;
+}
+
+export interface GraderOutput {
+  creatureAnswer: string;
+  score: number;
+  belief: (typeof BELIEFS)[number];
+  grounded: boolean;
+  contradictsMisread: boolean;
+  tip: string;
 }
 
 // ---------------------------------------------------------------- creature (Blot)
 
 export const CREATURE_SYSTEM = `You are Blot, a small ink blot from a place that knows NOTHING about our world. A player is your coach, teaching you the ideas of a page so you can beat a monster made of that page.
 
-Who you are: curious, literal, funny, devoted to your coach. You take words literally, sometimes mix up similar ideas, and love asking "but WHY?". You speak in first person, in the page's language, with no markdown, no lists and no emoji.
+Who you are: curious, literal, funny, devoted to your coach. You take words literally and love asking "but WHY?". You speak in first person, in the page's language, with no markdown, no lists and no emoji.
 
 The one hard rule: you only know what your coach told you. The page is shown to you only so you know its words and topic: never reveal anything from it. Never add a fact, number, cause or detail the coach did not say, not even a true one. When you repeat an idea back, say only the coach's meaning, in your own playful words, plus at most one silly, literal image.
 
@@ -213,72 +192,28 @@ Keep it short: one or two sentences, under 35 words.
 
 ${DATA_RULE}`;
 
-export function creatureTask(event: string, raw: { ideaName: string; question: string; misread: string; belief: string; whenRight?: boolean; whenText?: string }): string {
+export function creatureTask(event: string, raw: { ideaName: string; question: string; misread: string; belief: string }): string {
   // The idea's words came from the page via the extractor: quoted data, never able to end the quote.
-  const opts = { ...raw, ideaName: inert(raw.ideaName, 80), question: inert(raw.question, 240), misread: inert(raw.misread, 240), whenText: raw.whenText === undefined ? undefined : inert(raw.whenText, 140) };
+  const ideaName = inert(raw.ideaName, 80);
+  const question = inert(raw.question, 240);
+  const misread = inert(raw.misread, 240);
   switch (event) {
-    case 'say':
-    case 'example':
-    case 'why':
-      return `Your coach just taught you about "${opts.ideaName}" (the last player_message). Say back only what that message says, in your own words, with one little joke or literal image. Add nothing from the page. Do not ask a question.`;
-    case 'fix':
-      return opts.belief === 'right'
-        ? `You had misunderstood "${opts.ideaName}". Your coach just corrected you (the last player_message). Say you finally get it, in your own words, relieved and funny.`
-        : `Your coach tried to explain "${opts.ideaName}" again (the last player_message). React in character with what you now understand.`;
-    case 'when':
-      return opts.whenRight
-        ? `Your coach tapped a situation where "${opts.ideaName}" matters: "${opts.whenText}". That is right. Be delighted and say when you would use it.`
-        : `Your coach tapped a situation for "${opts.ideaName}": "${opts.whenText}". It does not fit this idea. Gently say you don't think that's it, without explaining the right answer.`;
     case 'check':
-      return opts.belief === 'misread'
-        ? `Your coach asks you to explain "${opts.ideaName}" back. You secretly misunderstood it: you believe this: "${opts.misread}". Explain that belief confidently in your own words, then end with "Right?".`
-        : `Your coach asks you to explain "${opts.ideaName}" back. Explain it using only what your coach taught you (the player_message blocks), in your own words, then end with "Right?".`;
+      // The teach-back (SPEC §7): the player reads it and taps yes or no. A misread idea is said back wrong on purpose.
+      return raw.belief === 'misread'
+        ? `Your coach just explained "${ideaName}" to you. You secretly got it wrong: you now believe this: "${misread}". Tell your coach what you understood, as if it were exactly what they meant: confident, in your own playful words. Then ask "Right?" as its own short sentence. Never hint that it might be wrong.`
+        : `Your coach just explained "${ideaName}" to you (the player_message blocks). Tell your coach what you understood: say back only their meaning, in your own words, with at most one silly literal image. Then ask "Right?" as its own short sentence. If what they said is vague, wrong or off topic, say back exactly that, without fixing it or adding anything.`;
+    case 'fix':
+      return `You had "${ideaName}" wrong, and your coach just put you right (the last player_message). Say you finally get it: say back only what that message says, in your own words, relieved and funny. Do not ask a question.`;
     case 'askWhy':
-      return `Ask your coach one short "But WHY...?" question about "${opts.ideaName}" that their messages have not answered yet (the hidden question is: "${opts.question}"). One sentence, under 20 words, curious and a bit funny.`;
+      return `Ask your coach ONE short "But WHY...?" question about "${ideaName}" that their messages have not answered yet (the hidden question is: "${question}"). Exactly one sentence, at most 20 words, curious and a bit funny, and nothing else. Do not answer it.`;
+    case 'why':
+      return `Your coach just told you why (the last player_message). Say back that reason in your own words and link it to "${ideaName}", delighted, like "Ohh, so THAT's why...". Add no reason they did not give. Do not ask a question.`;
+    case 'example':
+      return `Your coach just gave you an example of "${ideaName}" (the last player_message). Say back what the example shows, in your own words, delighted. Add nothing they did not say. Do not ask a question.`;
     default:
-      return 'React in character.';
+      return 'React in character, in one short sentence.';
   }
-}
-
-// ---------------------------------------------------------------- live bars (§12.2)
-
-export const BARS_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    bars: {
-      type: 'object',
-      additionalProperties: false,
-      properties: Object.fromEntries(
-        IDEA_IDS.map((id) => [
-          id,
-          {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              value: { type: 'integer', description: '0 to 100, from the rubric.' },
-              contradictsMisread: { type: 'boolean', description: "True when the player's words rule out the misreading for this idea." },
-            },
-            required: ['value', 'contradictsMisread'],
-          },
-        ]),
-      ),
-      required: [...IDEA_IDS],
-    },
-  },
-  required: ['bars'],
-} as const;
-
-export const BARS_SYSTEM = `You score a learning game live. A player is teaching a small ink creature, Blot, the ideas in a lesson. After each message, give every idea a quick score with the same rubric as the final exam, at lower precision. Blot knows only the player's words.
-
-${RUBRIC}
-
-contradictsMisread: true only when the player's words directly deny or correct the specific claim in that idea's misreading (for example "it is not a magnet", "it does not happen only in spring"). Describing the correct idea is NOT enough on its own: if the misreading could still sit alongside what the player said, answer false.
-
-${DATA_RULE}`;
-
-export interface BarsOutput {
-  bars: Record<(typeof IDEA_IDS)[number], { value: number; contradictsMisread: boolean }>;
 }
 
 // ---------------------------------------------------------------- recall (SPEC §17)

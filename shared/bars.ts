@@ -7,13 +7,13 @@ export const CAP_SAY = 30;
 export const CAP_TAP = 40;
 export const CAP_FULL = 100;
 
-/** Minimum words for the typed moves. */
-export const MIN_WORDS: Readonly<Partial<Record<Move, number>>> = { say: 6, example: 8, why: 8 };
+/** Minimum words for the typed moves: enough to say something, never a hurdle (the grader judges the rest). */
+export const MIN_WORDS: Readonly<Partial<Record<Move, number>>> = { say: 4, example: 4, why: 4 };
 export const TYPED_MOVES: readonly Move[] = ['say', 'example', 'why'];
 
 /**
- * Rule 1: the cap from the moves used on one idea. 30 if only Say it; 40 if any tap
- * (Tell when, Check it) and no typed example or why; 100 once a typed example or why exists.
+ * Rule 1: the cap from the moves used on one idea. 30 if it was only explained; 40 once the player has checked
+ * Blot's say-back (or tapped a situation) and no typed why or example exists; 100 once a typed why or example exists.
  */
 export function capFor(moves: Iterable<Move>): number {
   const used = new Set(moves);
@@ -54,7 +54,7 @@ export function isPasted(message: string, source: Set<string>): boolean {
   return pastedShare(message, source) >= 0.5;
 }
 
-/** A pasted typed message counts as Say it (cap 30). */
+/** A pasted typed message counts as a bare explanation (cap 30). */
 export function effectiveMove(move: Move, pasted: boolean): Move {
   return pasted && TYPED_MOVES.includes(move) ? 'say' : move;
 }

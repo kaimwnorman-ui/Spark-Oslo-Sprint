@@ -127,15 +127,23 @@ export interface TranscriptEntry {
   caught?: boolean;
 }
 
-export interface BarValue {
+/**
+ * One idea's grade (SPEC §12.2). The same grader feeds the live bar while teaching and the exam that
+ * the bout uses, so what the player sees is what Blot fights with.
+ */
+export interface IdeaGrade {
   id: string;
-  value: number;
+  /** Raw score 0..100 before the move caps (shared/bars.ts applies them, on both sides). */
+  score: number;
+  belief: Belief;
+  /** True only when the score rests on the player's own words. */
+  grounded: boolean;
+  /** The player's words deny or correct the idea's misreading. */
   contradictsMisread: boolean;
-}
-
-/** Live bars output (SPEC §12.2). */
-export interface BarsResult {
-  bars: BarValue[];
+  /** Blot's answer to the hidden question, in Blot's words. */
+  creatureAnswer: string;
+  /** One sentence: what would make this idea stronger. */
+  tip: string;
 }
 
 export interface ExamItem {
@@ -219,15 +227,17 @@ export interface Trait {
 
 // ---------------------------------------------------------------- demo rounds (demo/rounds/*.json)
 
-/** Blot's scripted lines for one idea in a canned round. */
+/** Blot's scripted lines for one idea in a canned round (shared/demo.ts says when each is used). */
 export interface DemoReplies {
+  /** Blot's plain say-back of a correct explanation (its answer to a correction when it had not mixed anything up). */
   say: string;
-  example: string;
-  whenRight: string;
-  whenWrong: string;
+  /** The teach-back: Blot says the player's explanation back and asks "Right?". */
   checkRight: string;
-  why: string;
+  /** Blot's "but WHY?" question. */
   whyAsk: string;
+  why: string;
+  example: string;
+  /** Blot's answer to being put right about its mix-up. */
   fixed: string;
 }
 
@@ -243,7 +253,7 @@ export interface DemoRound {
   bars: Record<string, Partial<Record<Move, number>>>;
   /** The examiner's words per belief, per idea. */
   exam: Record<string, { right: string; partial: string; unknown: string; tip: string }>;
-  /** The scripted player (smoke test, presenter autoplay). */
+  /** The scripted player (smoke tests, rehearsals): shared/demo.ts scriptedPlayer. */
   script: TranscriptEntry[];
   /** The scripted player's lines per idea (baked rounds). */
   lines?: Record<string, { say: string; example: string; why: string; fix: string }>;

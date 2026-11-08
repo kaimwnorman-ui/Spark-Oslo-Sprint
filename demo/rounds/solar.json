@@ -277,8 +277,6 @@
     "i1": {
       "say": "Oh! So a photon with enough energy bonks into a silicon bond and knocks one electron loose, leaving behind an empty spot called a hole. It's like the electron got bumped out of its seat, and the seat stays empty. Wee!",
       "example": "Oh! So a photon with enough oomph bumps into a silicon bond and knocks one electron loose, leaving behind an empty spot called a hole. It's like a marble popping out of its dent in a tray, so the marble can roll away and the dent is left empty!",
-      "whenRight": "Ooh, so light is like a tiny bump that shakes an electron loose, leaving a hole behind! I'd use that to explain why a rooftop panel makes power with no moving parts at all, Coach!",
-      "whenWrong": "Ooh, I think my wires got crossed! A kettle boiling doesn't seem to be the bit about freeing electrons, so I'm not sure that's the right puzzle for this idea. Could you tell me more about the loose electron part?",
       "checkRight": "Ooh, so a photon with enough oomph bumps into a silicon bond and knocks one electron loose, leaving a little empty gap behind. It's like a marble popping out of its dent in a tray when a rolling ball hits it, so the marble can roll away and the dent stays. Right?",
       "why": "Oh! So a photon with enough oomph bumps into a silicon bond and shakes an electron loose, leaving an empty spot called a hole. And that loose electron can wander off through the crystal, which is how light turns into moving charge. I picture it like a sleepy electron getting poked awake and finally going for a stroll!",
       "whyAsk": "Ooh, coach, but WHY does the freed electron stop being stuck and start wandering? If it's still in the crystal, what makes it zoom off like a tiny sprinting ink dot?",
@@ -287,8 +285,6 @@
     "i2": {
       "say": "Oh! So where the two silicon kinds touch, a permanent electric field forms like a slope, and it shoves freed electrons toward the n side and holes toward the p side. I imagine the electrons sliding downhill like tiny marbles, though I suspect the holes are very bad at sledding.",
       "example": "Oh! So where the two silicon kinds touch, there's a permanent electric field, a sort of invisible push. It shoves freed electrons toward the n side and the holes toward the p side, like a sneaky breeze sorting my ink drops into two puddles!",
-      "whenRight": "Oh! So the slope is what stops the electrons from tumbling straight back into the holes, because it shoves each one off to the n side before it can fall in. I would use that whenever someone asks why the freed electrons do not just drop back down!",
-      "whenWrong": "Hmm, I don't think that's quite it, coach! The slope is about where the two silicon layers meet, so my mind is stuck on that little junction, not on boxes. Could you tell me a bit more about that?",
       "checkRight": "Ooh, so where the two silicon kinds touch, a permanent electric field forms, like a slope! It pushes freed electrons toward the n side and holes toward the p side, like a steady wind blowing every leaf one way, so a wire lets them circle back. Right?",
       "why": "Oh! So where the two silicon kinds touch, a permanent electric field forms, like a slope, and it shoves freed electrons one way and holes the other. Without that shove, my little electrons would wobble around aimlessly and never make a steady current.",
       "whyAsk": "But WHY does the slope only push electrons one way, coach? Do they just get shy and never wander back across?",
@@ -297,8 +293,6 @@
     "i3": {
       "say": "Oh! So the panel's current only goes one way, like a river that never turns around, but the socket's current flips back and forth many times a second, like a wiggly wave. The inverter is the clever box that turns the river into a wiggle!",
       "example": "Oh! So the panel makes a current that only goes one way, like a river that never turns around, but the sockets in the wall have a current that flips back and forth many times every second. The inverter is the clever box that swaps one kind for the other, like a bouncy little translator!",
-      "whenRight": "Oh! So the panel's steady one-way current gets chopped into the back-and-forth kind for the kettle, through the inverter. I would use that idea whenever a kettle plugs into a panel's power, because the inverter is the bit that makes it match the sockets!",
-      "whenWrong": "Hmm, I don't think picking the silicon with phosphorus or boron is the inverter bit, but I'm still a bit unsure what the inverter does, so you'll have to tell me more!",
       "checkRight": "Ooh, so the panel's current only ever goes one way, like a battery's, but the sockets in the wall keep flipping their direction many times every second. The inverter is the box that switches between those two kinds, one-way to flipping. Right?",
       "why": "Ohh, so the panel makes current that only ever goes one way, like a river that never turns around, but the wall sockets want current that flip-flops back and forth loads of times a second. The inverter is the little helper that swaps one for the other. And the why? Houses and the grid are built for the flip-flop k",
       "whyAsk": "But WHY do the sockets in my house need the current to keep switching direction, when the panel's current just goes one way?",
@@ -307,8 +301,6 @@
     "i4": {
       "say": "Oh! So light that is too weak just zips straight past the silicon like it forgot to stop, and light that is too strong gives its extra fizz away as warm little sparks. That means one layer of silicon can only ever use about a third of the sunshine, even if I built it perfectly!",
       "example": "Ooh, so light that's too weak just zooms straight past the panel like it's not even there, and light that's too strong has its leftover energy turned into heat in a flash! That means one layer of silicon can only ever grab about a third of the sunshine. Tiny coins, big coins, what a grumpy vending machine!",
-      "whenRight": "Oh! So even a perfect panel leaks light, because the weak photons slip straight through and the strong ones spill their extra energy as heat, which is why one silicon layer can only ever manage about a third. I'd use that when someone asks why a panel can never catch all the sunshine!",
-      "whenWrong": "Hmm, a loose wire? My coach never told me about wires being the problem with the light, so I don't think that's it. Maybe we should look at the photons again!",
       "checkRight": "Coach, so light that is too weak just slips past the panel like a ghost through a door, and light that is too strong drops its extra energy as warm fuzz. That means one silicon layer only manages about a third of the sunshine, like a vending machine that refuses small coins and gives back the change from big ones. Right?",
       "why": "Oh! So light that's too weak just zooms straight through my glass like a ghost, and light that's too strong spills its extra fizz as heat. Silicon wants just the right amount of energy to wake an electron, so most of the sunshine ends up as wasted sparkle!",
       "whyAsk": "But WHY can't the panel just use all the sunlight, Coach? Is the silicon too shy to catch every single photon?",
@@ -317,8 +309,6 @@
     "i5": {
       "say": "Ooh, so a panel likes to be cool, like my ink on a chilly day, because heat makes the atoms jiggle and that lowers the voltage. And it likes to face the Sun straight on, so it catches more of the little light packets, like a sunflower soaking up every drop!",
       "example": "Oh! So a cold panel is happier, like my blot self on a cool damp page, because heat makes the atoms jiggle and lowers the voltage. And if a panel faces the Sun squarely, it catches more photons, like a puddle catching more rain when it sits flat on the ground!",
-      "whenRight": "Ooh, so I aim the panel squarely at the Sun, tilted toward the equator, so it catches the most photons! And on a cool spring morning the atoms hold still enough for good voltage, so that's the best time to show off. Teach me more, coach?",
-      "whenWrong": "Hmm, I don't think that's the right one for \"Cool and well aimed,\" coach. Freeing electrons is about light, not about heat or pointing. Can you tap a different situation for me?",
       "checkRight": "Oh! So a cold panel is happier, because the wiggly atoms calm down and keep more voltage, and a panel pointed straight at the Sun catches the most light bits. Like a sunbathing puddle that's flat on, not tilted away? Right?",
       "why": "Oh! So a hot panel is like a fidgety crowd: the atoms jiggle, the voltage drops, and it works less well. A panel pointed straight at the Sun gets more photons, while a tilted one spreads the same light over more glass, like butter over too much toast!",
       "whyAsk": "But WHY does a cool panel keep its voltage up, and why does squarely facing the Sun catch more photons? Is it the jiggling again?",
@@ -402,8 +392,13 @@
     },
     {
       "ideaId": "i1",
-      "move": "example",
-      "text": "Think of a marble knocked out of its dent in a tray by a rolling ball; the marble can roll, and the dent stays behind."
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i1",
+      "move": "why",
+      "text": "This is how light energy becomes moving charge, because a freed electron can travel through the crystal instead of staying stuck."
     },
     {
       "ideaId": "i2",
@@ -413,7 +408,8 @@
     {
       "ideaId": "i2",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i2",
@@ -433,7 +429,8 @@
     {
       "ideaId": "i3",
       "move": "check",
-      "tap": "no"
+      "tap": "no",
+      "caught": true
     },
     {
       "ideaId": "i3",
@@ -442,8 +439,8 @@
     },
     {
       "ideaId": "i3",
-      "move": "example",
-      "text": "Your phone battery gives steady one-way power, while the lamp plugged into the wall gets power that keeps switching direction."
+      "move": "why",
+      "text": "Homes and the grid are built around alternating current, so panel power must be converted before ordinary appliances can safely use it."
     },
     {
       "ideaId": "i4",
@@ -452,8 +449,13 @@
     },
     {
       "ideaId": "i4",
-      "move": "when",
-      "tap": 1
+      "move": "check",
+      "tap": "yes"
+    },
+    {
+      "ideaId": "i4",
+      "move": "why",
+      "text": "Silicon needs a certain amount of energy to free an electron, so photons that miss that amount are either useless or partly wasted."
     }
   ],
   "lines": {

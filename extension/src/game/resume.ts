@@ -9,7 +9,8 @@ export const RESUME_MAX_AGE_MS = 30 * 60 * 1000;
 export const RESUME_MIN_MS = 10_000;
 
 export interface RoundSave {
-  v: 1;
+  /** 2: the teach-back round (each idea has a step). Older saves are not offered. */
+  v: 2;
   at: number;
   /** Which lesson this belongs to (its seed and idea names), so a new lesson never resumes into an old round. */
   fingerprint: string;
@@ -39,7 +40,7 @@ export function loadRound(key: string, fingerprint: string, now = Date.now()): R
     const raw = sessionStorage.getItem(slot(key));
     if (!raw) return null;
     const s = JSON.parse(raw) as Partial<RoundSave>;
-    if (s.v !== 1 || s.fingerprint !== fingerprint || typeof s.at !== 'number' || now - s.at > RESUME_MAX_AGE_MS) return null;
+    if (s.v !== 2 || s.fingerprint !== fingerprint || typeof s.at !== 'number' || now - s.at > RESUME_MAX_AGE_MS) return null;
     if (!Array.isArray(s.transcript) || !s.progress || typeof s.progress !== 'object' || !Array.isArray(s.misreads)) return null;
     return s as RoundSave;
   } catch {

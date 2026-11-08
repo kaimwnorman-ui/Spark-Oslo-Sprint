@@ -1,29 +1,26 @@
 // Canned-round logic: how a demo round (demo/rounds/*.json) answers without any AI.
 // Used by the game's demo mode, the server's AI_STUB routes and the offline fallback.
-import type { BarValue, DemoRound, ExamResult, Idea, Move, TranscriptEntry } from './types.ts';
+import type { Belief, DemoRound, ExamResult, Idea, IdeaGrade, Move, TranscriptEntry } from './types.ts';
 import { barValue } from './bars.ts';
 import { offlineExam, offlineScore, type TeachBelief } from './round.ts';
 import { contentWords, stem } from './words.ts';
 
-export type CreatureEvent = 'say' | 'example' | 'why' | 'fix' | 'when' | 'check' | 'askWhy';
+/**
+ * What Blot is asked to say (SPEC §7). "check" is the teach-back after the player explains an idea (Blot says
+ * what it understood and asks "Right?"); "fix" answers a correction; "askWhy" is Blot's "but WHY?" question;
+ * "why" and "example" answer the player's reason or example.
+ */
+export type CreatureEvent = 'check' | 'fix' | 'askWhy' | 'why' | 'example';
+export const CREATURE_EVENTS: readonly CreatureEvent[] = ['check', 'fix', 'askWhy', 'why', 'example'];
 
 export interface CreatureRequest {
   ideaId: string;
   event: CreatureEvent;
   text?: string;
-  tap?: number;
   /** Blot's belief about this idea when it replies. */
   belief: TeachBelief;
-  /** Everything the player said about this idea so far (for "check": Blot explains it back). */
+  /** Everything the player said about this idea so far (Blot explains it back from these). */
   transcript: TranscriptEntry[];
-}
-
-export interface BarsReply {
-  /** Raw score 0..100 before caps (the game applies shared/bars.ts). */
-  raw: number;
-  contradictsMisread: boolean;
-  /** For a Tell when tap: was it the right situation? */
-  whenRight?: boolean;
 }
 
 const NEGATION = /\b(not|no|isn't|isnt|doesn't|doesnt|never|ikke|nei|aldri)\b/i;
@@ -32,53 +29,107 @@ function ideaOf(round: DemoRound, id: string): Idea | undefined {
   return round.lesson.ideas.find((i) => i.id === id);
 }
 
+/** True when a message is about the idea (its words overlap the idea's own), for the canned Blot's reactions. */
+function onTopic(idea: Idea, text: string): boolean {
+  return offlineScore(idea, text, 100) >= 60;
+}
+
+/** The player's own words, cut short, for a canned Blot that did not follow. */
+function quote(text: string, words = 12): string {
+  const all = text.trim().split(/\s+/).filter(Boolean);
+  return all.slice(0, words).join(' ').replace(/[.!?…]+$/, '') + (all.length > words ? '…' : '');
+}
+
 export function demoReply(round: DemoRound, req: CreatureRequest): string {
   const r = round.replies[req.ideaId];
   const idea = ideaOf(round, req.ideaId);
   if (!r || !idea) return '';
+  const nb = round.lesson.language === 'nb' || round.lesson.language === 'nn';
+  const said = req.transcript.filter((e) => e.text).at(-1)?.text ?? req.text ?? '';
+  // A canned Blot only has lines for messages about the idea: anything else, it repeats back, puzzled.
+  const lost = said && !onTopic(idea, said);
   switch (req.event) {
-    case 'when':
-      return idea.whenOptions[req.tap ?? -1]?.right ? r.whenRight : r.whenWrong;
     case 'check':
-      return req.belief === 'misread' ? idea.misread : r.checkRight;
+      // The mix-up is said back as if it were what the player meant (SPEC §7 rule 3).
+      if (req.belief === 'misread') return `${idea.misread} ${nb ? 'Ikke sant?' : 'Right?'}`;
+      if (lost) return nb ? `Så… «${quote(said)}»? Er det det?` : `So… “${quote(said)}”? Is that it?`;
+      return r.checkRight;
+    case 'fix':
+      if (lost) return nb ? `Hm… «${quote(said)}». Jeg prøver å skjønne det!` : `Hmm… “${quote(said)}”. I'm trying to get it!`;
+      // The canned "fixed" line answers the mix-up; any other correction gets Blot's plain say-back.
+      return req.belief === 'misread' ? r.fixed : r.say;
     case 'askWhy':
       return r.whyAsk;
-    case 'fix':
-      return req.belief === 'right' ? r.fixed : r.say;
+    case 'why':
+      if (lost) return nb ? 'Hm, jeg ser ikke helt hvorfor ennå, men jeg skriver det ned!' : "Hmm, I don't quite see the why yet, but I'm writing it down!";
+      return r.why;
+    case 'example':
+      if (lost) return nb ? 'Hm, jeg skjønner ikke helt eksempelet, men takk!' : "Hmm, I don't quite get that example, but thanks!";
+      return r.example;
     default:
-      return r[req.event];
+      return '';
   }
 }
 
-export function demoBars(round: DemoRound, ideaId: string, transcript: TranscriptEntry[]): BarsReply {
-  const idea = ideaOf(round, ideaId);
-  if (!idea) return { raw: 0, contradictsMisread: false };
-  const canned = round.bars[ideaId] ?? {};
-  const mine = transcript.filter((e) => e.ideaId === ideaId);
+/** A canned round's raw score for one idea, before the move caps. */
+function demoRaw(round: DemoRound, idea: Idea, transcript: TranscriptEntry[]): { raw: number; contradictsMisread: boolean } {
+  const canned = round.bars[idea.id] ?? {};
+  const mine = transcript.filter((e) => e.ideaId === idea.id);
   let raw = 0;
   for (const e of mine) {
     if (e.text && (e.move === 'say' || e.move === 'example' || e.move === 'why')) {
       raw = Math.max(raw, offlineScore(idea, e.text, canned[e.move] ?? 30));
     } else if (e.move === 'when' && typeof e.tap === 'number') {
       raw = Math.max(raw, idea.whenOptions[e.tap]?.right ? (canned.when ?? 40) : 8);
-    } else if (e.move === 'check' && e.tap === 'yes') {
-      raw = Math.max(raw, canned.check ?? 40);
     }
   }
-  const last = mine.at(-1);
+  const last = mine.filter((e) => e.text).at(-1);
   const misreadStems = new Set(contentWords(idea.misread).map(stem));
   const lastStems = contentWords(last?.text ?? '').map(stem);
-  const onTopic = last?.text ? offlineScore(idea, last.text, 100) >= 60 : false;
-  const contradictsMisread = !!last?.text && NEGATION.test(last.text) && (onTopic || lastStems.some((s) => misreadStems.has(s)));
-  const whenRight = last?.move === 'when' && typeof last.tap === 'number' ? !!idea.whenOptions[last.tap]?.right : undefined;
-  return { raw, contradictsMisread, whenRight };
+  const contradictsMisread = !!last?.text && NEGATION.test(last.text) && (onTopic(idea, last.text) || lastStems.some((s) => misreadStems.has(s)));
+  return { raw, contradictsMisread };
 }
 
-/** All five bars (the live-bars shape, SPEC §12.2). */
-export function demoAllBars(round: DemoRound, transcript: TranscriptEntry[]): BarValue[] {
-  return round.lesson.ideas.map((i) => {
-    const b = demoBars(round, i.id, transcript);
-    return { id: i.id, value: b.raw, contradictsMisread: b.contradictsMisread };
+function beliefFor(score: number): Belief {
+  if (score < 10) return 'unknown';
+  return score >= 60 ? 'right' : 'partial';
+}
+
+/** One idea's grade from a canned round (the same shape the live grader returns). */
+export function demoGrade(round: DemoRound, ideaId: string, transcript: TranscriptEntry[]): IdeaGrade {
+  const idea = ideaOf(round, ideaId);
+  if (!idea) return { id: ideaId, score: 0, belief: 'unknown', grounded: false, contradictsMisread: false, creatureAnswer: '', tip: '' };
+  const { raw, contradictsMisread } = demoRaw(round, idea, transcript);
+  const belief = beliefFor(raw);
+  const c = round.exam[ideaId];
+  return {
+    id: ideaId,
+    score: raw,
+    belief,
+    grounded: raw >= 10,
+    contradictsMisread,
+    creatureAnswer: (belief === 'unknown' ? c?.unknown : belief === 'right' ? c?.right : c?.partial) ?? '',
+    tip: c?.tip ?? '',
+  };
+}
+
+/**
+ * The scripted player of a canned round (smoke tests, rehearsals, the stage round): the teach-back on each idea, as a
+ * careful player does it. Explain; ✓ Blot's say-back, or ✗ when Blot mixed it up and then put it right; answer the why.
+ */
+export function scriptedPlayer(round: Pick<DemoRound, 'lesson' | 'lines'>, ideaIds: readonly string[], misreads: readonly string[]): TranscriptEntry[] {
+  return ideaIds.flatMap((id): TranscriptEntry[] => {
+    const idea = ideaOf(round as DemoRound, id);
+    const l = round.lines?.[id];
+    if (!idea || !l) return [];
+    const deep = idea.keyPoints.length >= 2 ? 'why' : 'example';
+    return [
+      { ideaId: id, move: 'say', text: l.say },
+      ...(misreads.includes(id)
+        ? ([{ ideaId: id, move: 'check', tap: 'no', caught: true }, { ideaId: id, move: 'say', text: l.fix }] satisfies TranscriptEntry[])
+        : ([{ ideaId: id, move: 'check', tap: 'yes' }] satisfies TranscriptEntry[])),
+      { ideaId: id, move: deep, text: deep === 'why' ? l.why : l.example },
+    ];
   });
 }
 
@@ -88,7 +139,7 @@ export function demoExam(round: DemoRound, transcript: TranscriptEntry[], heldMi
   for (const idea of round.lesson.ideas) {
     const mine = transcript.filter((e) => e.ideaId === idea.id);
     const moves = mine.map((e) => e.move).filter((m): m is Move => m !== 'same' && m !== 'dontknow');
-    values[idea.id] = barValue(moves, demoBars(round, idea.id, transcript).raw);
+    values[idea.id] = barValue(moves, demoRaw(round, idea, transcript).raw);
     beliefs[idea.id] = heldMisreads.includes(idea.id) ? 'misread' : mine.length ? 'right' : 'none';
   }
   const exam = offlineExam(round.lesson.ideas, values, beliefs, round.exam);
