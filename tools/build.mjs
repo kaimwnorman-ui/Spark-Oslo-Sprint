@@ -17,6 +17,7 @@ function copyStatic() {
   manifest.version = pkg.version;
   writeFileSync(path.join(DIST, 'manifest.json'), JSON.stringify(manifest, null, 2));
   cpSync(path.join(EXT, 'game.html'), path.join(DIST, 'game.html'));
+  cpSync(path.join(EXT, 'options.html'), path.join(DIST, 'options.html'));
   for (const file of readdirSync(path.join(EXT, 'styles'))) {
     cpSync(path.join(EXT, 'styles', file), path.join(DIST, file));
   }
@@ -37,7 +38,7 @@ const common = {
   sourcemap: release ? false : 'inline',
   legalComments: 'none',
   logLevel: 'warning',
-  define: { __DEV__: String(!release) },
+  define: { __DEV__: String(!release), __GUEST_URL__: JSON.stringify(process.env.GUEST_GAME_URL ?? '') },
 };
 
 const builds = [
@@ -47,6 +48,7 @@ const builds = [
     entryPoints: {
       background: path.join(EXT, 'src/background.ts'),
       game: path.join(EXT, 'src/game/main.ts'),
+      options: path.join(EXT, 'src/options.ts'),
     },
     outdir: DIST,
     format: 'esm',
@@ -70,7 +72,7 @@ if (watchMode) {
     });
     await ctx.watch();
   }
-  for (const dir of ['extension/styles', 'extension/assets', 'extension/game.html', 'extension/manifest.json', 'demo']) {
+  for (const dir of ['extension/styles', 'extension/assets', 'extension/game.html', 'extension/options.html', 'extension/manifest.json', 'demo']) {
     const full = path.join(ROOT, dir);
     if (existsSync(full)) watch(full, { recursive: true }, () => copyStatic());
   }

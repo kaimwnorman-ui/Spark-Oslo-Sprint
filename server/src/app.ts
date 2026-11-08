@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_NAME } from '../../shared/config.ts';
-import { HttpError, readJson, sendJson, setCors } from './http.ts';
+import { HttpError, hostAllowed, originAllowed, readJson, sendJson, setCors } from './http.ts';
 import type { Settings } from './settings.ts';
 
 export type RouteHandler = (body: unknown, req: IncomingMessage, res: ServerResponse) => Promise<unknown>;
@@ -21,8 +21,11 @@ export function createApp({ settings, routes, log = console.log }: AppDeps) {
   return async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const started = Date.now();
     const url = new URL(req.url ?? '/', 'http://localhost');
-    setCors(req, res, settings.devOrigins);
     try {
+      // Who may talk to this server: this computer's own names only, and only pages we know.
+      if (!hostAllowed(req.headers.host, settings)) throw new HttpError(403, 'Unexpected host.');
+      if (!originAllowed(req.headers.origin, req.headers.host, settings)) throw new HttpError(403, 'This page may not talk to Spark.');
+      setCors(req, res, settings);
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();

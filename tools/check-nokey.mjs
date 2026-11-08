@@ -2,10 +2,11 @@
 // of any *_API_KEY environment variable. Never prints a value, only file names.
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { DIST } from './lib.mjs';
+import { DIST, ROOT } from './lib.mjs';
 
-if (!existsSync(DIST)) {
-  console.error('extension/dist/ is missing: run npm run build first.');
+const SITE = path.join(ROOT, 'site');
+if (!existsSync(DIST) && !existsSync(SITE)) {
+  console.error('Nothing to check: run npm run build (extension/dist/) or npm run build:guest (site/) first.');
   process.exit(1);
 }
 const secrets = Object.entries(process.env)
@@ -23,7 +24,8 @@ function* files(dir) {
 
 let failed = false;
 let count = 0;
-for (const file of files(DIST)) {
+// The extension build, and the hosted guest game (site/), whichever have been built.
+for (const file of [...(existsSync(DIST) ? files(DIST) : []), ...(existsSync(SITE) ? files(SITE) : [])]) {
   count++;
   const content = readFileSync(file).toString('latin1');
   for (const needle of needles) {

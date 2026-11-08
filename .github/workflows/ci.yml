@@ -1,0 +1,43 @@
+# Every push and pull request: typecheck, unit tests, release build, no key and no hidden characters in the
+# build, then the Playwright smokes (the demo round, the learning loop, small windows, the hosted guest game
+# and the extension itself). None of them needs an API key: the AI routes answer from demo/ fixtures.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Typecheck, unit tests, release build, key and hidden-character checks
+        run: npm run check
+      - name: Demo round end to end (stage round, fast)
+        run: npm run smoke:demo -- --fast
+      - name: Learning loop (memories, flashback, comeback, duel)
+        run: npm run smoke:loop
+      - name: Small windows and phones
+        run: npm run smoke:small
+      - name: Hosted guest game
+        run: npm run smoke:guest
+      - name: The extension (consent, capture, cancel)
+        run: npm run smoke:ext
+      - name: Keep the screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots
+          path: docs/shots
+          if-no-files-found: ignore

@@ -2,9 +2,10 @@
 // Memory cards, spaced flashbacks, power-ups earned by remembering, and monsters that come back.
 // Pure: the game keeps a MemoryState in local storage and passes `now` in.
 import type { BoutBoosts } from './bout.ts';
+import { RETAIN_DAYS } from './config.ts';
 import type { ExamResult, Language, MonsterShape, Trait, TraitLook } from './types.ts';
 import { hashString } from './random.ts';
-import { contentWords, stem, tokens } from './words.ts';
+import { contentWords, isStopWord, stem, tokens } from './words.ts';
 
 export const DAY_MS = 86_400_000;
 /** Days until a card is due again. Every good recall moves it one step (spaced retrieval). */
@@ -54,6 +55,8 @@ export interface MemoryCard {
   snoozeUntil?: number;
   sourceUrl: string | null;
   sourceTitle: string | null;
+  /** True when the round ran on the server's AI: only then is a recall sent to the server for grading. Demo pages are graded here. */
+  live?: boolean;
 }
 
 /** A monster that got away (or won on a weak idea) and will come back for a rematch. */
@@ -81,6 +84,8 @@ export interface Comeback {
   dueAt: number;
   /** Rematches lost so far. */
   tries: number;
+  /** Whether the rematch may be graded by the server's AI (a real page), or only here (a demo page). */
+  live?: boolean;
 }
 
 export interface MemoryState {
@@ -93,6 +98,18 @@ export interface MemoryState {
 
 export function emptyMemory(): MemoryState {
   return { cards: [], powerUps: { refill: 0, double: 0 }, comebacks: [], tamed: 0 };
+}
+
+/**
+ * Nothing is kept forever: a memory not used for RETAIN_DAYS is forgotten, and a monster that has been
+ * due for two weeks without a rematch stops coming back. Pass the real clock, not a simulated one.
+ */
+export function pruneMemory(state: MemoryState, now: number, days: number = RETAIN_DAYS): MemoryState {
+  return {
+    ...state,
+    cards: state.cards.filter((c) => c.lastAt >= now - days * DAY_MS),
+    comebacks: state.comebacks.filter((c) => c.dueAt >= now - 14 * DAY_MS),
+  };
 }
 
 /** Anything from storage, made safe to use (old or partial data never breaks the game). */
@@ -155,6 +172,8 @@ export function nextDueIn(cards: readonly MemoryCard[], now: number): number | n
 }
 
 export interface RecordInput {
+  /** The round ran on the server's AI (not a demo page): its flashbacks may be graded there. */
+  live?: boolean;
   monster: { name: string; color: string };
   topic: string;
   language: Language;
@@ -194,6 +213,7 @@ export function recordCards(state: MemoryState, input: RecordInput, now: number)
       ...(prev?.lastRecall !== undefined ? { lastRecall: prev.lastRecall } : {}),
       sourceUrl: idea.sourceUrl,
       sourceTitle: idea.sourceTitle,
+      live: !!input.live,
     };
     if (prev) cards.splice(old, 1);
     cards.push(card);
@@ -210,17 +230,64 @@ export function recordCards(state: MemoryState, input: RecordInput, now: number)
  * points and model answer the player's own words cover. Repeating the idea's name earns nothing.
  */
 export function recallScore(card: Pick<MemoryCard, 'ideaName' | 'keyPoints' | 'modelAnswer'>, answer: string): number {
-  const words = tokens(answer).length;
-  if (words < 3) return 0;
+  return gradeRecall(card, answer).score;
+}
+
+/**
+ * Why an offline grade is what it is: 'opposite' when the answer negates a word the idea asserts
+ * ("Earth never spins"), 'keywords' when it is a list of words rather than a sentence, 'empty' when it is
+ * too short to grade. Both 'opposite' and 'keywords' keep the grade below a pass, so neither earns a power-up.
+ */
+export type RecallFlag = 'ok' | 'empty' | 'opposite' | 'keywords';
+export const OPPOSITE_CAP = 20;
+export const KEYWORDS_CAP = 45;
+
+const isNegation = (t: string) => /^(not|no|never|none|nothing|nor|cannot|without|ikke|nei|aldri|ingen|ingenting|uten)$/.test(t) || /n['’]t$/.test(t);
+const isContent = (t: string) => t.length >= 3 && !isStopWord(t) && !/^\p{N}+$/u.test(t);
+
+/** The stems each negation in the text applies to: the next content word after it ("never spins" → spins). */
+function negatedStems(toks: readonly string[]): Set<string> {
+  const out = new Set<string>();
+  toks.forEach((t, i) => {
+    if (!isNegation(t)) return;
+    for (let j = i + 1; j < Math.min(toks.length, i + 4); j++) {
+      if (isContent(toks[j]!)) {
+        out.add(stem(toks[j]!));
+        break;
+      }
+    }
+  });
+  return out;
+}
+
+export function gradeRecall(card: Pick<MemoryCard, 'ideaName' | 'keyPoints' | 'modelAnswer'>, answer: string): { score: number; flag: RecallFlag } {
+  const toks = tokens(answer);
+  if (toks.length < 3) return { score: 0, flag: 'empty' };
   const nameStems = new Set(contentWords(card.ideaName).map(stem));
   const own = new Set(contentWords(answer).map(stem).filter((s) => !nameStems.has(s)));
   const stemsOf = (text: string) => contentWords(text).map(stem).filter((s) => !nameStems.has(s));
   const points = card.keyPoints.filter((k) => stemsOf(k).length);
   const pointHits = points.filter((k) => stemsOf(k).some((s) => own.has(s))).length;
   const modelHits = new Set(stemsOf(card.modelAnswer).filter((s) => own.has(s))).size;
-  if (!pointHits && !modelHits) return words >= 6 ? 10 : 0;
-  const coverage = points.length ? pointHits / points.length : Math.min(1, modelHits / 4);
-  return Math.round(Math.min(100, 25 + 55 * coverage + 5 * Math.min(4, modelHits)));
+  let score = 0;
+  if (pointHits || modelHits) {
+    const coverage = points.length ? pointHits / points.length : Math.min(1, modelHits / 4);
+    score = Math.round(Math.min(100, 25 + 55 * coverage + 5 * Math.min(4, modelHits)));
+  } else if (toks.length >= 6) {
+    score = 10;
+  }
+  // Word overlap cannot tell "Earth spins" from "Earth never spins": an answer that negates a word the
+  // idea asserts is the opposite of it, whatever it overlaps with.
+  // (The idea's own name counts here: "never two bulges" denies exactly what the idea is called.)
+  const reference = tokens([card.ideaName, card.modelAnswer, ...card.keyPoints].join('. '));
+  const asserted = new Set(contentWords(reference.join(' ')).map(stem));
+  const refNegated = negatedStems(reference);
+  const opposite = [...negatedStems(toks)].some((s) => asserted.has(s) && !refNegated.has(s));
+  if (opposite) return { score: Math.min(score, OPPOSITE_CAP), flag: 'opposite' };
+  // A list of words is not an explanation: natural sentences are a third to a half small words.
+  const small = toks.filter((t) => isStopWord(t)).length / toks.length;
+  if (toks.length >= 4 && small < 0.12) return { score: Math.min(score, KEYWORDS_CAP), flag: 'keywords' };
+  return { score, flag: 'ok' };
 }
 
 export type RecallGrade = 'pass' | 'partial' | 'fail';
@@ -285,6 +352,7 @@ export function spendPowerUps(state: MemoryState): { state: MemoryState; boosts:
 // ---------------------------------------------------------------- comebacks
 
 export interface ComebackInput {
+  live?: boolean;
   monster: { name: string; shape: MonsterShape; color: string; words: readonly string[] };
   topic: string;
   language: Language;
@@ -327,6 +395,7 @@ export function planComeback(input: ComebackInput, now: number): Comeback | null
     createdAt: now,
     dueAt: now + COMEBACK_DAYS * DAY_MS,
     tries: 0,
+    live: !!input.live,
   };
 }
 

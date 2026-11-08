@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spark settings</title>
+    <link rel="icon" href="icons/icon32.png" />
+    <style>
+      :root { --paper: #f7f1e3; --ink: #1d1a2f; --glow: #5b4bff; --accent: #ff7a1a; --bad: #c8102e; --good: #1f7a4d; color-scheme: light; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); font: 500 18px/1.45 'Avenir Next', 'Segoe UI', Inter, system-ui, sans-serif; }
+      main { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; display: grid; gap: 18px; }
+      h1 { margin: 0; font: 900 40px/1.05 'Avenir Next Condensed', 'Arial Rounded MT Bold', 'Segoe UI Black', system-ui, sans-serif; }
+      p { margin: 0; }
+      .lead { font-weight: 600; }
+      form { display: grid; gap: 16px; padding: 22px 24px; border-radius: 24px; background: #fff; border: 3px solid var(--ink); box-shadow: 0 6px 0 var(--ink); }
+      label { display: grid; gap: 6px; font-weight: 800; }
+      .hint { font-weight: 500; font-size: 16px; color: rgba(29, 26, 47, 0.8); }
+      input { min-height: 48px; padding: 8px 12px; border-radius: 12px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: 600 18px/1.2 inherit; }
+      input:focus-visible, button:focus-visible { outline: 4px solid var(--glow); outline-offset: 2px; }
+      .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      button { min-height: 48px; padding: 8px 22px; border-radius: 999px; border: 3px solid var(--ink); background: transparent; color: var(--ink); font: 800 18px/1 inherit; cursor: pointer; }
+      button.primary { background: var(--accent); box-shadow: 0 4px 0 var(--ink); }
+      #status { min-height: 26px; font-weight: 700; }
+      #status.ok { color: var(--good); }
+      #status.bad { color: var(--bad); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Spark settings</h1>
+      <p class="lead">Spark builds its monsters on a server that runs on your computer. You only need this page if it runs somewhere else.</p>
+      <form id="form" autocomplete="off">
+        <label>
+          Server address
+          <input id="server" type="url" inputmode="url" placeholder="http://localhost:8787" spellcheck="false" />
+          <span class="hint">Leave empty for this computer (http://localhost:8787).</span>
+        </label>
+        <label>
+          Access token
+          <input id="token" type="password" placeholder="Only if the server asks for one" spellcheck="false" />
+          <span class="hint">The server's SPARK_CLIENT_TOKEN. A server that is open to a network refuses to start without its own token. It is kept in this browser only.</span>
+        </label>
+        <div class="row">
+          <button class="primary" id="save" type="submit">Save</button>
+          <button id="test" type="button">Test the connection</button>
+        </div>
+        <p id="status" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

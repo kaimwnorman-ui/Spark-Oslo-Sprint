@@ -3,6 +3,7 @@
 // Used by the content script on real pages and by the game for demo pages.
 import { MAX_LINKS, MAX_PAGE_WORDS, MAX_WORD_POSITIONS } from '../../shared/config.ts';
 import type { PageCapture, PageLink, WordBox } from '../../shared/types.ts';
+import { cleanUrl } from '../../shared/url.ts';
 
 const BLOCKS = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, pre, td, th, dd, dt, figcaption, summary';
 const SKIP = 'nav, footer, header, aside, script, style, noscript, form, button, [role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"], [hidden]';
@@ -37,7 +38,9 @@ function linksIn(nodes: Iterable<HTMLAnchorElement>, base: string): PageLink[] {
     } catch {
       continue;
     }
-    if (!/^https?:/.test(href) || seen.has(href)) continue;
+    // Only the clean address is kept (no password, fragment or token), and it is what dedupes.
+    href = cleanUrl(href);
+    if (!href || seen.has(href)) continue;
     const text = (a.textContent ?? '').replace(/\s+/g, ' ').trim();
     if (!text) continue;
     seen.add(href);
@@ -94,7 +97,7 @@ export function capturePage(doc: Document, win: Window): PageCapture {
     const anchors = [...container.querySelectorAll('a')].filter((a) => range.intersectsNode(a));
     return {
       source: 'selection',
-      url: doc.location?.href ?? base,
+      url: cleanUrl(doc.location?.href ?? base),
       title: doc.title,
       text: capWords(selected, MAX_PAGE_WORDS),
       links: linksIn(anchors, base),
@@ -107,7 +110,7 @@ export function capturePage(doc: Document, win: Window): PageCapture {
   const text = blocks.map((b) => (b as HTMLElement).innerText ?? b.textContent ?? '').map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n\n');
   return {
     source: 'page',
-    url: doc.location?.href ?? base,
+    url: cleanUrl(doc.location?.href ?? base),
     title: doc.title,
     text: capWords(text, MAX_PAGE_WORDS),
     links: linksIn(root.querySelectorAll('a'), base),

@@ -3,6 +3,8 @@
 export const PRODUCT_NAME = 'Spark';
 /** Tagline under the title (SPEC §0). Empty = no tagline. */
 export const CHALLENGE_HOOK = '';
+/** One line under the pitch on home: who Spark is for (README: "Who it is for"). */
+export const AUDIENCE_LINE = 'Made for students who revise from articles and AI answers.';
 
 // ---- Where things live ----
 export const SERVER_PORT = 8787;
@@ -59,6 +61,16 @@ export const LESSON_TTL_MS = 2 * 60 * 60 * 1000;
 export const EXTRACT_CACHE_MS = 24 * 60 * 60 * 1000;
 export const EXTRACTS_PER_HOUR = 20;
 export const MAX_BODY_BYTES = 300_000;
+/** Per lesson (one round): how many calls each paid route accepts before it asks for a break. */
+export const LESSON_CALL_CAPS = { creature: 150, bars: 250, examine: 12 } as const;
+/** All paid calls from one address in an hour. A loopback server sees one address, so this is a global safety net. */
+export const CALLS_PER_HOUR = 1500;
+/** Lessons kept in memory at once; the oldest go first. */
+export const MAX_LESSONS = 1000;
+/** How often the server forgets what has expired. */
+export const SWEEP_MS = 10 * 60 * 1000;
+/** Learner data stays in the browser this long after it was last used (shared/memory.ts, shared/insights.ts). */
+export const RETAIN_DAYS = 180
 /** Flashback grading calls per IP per hour. */
 export const RECALLS_PER_HOUR = 60;
 /** A real page's duel waits this long on the server for the friend. */

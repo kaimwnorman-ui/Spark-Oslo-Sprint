@@ -21,8 +21,9 @@ const log = (...a) => console.log('  ·', ...a);
 
 function watch(page, who) {
   page.on('console', (msg) => {
-    // Nothing listens on :8787 here: the game falls back to grading offline, which is the point.
-    if (msg.type() === 'error' && !/localhost:8787|Failed to load resource/.test(msg.text())) errors.push(`${who}: ${msg.text()}`);
+    // Nothing listens on :8787 here, and nothing may try: demo pages are graded in the browser, so any
+    // failed request (to the server or anywhere else) is a console error and fails the run.
+    if (msg.type() === 'error') errors.push(`${who}: ${msg.text()}`);
   });
   page.on('pageerror', (err) => errors.push(`${who}: ${err.message}`));
 }
@@ -33,6 +34,12 @@ const bottomOf = async (page, selector) => {
   const box = await page.locator(selector).last().boundingBox();
   return box ? box.y + box.height : Infinity;
 };
+/** The element is fully inside the window (nothing clipped off the bottom of a screen that cannot scroll). */
+const reachableInWindow = (page, selector) =>
+  page.evaluate((sel) => {
+    const r = document.querySelector(sel)?.getBoundingClientRect();
+    return !!r && r.width > 0 && r.top >= -1 && r.bottom <= document.documentElement.clientHeight + 1 && r.right <= document.documentElement.clientWidth + 1;
+  }, selector);
 const storage = (page, key) => page.evaluate((k) => JSON.parse(localStorage.getItem(`spark:${k}`) ?? 'null'), key);
 
 async function blotDone(page) {
@@ -49,7 +56,8 @@ async function blotDone(page) {
 async function teach(page, ideaId, withExample = true) {
   const lines = round.lines[ideaId];
   if ((await page.locator(`.idea[data-id="${ideaId}"][aria-pressed="true"]`).count()) === 0) await page.click(`.idea[data-id="${ideaId}"]`);
-  await page.click('.move[data-move="say"]');
+  const say = page.locator('.move[data-move="say"]');
+  if (await say.count()) await say.click(); // a first-time player has no tabs yet: Say it is the only action
   await page.fill('#teach-input', lines.say);
   await page.click('#btn-send');
   await blotDone(page);
@@ -102,6 +110,114 @@ try {
   await shot(fresh, '00-your-blot-empty');
   await fresh.context().close();
 
+  // ---- 0b. Defaults: a bare demo URL gets the real 45-second timer, not 20 seconds (the ?teach bug).
+  const bare = await (await browser.newContext({ viewport })).newPage();
+  watch(bare, 'bare URL');
+  await bare.goto(`${base}?demo=tides`);
+  await bare.click('#btn-transform');
+  await bare.locator('#btn-teach:not(.hidden)').waitFor({ timeout: 25_000 });
+  await bare.click('#btn-teach');
+  await bare.locator('#screen-teach').waitFor();
+  const t0 = await bare.textContent('#timer');
+  check(t0 === '0:45' || t0 === '0:44', `a bare demo URL starts teaching at ${t0}, not 0:20`);
+  // A first-time player opens on the first idea with one visible action; the other moves come after the first message.
+  check((await bare.locator('.idea[data-id="i1"][aria-pressed="true"]').count()) === 1 && (await bare.locator('.move').count()) === 0, 'a first-time player opens on the first idea with one action (no move tabs yet)');
+  // Leaving with unsaved work asks first; with nothing to lose it does not.
+  const leaveAsks = () =>
+    bare.evaluate(() => {
+      const e = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(e);
+      return e.defaultPrevented;
+    });
+  const askedWhenIdle = await leaveAsks();
+  await bare.fill('#teach-input', 'The Moon pulls harder on the near water than on the far water.');
+  const askedWithText = await leaveAsks();
+  check(!askedWhenIdle && askedWithText, 'leaving mid-round asks first, but only once there is something to lose');
+  await bare.click('#btn-send');
+  await bare.locator('.move[data-move="example"]').waitFor({ timeout: 15_000 });
+  check((await bare.locator('.move').count()) === 4, 'after the first message the other moves appear');
+  await bare.context().close();
+
+  // ---- 0b2. A reload in the middle of a round offers to pick it up again (what was taught, and the time left).
+  const reloader = await (await browser.newContext({ viewport })).newPage();
+  watch(reloader, 'reload');
+  reloader.on('dialog', (d) => void d.accept()); // the leave warning: yes, reload
+  await reloader.goto(`${base}?demo=tides&fast=1&teach=90`);
+  await reloader.click('#btn-transform');
+  await reloader.locator('#btn-teach:not(.hidden)').waitFor({ timeout: 25_000 });
+  await reloader.click('#btn-teach');
+  await reloader.locator('#screen-teach').waitFor();
+  await reloader.fill('#teach-input', 'The ocean stretches into two bulges, one facing the Moon and one on the far side.');
+  await reloader.click('#btn-send');
+  await blotDone(reloader);
+  await reloader.waitForTimeout(500);
+  const before = await reloader.$eval('.idea[data-id="i1"] .ink-fill', (el) => parseFloat(el.style.width));
+  await reloader.reload();
+  await reloader.locator('#screen-resume').waitFor({ timeout: 15_000 });
+  const detail = (await reloader.textContent('#resume-detail')) ?? '';
+  check(/1 of 5 ideas taught/.test(detail), `a reload offers to resume: "${detail.trim()}"`);
+  await shot(reloader, '00b-resume');
+  await reloader.click('#btn-resume');
+  await reloader.locator('#screen-teach').waitFor();
+  const after = await reloader.$eval('.idea[data-id="i1"] .ink-fill', (el) => parseFloat(el.style.width));
+  const left = await reloader.textContent('#timer');
+  check(after > 0 && after === before && /^(1:2\d|1:30|1:1\d)$/.test(left ?? ''), `resuming brings the work back (bar ${after}%) with the time that was left (${left})`);
+  check(/Welcome back/.test((await reloader.textContent('.teach-bubble')) ?? ''), 'and Blot welcomes the player back');
+  await reloader.reload();
+  await reloader.locator('#screen-resume').waitFor({ timeout: 15_000 });
+  await reloader.click('#btn-restart');
+  await reloader.locator('#btn-transform').waitFor({ timeout: 15_000 });
+  await reloader.reload();
+  await reloader.locator('#btn-transform').waitFor({ timeout: 15_000 });
+  check((await reloader.locator('#screen-resume').count()) === 0, 'Start over forgets the saved round');
+  await reloader.context().close();
+
+  // ---- 0c. The stage round is a rehearsal: four ideas taught for you, nothing recorded about your history.
+  const stage = await (await browser.newContext({ viewport })).newPage();
+  watch(stage, 'stage');
+  await stage.goto(`${base}?demo=stage&fast=1&teach=90`);
+  await stage.click('#btn-transform');
+  await stage.locator('#btn-teach:not(.hidden)').waitFor({ timeout: 25_000 });
+  const stageNote = (await stage.textContent('#attack-note')) ?? '';
+  check(/Four ideas are already taught for you/.test(stageNote) && (await stage.locator('.attack.taught').count()) === 4 && (await stage.locator('.attack.weak').count()) === 1, `the stage reveal says what is done: "${stageNote.trim()}"`);
+  await shot(stage, '00c-stage-reveal');
+  await stage.click('#btn-teach');
+  await stage.locator('#screen-teach').waitFor();
+  check((await stage.locator('.idea[data-id="i5"][aria-pressed="true"]').count()) === 1 && /Stage/.test((await stage.textContent('#coach-note')) ?? ''), 'teaching opens on the one idea left, with a stage note');
+  await teach(stage, 'i5');
+  await ringBell(stage);
+  const stageWon = await finishRound(stage);
+  const stageMemory = await storage(stage, 'memory');
+  check(stageWon, 'the stage round ends in a win');
+  check(!(await storage(stage, 'history'))?.length && !stageMemory?.comebacks?.length, 'a rehearsal leaves no history and no comeback');
+  check(stageMemory?.cards?.length === 1, `only the idea the player taught became a memory (${stageMemory?.cards?.length} card, not five)`);
+  check((await stage.locator('#btn-challenge').count()) === 0 && /rehearsal/.test((await stage.textContent('.replay-head .card-kicker')) ?? ''), 'a rehearsal offers no duel and says so');
+  await stage.context().close();
+
+  // ---- 0d. The presenter kit: one URL loads a learner four days in, and the same trait is shining, then solid, then faded.
+  const kit = await (await browser.newContext({ viewport })).newPage();
+  watch(kit, 'presenter kit');
+  await kit.goto(`${base}?seed=presenter`);
+  await kit.locator('#presenter-tabs').waitFor();
+  check((await kit.locator('.presenter-tab').count()) === 6, 'the presenter kit lists six ready tabs');
+  await settle(kit);
+  await shot(kit, '00d-presenter');
+  await kit.goto(`${base}?blot=1`);
+  await kit.locator('#screen-blot').waitFor();
+  check((await kit.locator('.trait-chip.look-shining').count()) === 1, 'day 0: the trait is shining');
+  await kit.goto(`${base}?blot=1&days=4`);
+  await kit.locator('#screen-blot').waitFor();
+  await settle(kit);
+  check((await kit.locator('.trait-chip.look-solid').count()) === 1 && (await kit.locator('.memory.fresh-fading').count()) >= 4 && (await kit.locator('.insight[data-code="trust"]').count()) === 1, 'day 4: the trait is solid, memories are fading, Blot’s tip is "Blot fooled you"');
+  await shot(kit, '00e-presenter-day4');
+  await kit.goto(`${base}?blot=1&days=7`);
+  await kit.locator('#screen-blot').waitFor();
+  check((await kit.locator('.trait-chip.look-faded').count()) === 1, 'day 7: the same trait has faded');
+  await kit.goto(`${base}?seed=presenter`);
+  await kit.locator('#screen-error').waitFor();
+  check(/already has learning history/.test((await kit.textContent('#screen-error')) ?? '') && (await storage(kit, 'history')).length === 2, 'the kit never overwrites a real learner');
+  await kit.context().close();
+
   const me = await (await browser.newContext({ viewport })).newPage();
   watch(me, 'player');
 
@@ -114,7 +230,13 @@ try {
   await teach(me, 'i1');
   await teach(me, 'i2', false);
   await ringBell(me);
+  // Blot quietly misread "Difference in pull": when it backfires, the monster quotes the belief and says what is true.
+  const counter = me
+    .waitForFunction(() => /^“.+”\? Ha! No: /.test(document.querySelector('.monster-says')?.textContent ?? ''), null, { timeout: 150_000, polling: 'raf' })
+    .then(() => me.textContent('.monster-says'), () => null);
   const won1 = await finishRound(me);
+  const countered = await counter;
+  check(!!countered, `the counterattack quotes what Blot believed and says what is true: "${(countered ?? '').slice(0, 90)}…"`);
   log(`round 1: ${won1 ? 'won' : 'lost'}`);
   const memory1 = await storage(me, 'memory');
   const history1 = await storage(me, 'history');
@@ -135,6 +257,7 @@ try {
   const link = await me.inputValue('#share-link');
   check(/game\.html\?duel=L[A-Za-z0-9_-]+$/.test(link), `a duel link that works offline (${link.length} characters)`);
   await settle(me, 300);
+  check(/name and scores travel inside the link/.test((await me.textContent('#share-note')) ?? ''), 'the share dialog says what travels in the link');
   await shot(me, '03-share-link');
   await me.click('#btn-share-close');
 
@@ -240,7 +363,7 @@ try {
       id: 'mkraken', monsterName: 'The Page Kraken', shape: 'crab', color: '#0b7a8a', topic: lesson.topic, words: lesson.words, language: 'en',
       demoId: null, ideaId: weak.id, ideaName: weak.name, question: weak.question, keyPoints: weak.keyPoints, modelAnswer: weak.modelAnswer,
       ideas: lesson.ideas.map((i) => ({ id: i.id, name: i.name, score: i.id === weak.id ? 0 : 75 })),
-      sourceUrl: null, sourceTitle: null, createdAt: t - 2 * 86400000, dueAt: t - 86400000, tries: 0,
+      sourceUrl: null, sourceTitle: null, createdAt: t - 2 * 86400000, dueAt: t - 86400000, tries: 0, live: false,
     });
     localStorage.setItem('spark:memory', JSON.stringify(m));
   }, [round.lesson, i3]);
@@ -255,6 +378,24 @@ try {
   const kraken = (await storage(me, 'memory')).comebacks.find((c) => c.id === 'mkraken');
   const row = await me.textContent('.replay-row[data-id="i3"] .score');
   check(Number(row) > 0 && (won3 ? !kraken : kraken?.tries === 1), `the real page’s comeback is graded offline (${row}) and ${won3 ? 'tamed' : 'comes back again'}`);
+
+  // ---- 6c. A trait explains itself, and Clear my data erases everything Spark remembers.
+  await me.goto(`${base}?blot=1`);
+  await me.locator('#btn-clear-data').waitFor();
+  await me.locator('.trait-chip').first().click();
+  const traitText = (await me.textContent('#trait-detail')) ?? '';
+  check(/From “Later every day”/.test(traitText) && /The idea:/.test(traitText), `tapping a trait shows the idea that earned it: "${traitText.slice(0, 70).replace(/\s+/g, ' ')}…"`);
+  await settle(me, 500);
+  check((await reachableInWindow(me, '#trait-detail')) && (await reachableInWindow(me, '#btn-blot-primary')), 'the open trait panel and the primary action both fit in the window');
+  await shot(me, '11a-trait');
+  await me.click('#btn-clear-data');
+  check(/Tap again/.test((await me.textContent('#btn-clear-data')) ?? ''), 'Clear my data asks once more before it erases anything');
+  check((await storage(me, 'memory'))?.cards?.length > 0, 'one tap erased nothing');
+  await me.click('#btn-clear-data');
+  await me.locator('#screen-home').waitFor({ timeout: 10_000 });
+  const gone = await me.evaluate(() => ['memory', 'history', 'traits', 'playerName', 'played'].every((k) => localStorage.getItem(`spark:${k}`) === null));
+  check(gone && (await me.locator('#btn-your-blot').count()) === 0, 'the second tap erased memories, history, traits and the name, and Home treats the player as new');
+  await shot(me, '11b-cleared');
 
   // ---- 7. The friend: another browser opens the duel link.
   const friend = await (await browser.newContext({ viewport })).newPage();

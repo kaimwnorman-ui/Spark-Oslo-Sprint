@@ -2,8 +2,8 @@
 // from memory refreshes the memory (and its trait), and a good answer earns a power-up.
 import { MESSAGE_LIMIT } from '../../../../shared/config.ts';
 import {
-  DAY_MS, REFILL_HP, RECALL_PASS, applyRecall, earnPowerUp, recallGrade, recallScore, replaceCard,
-  type MemoryCard, type PowerUp, type RecallGrade,
+  DAY_MS, REFILL_HP, RECALL_PASS, applyRecall, earnPowerUp, gradeRecall, recallGrade, replaceCard,
+  type MemoryCard, type PowerUp, type RecallFlag, type RecallGrade,
 } from '../../../../shared/memory.ts';
 import type { Trait } from '../../../../shared/types.ts';
 import { wait } from '../anim.ts';
@@ -31,19 +31,35 @@ export interface FlashbackOptions {
   onHome: (() => void) | null;
 }
 
-/** Grades with the server's recall model; offline, by how much of the answer's key words it covers. */
-async function grade(card: MemoryCard, answer: string): Promise<{ score: number; feedback: string }> {
-  try {
-    const r = await postJson<{ score: number; feedback: string }>(
-      '/recall',
-      { ideaName: card.ideaName, question: card.question, modelAnswer: card.modelAnswer, keyPoints: card.keyPoints, language: card.language, answer },
-      9000,
-    );
-    if (typeof r.score === 'number') return { score: Math.round(Math.max(0, Math.min(100, r.score))), feedback: r.feedback || '' };
-  } catch {
-    // The server is away: grade offline.
+interface Graded {
+  score: number;
+  feedback: string;
+  /** Who graded it: the AI, or a word match against the key points (offline, and always for demo pages). */
+  checked: 'ai' | 'words';
+  flag: RecallFlag;
+}
+
+/**
+ * Only an idea taught on a real page (graded by the server's AI) is ever sent to the server. A demo page's
+ * flashback is graded here by word matching and says so; nothing leaves the browser.
+ */
+async function grade(card: MemoryCard, answer: string): Promise<Graded> {
+  if (card.live) {
+    try {
+      const r = await postJson<{ score: number; feedback: string; offline?: boolean; flag?: RecallFlag }>(
+        '/recall',
+        { ideaName: card.ideaName, question: card.question, modelAnswer: card.modelAnswer, keyPoints: card.keyPoints, language: card.language, answer },
+        9000,
+      );
+      if (typeof r.score === 'number') {
+        return { score: Math.round(Math.max(0, Math.min(100, r.score))), feedback: r.feedback || '', checked: r.offline ? 'words' : 'ai', flag: r.flag ?? 'ok' };
+      }
+    } catch {
+      // The server is away: grade here.
+    }
   }
-  return { score: recallScore(card, answer), feedback: '' };
+  const g = gradeRecall(card, answer);
+  return { score: g.score, feedback: '', checked: 'words', flag: g.flag };
 }
 
 function ago(at: number): string {
@@ -51,11 +67,15 @@ function ago(at: number): string {
   return days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
-const DEFAULT_FEEDBACK: Record<RecallGrade, string> = {
-  pass: 'You remembered the heart of it.',
-  partial: 'You remembered part of it. Read the answer, then teach it better next time.',
-  fail: 'Read the answer once more. Blot will ask again soon.',
-};
+/** What to tell the player when the grader gave no sentence of its own: honest about word matching, never "you remembered" for a list of words or the opposite. */
+function feedbackFor(g: Graded, grade: RecallGrade): string {
+  if (g.flag === 'opposite') return 'That sounds like the opposite of the idea. Read the answer below.';
+  if (g.flag === 'keywords') return 'That reads like a list of words. Try one full sentence next time.';
+  if (g.flag === 'empty') return 'Blot needs a few more words to go on.';
+  if (grade === 'pass') return g.checked === 'words' ? 'Your words cover the key points.' : 'You remembered the heart of it.';
+  if (grade === 'partial') return 'You remembered part of it. Read the answer, then teach it better next time.';
+  return 'Read the answer once more. Blot will ask again soon.';
+}
 
 const POWER_TEXT: Record<PowerUp, { name: string; what: string; icon: string }> = {
   refill: { name: 'Ink refill', what: `Blot starts your next fight with +${REFILL_HP} HP.`, icon: '🧪' },
@@ -146,7 +166,7 @@ export async function flashbackScreen(opts: FlashbackOptions): Promise<Flashback
   card$.classList.add('grading');
   blot.setPose('listening');
   const started = performance.now();
-  const graded = got.answer ? await grade(card, got.answer) : { score: 0, feedback: '' };
+  const graded: Graded = got.answer ? await grade(card, got.answer) : { score: 0, feedback: '', checked: 'words', flag: 'empty' };
   const left = 700 - (performance.now() - started);
   if (left > 0) await wait(left);
   const gradeOf = recallGrade(graded.score);
@@ -180,7 +200,20 @@ export async function flashbackScreen(opts: FlashbackOptions): Promise<Flashback
   card$.classList.remove('grading');
   card$.style.minHeight = '';
   card$.replaceChildren(
-    h('div', { class: 'flash-result-head' }, ring, h('div', null, h('p', { class: 'card-kicker' }, kicker), h('p', { class: 'flash-feedback', id: 'flash-feedback' }, graded.feedback || DEFAULT_FEEDBACK[gradeOf]))),
+    h(
+      'div',
+      { class: 'flash-result-head' },
+      ring,
+      h(
+        'div',
+        null,
+        h('p', { class: 'card-kicker' }, kicker),
+        h('p', { class: 'flash-feedback', id: 'flash-feedback' }, graded.feedback || feedbackFor(graded, gradeOf)),
+        got.answer
+          ? h('p', { class: 'checked-by', id: 'flash-checked' }, graded.checked === 'ai' ? 'Graded by Spark’s AI' : 'Checked by word match: no AI involved, so it can miss a good answer')
+          : null,
+      ),
+    ),
     h('div', { class: 'flash-answer' }, h('p', { class: 'flash-answer-label' }, 'The answer'), h('p', null, card.modelAnswer)),
     reward,
     h('div', { class: 'flash-actions' }, next),

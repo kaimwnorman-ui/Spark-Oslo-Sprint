@@ -66,9 +66,9 @@ export async function replayScreen(ctx: RoundCtx): Promise<ReplayChoice> {
       'button',
       { class: `replay-row belief-${belief}${idea.id === weakest ? ' weakest' : ''}`, 'data-id': idea.id, 'aria-expanded': 'false', title: 'Show all' },
       h('header', null, h('h3', null, idea.name), h('span', { class: 'score' }, `${r?.score ?? 0}`)),
-      h('div', { class: 'col said' }, said.length ? h('p', { class: 'clamp' }, said.join(' · ')) : h('p', { class: 'muted' }, beaten ? 'Beaten in an earlier fight.' : 'Nothing yet.')),
-      h('div', { class: 'col believed' }, beaten ? h('p', { class: 'beaten-note' }, '✓ Already beaten') : h('p', { class: 'clamp' }, r?.creatureAnswer || '…')),
-      h('div', { class: 'col stronger' }, h('p', { class: 'clamp' }, model), r?.tip ? h('p', { class: 'tip' }, `Tip: ${r.tip}`) : null),
+      h('div', { class: 'col said', 'data-label': 'What you said' }, said.length ? h('p', { class: 'clamp' }, said.join(' · ')) : h('p', { class: 'muted' }, beaten ? 'Beaten in an earlier fight.' : 'Nothing yet.')),
+      h('div', { class: 'col believed', 'data-label': 'What Blot believed' }, beaten ? h('p', { class: 'beaten-note' }, '✓ Already beaten') : h('p', { class: 'clamp' }, r?.creatureAnswer || '…')),
+      h('div', { class: 'col stronger', 'data-label': 'Stronger' }, h('p', { class: 'clamp' }, model), r?.tip ? h('p', { class: 'tip' }, `Tip: ${r.tip}`) : null),
     );
     row.addEventListener('click', () => row.setAttribute('aria-expanded', String(row.getAttribute('aria-expanded') !== 'true')));
     return row;
@@ -98,7 +98,7 @@ export async function replayScreen(ctx: RoundCtx): Promise<ReplayChoice> {
       'header',
       { class: 'replay-head' },
       h('div', { class: 'replay-blot' }, blot.el),
-      h('div', { class: 'replay-title' }, h('p', { class: 'card-kicker' }, ctx.provisional ? 'Replay (provisional scores)' : 'Replay'), h('h1', null, outcome), h('p', null, `${ctx.monster.name} · ${ctx.lesson.topic}`)),
+      h('div', { class: 'replay-title' }, h('p', { class: 'card-kicker' }, ctx.stage ? 'Stage round · rehearsal' : ctx.provisional ? 'Replay (provisional scores)' : 'Replay'), h('h1', null, outcome), h('p', null, `${ctx.monster.name} · ${ctx.lesson.topic}`)),
       loopStrip(ctx),
     ),
     h(
@@ -116,7 +116,7 @@ export async function replayScreen(ctx: RoundCtx): Promise<ReplayChoice> {
         { class: 'replay-actions' },
         secondary('btn-home', 'Home'),
         // Duels and comebacks are not shared: a normal round is.
-        ctx.kind === 'round' ? secondary('btn-challenge', 'Challenge a friend') : null,
+        ctx.kind === 'round' && !ctx.stage ? secondary('btn-challenge', 'Challenge a friend') : null,
         primary('btn-play-again', 'Play again'),
       ),
     ),

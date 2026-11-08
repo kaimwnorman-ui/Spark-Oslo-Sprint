@@ -88,6 +88,8 @@ export interface WordBox {
 
 /** What the background stores for the game tab (chrome.storage.session, key round:<id>). */
 export interface RoundHandoff {
+  /** When the background stored it: handoffs are forgotten after two hours (and only the newest few are kept). */
+  at?: number;
   capture: PageCapture;
   lesson: SealedLesson;
   seed: number;

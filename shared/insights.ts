@@ -1,5 +1,6 @@
 // Insights from the player's own history (SPEC §17): what they struggle with, in plain words and
 // with their own numbers, plus the focus that personalises the next round. Pure and tested.
+import { RETAIN_DAYS } from './config.ts';
 import type { Belief, BoutOutcome, ExamResult, Move, TranscriptEntry } from './types.ts';
 
 /** What the coach adapts to, in priority order. */
@@ -68,6 +69,11 @@ export function summarizeRound(input: SummaryInput): RoundSummary {
 
 export function addRound(history: readonly RoundSummary[], round: RoundSummary): RoundSummary[] {
   return [...history, round].slice(-MAX_HISTORY);
+}
+
+/** Rounds older than RETAIN_DAYS are forgotten. Pass the real clock, not a simulated one. */
+export function pruneHistory(history: readonly RoundSummary[], now: number, days: number = RETAIN_DAYS): RoundSummary[] {
+  return history.filter((r) => r.at >= now - days * 86_400_000);
 }
 
 // ---------------------------------------------------------------- numbers

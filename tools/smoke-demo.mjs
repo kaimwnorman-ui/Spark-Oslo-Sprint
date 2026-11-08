@@ -47,7 +47,7 @@ if (live) {
     console.error('smoke:demo --live needs port 8787 free. Stop the running server and try again.');
     process.exit(1);
   }
-  const env = { ...process.env, PORT: '8787', AI_STUB: real ? '0' : '1' };
+  const env = { ...process.env, PORT: '8787', AI_STUB: real ? '0' : '1', DEV_ORIGINS: '1' };
   api = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server/src/main.ts'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   api.stdout.on('data', (d) => process.env.SMOKE_VERBOSE && process.stdout.write(d));
   for (let i = 0; i < 50 && !(await fetch(`${SERVER}/health`).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 200));
@@ -142,7 +142,10 @@ async function play(entry) {
   const fixing = (await page.locator('#panel[data-kind="fix"]').count()) > 0;
   if (!fixing) {
     await page.click(`.idea[data-id="${ideaId}"]`);
-    await page.click(`.move[data-move="${move}"]`);
+    // A first-time player sees only "Say it" until the first message; the other moves appear after it.
+    const tab = page.locator(`.move[data-move="${move}"]`);
+    if (await tab.count()) await tab.click();
+    else if (move !== 'say') throw new Error(`the ${move} tab is missing`);
   }
   if (move === 'say' || move === 'example') {
     await page.fill('#teach-input', entry.text);

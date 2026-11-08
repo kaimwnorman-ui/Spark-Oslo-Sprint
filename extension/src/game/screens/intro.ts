@@ -1,5 +1,5 @@
 // Home, the demo page, and the words-to-monster set piece (SPEC §2.1).
-import { CHALLENGE_HOOK, PRODUCT_NAME } from '../../../../shared/config.ts';
+import { AUDIENCE_LINE, CHALLENGE_HOOK, PRODUCT_NAME } from '../../../../shared/config.ts';
 import type { PageCapture, Trait, WordBox } from '../../../../shared/types.ts';
 import { capturePage } from '../../capture.ts';
 import { ease, mark, recordFrame, reducedMotion, tween, wait } from '../anim.ts';
@@ -59,6 +59,7 @@ export function homeScreen(opts: HomeOptions): void {
       h('h1', { class: 'logo' }, PRODUCT_NAME),
       CHALLENGE_HOOK ? h('p', { class: 'tagline' }, CHALLENGE_HOOK) : null,
       h('p', { class: 'pitch' }, 'Any page becomes a monster made of its words. Beat it by teaching Blot what the page means.'),
+      h('p', { class: 'audience', id: 'audience' }, AUDIENCE_LINE),
       main,
       h('p', { class: 'quiet-line' }, 'On any page: click the Spark button in your toolbar, or press Alt+Shift+B.'),
       h(
@@ -79,7 +80,8 @@ let prepared: { key: string; monster: MonsterView; monsterW: number; monsterH: n
 const sizeKey = (ctx: RoundCtx) => `${ctx.monster.name}:${innerWidth}x${innerHeight}`;
 
 export function prepareMonster(ctx: RoundCtx): void {
-  const monsterW = Math.min(820, innerWidth * 0.66);
+  // In a short window the monster is smaller, so the five attacks and the button fit below it.
+  const monsterW = Math.min(820, innerWidth * 0.66, innerHeight < 600 ? innerHeight * 0.72 : Infinity);
   const monsterH = monsterW / 1.6;
   const monster = new MonsterView(ctx.monster.shape, ctx.monster.words, ctx.monster.color, monsterW, monsterH);
   monster.targets(300);
@@ -277,17 +279,32 @@ export async function formingScreen(ctx: RoundCtx, boxes: WordBox[], frame: HTML
   await tween(reduce ? 200 : 700, (t) => (silhouette = t));
   silhouette = 1;
   mark('monster-formed');
-  for (const idea of ctx.lesson.ideas) {
-    // A comeback: the ideas already beaten are crossed out; the weak one glows.
-    const beaten = idea.id in ctx.locked;
-    const weak = ctx.kind === 'comeback' && idea.id === ctx.focus;
+  // A comeback or the stage round starts with some ideas done: say so, in words, above the chips.
+  const done = ctx.kind === 'comeback' ? Object.keys(ctx.locked).length : (ctx.stage?.ideas.length ?? 0);
+  if (done > 0) {
+    const count = ['No', 'One', 'Two', 'Three', 'Four', 'Five'][done] ?? String(done);
+    const noun = done === 1 ? 'idea is' : 'ideas are';
     attacks.append(
       h(
         'li',
-        { class: `attack${beaten ? ' beaten' : ''}${weak ? ' weak' : ''}`, 'data-id': idea.id },
-        h('span', { class: 'attack-icon', 'aria-hidden': 'true' }, beaten ? '✓' : '✶'),
+        { class: 'attack-note', id: 'attack-note' },
+        h('span', null, ctx.kind === 'comeback' ? `${count} ${noun} already beaten. Teach the glowing one to tame it.` : `${count} ${noun} already taught for you. Teach the glowing one to land the K.O.`),
+      ),
+    );
+  }
+  for (const idea of ctx.lesson.ideas) {
+    // A comeback crosses out the ideas already beaten; the stage round ticks the ones taught for you.
+    // Either way the one left to teach glows.
+    const beaten = idea.id in ctx.locked;
+    const taught = !!ctx.stage?.ideas.includes(idea.id);
+    const weak = (ctx.kind === 'comeback' || !!ctx.stage) && idea.id === ctx.focus;
+    attacks.append(
+      h(
+        'li',
+        { class: `attack${beaten ? ' beaten' : ''}${taught ? ' taught' : ''}${weak ? ' weak' : ''}`, 'data-id': idea.id },
+        h('span', { class: 'attack-icon', 'aria-hidden': 'true' }, beaten || taught ? '✓' : '✶'),
         idea.name,
-        beaten ? h('span', { class: 'sr-only' }, ' (beaten)') : null,
+        beaten ? h('span', { class: 'sr-only' }, ' (beaten)') : taught ? h('span', { class: 'sr-only' }, ' (already taught)') : null,
       ),
     );
     sfx.tap();

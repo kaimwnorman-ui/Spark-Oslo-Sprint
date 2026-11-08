@@ -2,7 +2,9 @@
 // (Shadow DOM, the page itself is never changed), and lifts the page's words into a swirling
 // cloud while the server builds the monster. Then the game tab takes over.
 import { capturePage } from '../capture.ts';
-import type { WordBox } from '../../../shared/types.ts';
+import { giveConsent, hasConsent } from '../consent.ts';
+import { shortUrl } from '../../../shared/url.ts';
+import type { PageCapture, WordBox } from '../../../shared/types.ts';
 
 declare global {
   interface Window {
@@ -26,6 +28,12 @@ canvas { position: fixed; inset: 0; pointer-events: none; }
 .dots i:nth-child(3) { transform: rotate(240deg); background: #ff7a1a; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .actions { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.card.consent { max-width: min(600px, 94vw); text-align: left; justify-items: stretch; gap: 10px; }
+.card.consent .row { font-size: 22px; }
+.preview { margin: 0; padding: 10px 14px; border-radius: 14px; background: #fff; border: 2px solid #1d1a2f; font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.preview b { font-weight: 800; }
+.preview q { color: #3a3650; font-weight: 500; }
+.card.consent .actions { justify-content: flex-end; }
 button { font: 800 18px/1 system-ui, sans-serif; min-height: 48px; padding: 10px 20px; border-radius: 999px; border: 3px solid #1d1a2f; cursor: pointer; color: #1d1a2f; }
 button.primary { background: #ff7a1a; box-shadow: 0 4px 0 #1d1a2f; font-size: 20px; }
 button.quiet { background: transparent; border-color: transparent; text-decoration: underline; font-weight: 700; }
@@ -33,15 +41,36 @@ button:focus-visible { outline: 4px solid #5b4bff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .dots { animation: none; } .veil { transition: none; } }
 `;
 
+/** Builds a one-line element from plain text (the page's own words are never put through innerHTML). */
+function node<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text: string): HTMLElementTagNameMap[K] {
+  const el = document.createElement(tag);
+  el.className = className;
+  el.textContent = text;
+  return el;
+}
+
+/** The exact capture, in a few lines: what Spark would send (SPEC §18). */
+function previewOf(capture: PageCapture): HTMLElement {
+  const words = capture.text.split(/\s+/).filter(Boolean).length;
+  const box = document.createElement('p');
+  box.className = 'preview';
+  box.append(node('b', '', capture.title.trim().slice(0, 90) || shortUrl(capture.url) || 'This page'), document.createElement('br'));
+  box.append(document.createTextNode(`${shortUrl(capture.url) || 'this tab'} · ${words.toLocaleString()} words · ${capture.links.length} links`), document.createElement('br'));
+  box.append(node('q', '', `${capture.text.slice(0, 140).replace(/\s+/g, ' ').trim()}…`));
+  return box;
+}
+
 function main(): void {
   if (window.__sparkOverlay) return;
   window.__sparkOverlay = true;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Reading the page happens in this tab only: nothing leaves until the player has said yes.
   const capture = capturePage(document, window);
 
   // ---- overlay ----
   const host = document.createElement('div');
   host.setAttribute('data-spark-overlay', '');
+  host.dataset.state = 'starting';
   host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;';
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
@@ -59,20 +88,29 @@ function main(): void {
     card.innerHTML = html;
   };
   const enoughWords = capture.text.split(/\s+/).length >= 60;
-  setCard(
-    enoughWords
-      ? `<div class="row"><div class="dots"><i></i><i></i><i></i></div>Your page is turning into a monster…</div>
-         <p class="note">This page goes to Spark’s AI to build your monster.</p>
-         <div class="actions"><button class="quiet" data-act="close">Cancel</button></div>`
-      : `<div class="row">Not enough words here to make a monster.</div>
+  const WORKING = `<div class="row"><div class="dots"><i></i><i></i><i></i></div>Your page is turning into a monster…</div>
+         <p class="note">Sending this page to your Spark server, which asks Anthropic’s AI for the five ideas.</p>
+         <div class="actions"><button class="quiet" data-act="close">Cancel</button></div>`;
+  if (!enoughWords) {
+    setCard(`<div class="row">Not enough words here to make a monster.</div>
          <p class="note">Try a longer article, or select some text first.</p>
-         <div class="actions"><button class="primary" data-act="demo">Play the demo</button><button class="quiet" data-act="close">Close</button></div>`,
-  );
+         <div class="actions"><button class="primary" data-act="demo">Play the demo</button><button class="quiet" data-act="close">Close</button></div>`);
+  }
 
   let closed = false;
+  let sent = false;
+  let delivered = false;
   const close = () => {
     if (closed) return;
     closed = true;
+    // Cancelling while the page is on its way aborts the request, it does not just hide the card.
+    if (sent && !delivered) {
+      try {
+        void chrome.runtime.sendMessage({ type: 'spark:cancel' }).catch(() => {});
+      } catch {
+        // The extension was reloaded: there is nothing left to cancel.
+      }
+    }
     cancelAnimationFrame(raf);
     host.remove();
     document.removeEventListener('keydown', onKey, true);
@@ -88,6 +126,9 @@ function main(): void {
   card.addEventListener('click', (e) => {
     const act = (e.target as HTMLElement).closest('button')?.dataset.act;
     if (act === 'close') close();
+    if (act === 'allow') {
+      void giveConsent().then(begin, begin);
+    }
     if (act === 'demo') {
       void chrome.runtime.sendMessage({ type: 'spark:demo' });
       close();
@@ -116,7 +157,7 @@ function main(): void {
       spin: 0.9 + ((i * 53) % 100) / 160,
     };
   });
-  const started = performance.now();
+  let started = performance.now();
   let collapseAt = 0;
   let raf = 0;
   const frame = (now: number) => {
@@ -144,19 +185,48 @@ function main(): void {
     }
     if (collapse < 1 && !closed) raf = requestAnimationFrame(frame);
   };
-  if (enoughWords) {
-    requestAnimationFrame(() => veil.classList.add('on'));
+  /** The words lift off and the page goes to the server. */
+  function begin(): void {
+    if (closed || sent) return;
+    sent = true;
+    started = performance.now(); // the lift-off starts now, not when the page was read
+    host.dataset.state = 'working';
+    card.classList.remove('consent');
+    setCard(WORKING);
     raf = requestAnimationFrame(frame);
     void chrome.runtime.sendMessage({ type: 'spark:capture', capture });
-  } else {
-    requestAnimationFrame(() => veil.classList.add('on'));
   }
+
+  /** First use: show what would be sent, and where, and wait for a yes. */
+  function askFirst(): void {
+    host.dataset.state = 'consent';
+    card.classList.add('consent');
+    card.replaceChildren(
+      node('div', 'row', 'Send this page to Spark?'),
+      node('p', 'note', 'Spark sends this page’s text and links to your Spark server, which asks Anthropic’s AI to write the five ideas. While you teach, your messages go the same way. The page text stays on the server for about two hours. You only see this once.'),
+      previewOf(capture),
+    );
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const allow = node('button', 'primary', 'Send and continue');
+    allow.dataset.act = 'allow';
+    const cancel = node('button', 'quiet', 'Cancel');
+    cancel.dataset.act = 'close';
+    actions.append(cancel, allow);
+    card.append(actions);
+    allow.focus();
+  }
+
+  requestAnimationFrame(() => veil.classList.add('on'));
+  if (enoughWords) void hasConsent().then((yes) => (yes ? begin() : askFirst()));
 
   // Even when the server is instant (cache, demo), the words get time to lift and swirl.
   const MIN_SHOW_MS = reduce ? 600 : 2200;
   chrome.runtime.onMessage.addListener((msg: { type?: string; message?: string }, _sender, sendResponse) => {
     if (closed) return false;
     if (msg.type === 'spark:ready') {
+      delivered = true;
+      host.dataset.state = 'ready';
       const wait = Math.max(0, started + MIN_SHOW_MS - performance.now());
       setTimeout(() => {
         collapseAt = performance.now();
@@ -169,6 +239,7 @@ function main(): void {
       }, wait);
       return true;
     } else if (msg.type === 'spark:failed') {
+      host.dataset.state = 'failed';
       cancelAnimationFrame(raf);
       g.clearRect(0, 0, W, H);
       const text = document.createElement('div');

@@ -1,23 +1,36 @@
 // The live round engine: the Spark server's /creature (streamed), /bars and /examine.
 // Also the small helpers every other server call uses (/recall, /duel).
-import { CLIENT_TOKEN, SERVER_URL } from '../../../shared/config.ts';
 import type { BarValue, ExamResult, Language, SealedLesson, TranscriptEntry } from '../../../shared/types.ts';
+import { clientToken, serverUrl } from '../settings.ts';
 import type { BarsReply, CreatureRequest, RoundEngine } from './engine.ts';
-import { getLocal } from './storage.ts';
 
-/** Where the server is: this page's own server when it serves the game (/app/), else the configured one. */
+/**
+ * A hosted copy of the game (GitHub Pages, any static host) is a guest: it plays the demo pages and duel links
+ * offline and talks to no server. The extension, a page served by Spark's own server (/app/) and a local
+ * development page are not guests.
+ */
+export function isGuest(): boolean {
+  if (!/^https?:$/.test(location.protocol)) return false;
+  if (location.pathname.startsWith('/app/')) return false;
+  return !/^(localhost|127(\.\d+){3}|\[::1\])$/.test(location.hostname);
+}
+
+/** Where the server is: this page's own server when it serves the game (/app/), else the configured one. A guest has none: ''. */
 export async function serverBase(): Promise<string> {
   if (/^https?:$/.test(location.protocol) && location.pathname.startsWith('/app/')) return location.origin;
-  return (await getLocal<string>('serverUrl', '')) || SERVER_URL;
+  if (isGuest()) return '';
+  return serverUrl();
 }
 
 /** POST JSON to the server; throws ServerError (status 0 when it cannot be reached). */
 export async function postJson<T>(path: string, body: unknown, timeoutMs = 15_000): Promise<T> {
+  const base = await serverBase();
+  if (!base) throw new ServerError(0, 'This copy of Spark has no server.');
   let res: Response;
   try {
-    res = await fetch(`${await serverBase()}${path}`, {
+    res = await fetch(`${base}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-spark': CLIENT_TOKEN },
+      headers: { 'content-type': 'application/json', 'x-spark': await clientToken() },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -59,7 +72,7 @@ export class ServerEngine implements RoundEngine {
     try {
       res = await fetch(`${this.base}${path}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-spark': CLIENT_TOKEN },
+        headers: { 'content-type': 'application/json', 'x-spark': await clientToken() },
         body: JSON.stringify({ lessonId: this.lesson.lessonId, ...(body as object) }),
         signal: AbortSignal.timeout(timeoutMs),
       });

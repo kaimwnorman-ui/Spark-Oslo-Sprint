@@ -1,7 +1,7 @@
 // Lessons live in server memory for 2 hours (SPEC §12.4); extractor results are cached by
 // URL hash + text hash for 24 hours. Nothing else is stored.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { DUEL_TTL_MS, EXTRACT_CACHE_MS, LESSON_TTL_MS, MAX_DUELS } from '../../shared/config.ts';
+import { DUEL_TTL_MS, EXTRACT_CACHE_MS, LESSON_CALL_CAPS, LESSON_TTL_MS, MAX_DUELS, MAX_LESSONS } from '../../shared/config.ts';
 import type { DuelChallenge } from '../../shared/duel.ts';
 import type { Lesson, PageCapture } from '../../shared/types.ts';
 
@@ -22,9 +22,13 @@ export function pageKey(capture: Pick<PageCapture, 'url' | 'text'>): string {
   return `${h(capture.url)}:${h(capture.text)}`;
 }
 
+/** The paid routes a round may call, each with its own cap (shared/config.ts LESSON_CALL_CAPS). */
+export type CallKind = keyof typeof LESSON_CALL_CAPS;
+
 export class LessonStore {
   private lessons = new Map<string, StoredLesson>();
   private cache = new Map<string, { lesson: Lesson; expires: number }>();
+  private calls = new Map<string, Record<CallKind, number>>();
   private readonly now: () => number;
 
   constructor(now: () => number = Date.now) {
@@ -39,17 +43,37 @@ export class LessonStore {
     page: StoredLesson['page'] = null,
   ): { lessonId: string; seed: number } {
     this.sweep();
+    // Bounded memory: when full, the oldest rounds go first.
+    while (this.lessons.size >= MAX_LESSONS) this.drop(this.lessons.keys().next().value!);
     const lessonId = randomUUID();
     const s = seed ?? parseInt(lessonId.replace(/-/g, '').slice(0, 8), 16) >>> 0;
     this.lessons.set(lessonId, { lesson, roundId, text, seed: s, page, expires: this.now() + LESSON_TTL_MS });
     return { lessonId, seed: s };
   }
 
+  /** Counts one paid call for this round; false once the round has used its share (LESSON_CALL_CAPS). */
+  spend(lessonId: string, kind: CallKind): boolean {
+    const used = this.calls.get(lessonId) ?? { creature: 0, bars: 0, examine: 0 };
+    if (used[kind] >= LESSON_CALL_CAPS[kind]) return false;
+    used[kind]++;
+    this.calls.set(lessonId, used);
+    return true;
+  }
+
+  private drop(lessonId: string): void {
+    this.lessons.delete(lessonId);
+    this.calls.delete(lessonId);
+  }
+
+  get size(): number {
+    return this.lessons.size;
+  }
+
   get(lessonId: string): StoredLesson | null {
     const stored = this.lessons.get(lessonId);
     if (!stored) return null;
     if (stored.expires < this.now()) {
-      this.lessons.delete(lessonId);
+      this.drop(lessonId);
       return null;
     }
     return stored;
@@ -65,9 +89,10 @@ export class LessonStore {
     this.cache.set(key, { lesson, expires: this.now() + EXTRACT_CACHE_MS });
   }
 
-  private sweep(): void {
+  /** Forgets every expired round and cached lesson (also run on a timer by the server). */
+  sweep(): void {
     const now = this.now();
-    for (const [id, s] of this.lessons) if (s.expires < now) this.lessons.delete(id);
+    for (const [id, s] of this.lessons) if (s.expires < now) this.drop(id);
     for (const [k, c] of this.cache) if (c.expires < now) this.cache.delete(k);
   }
 }
@@ -111,9 +136,14 @@ export class DuelStore {
     return duel;
   }
 
-  private sweep(): void {
+  /** Forgets every expired challenge (also run on a timer by the server). */
+  sweep(): void {
     const now = this.now();
     for (const [code, d] of this.duels) if (d.expires < now) this.duels.delete(code);
+  }
+
+  get size(): number {
+    return this.duels.size;
   }
 }
 

@@ -9,6 +9,7 @@
 //   --name <label>    screenshot prefix
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -37,7 +38,7 @@ async function playRound(game) {
   log(`ideas: ${names.join(' | ')}`);
   for (const [n, id] of ids.slice(0, 3).entries()) {
     await game.click(`.idea[data-id="${id}"]`);
-    await game.click('.move[data-move="say"]');
+    if (await game.locator('.move[data-move="say"]').count()) await game.click('.move[data-move="say"]');
     await game.fill('#teach-input', `I think ${names[n]} is one of the main ideas here, and it matters because it explains how this works.`);
     await game.click('#btn-send');
     await game.waitForFunction(() => !document.querySelector('.bubble.typing') && document.querySelector('#screen-teach')?.getAttribute('data-busy') !== '1', null, { timeout: 30_000 });
@@ -80,7 +81,7 @@ if (await health()) {
 }
 const server = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'server/src/main.ts'], {
   cwd: ROOT,
-  env: { ...process.env, AI_STUB: real ? '0' : '1', PORT: '8787' },
+  env: { ...process.env, AI_STUB: real ? '0' : '1', PORT: '8787', DEV_ORIGINS: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let serverLog = '';
@@ -141,14 +142,36 @@ try {
   log('page open');
 
   // 4. The action (Playwright can't click the toolbar; the worker exposes the same function).
+  const trigger = () =>
+    worker.evaluate(async (url) => {
+      const tabs = await chrome.tabs.query({});
+      const tab = tabs.find((t) => t.url === url) ?? tabs.find((t) => t.url?.startsWith(url.split('#')[0]));
+      await globalThis.sparkTransform(tab.id);
+    }, pageUrl);
+  const sentToServer = () => serverLog.includes('POST /extract');
+
+  // 4a. First use: Spark asks before anything leaves the page, and Escape cancels without sending.
+  await worker.evaluate(() => chrome.storage.local.remove('consent'));
+  await trigger();
+  await page.locator('[data-spark-overlay][data-state="consent"]').waitFor({ timeout: 10_000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(SHOTS, `${label}-00-consent.png`) });
+  checks.push([!sentToServer(), 'first use: Spark asks before anything is sent (the server has seen nothing)']);
+  await page.keyboard.press('Escape');
+  await page.locator('[data-spark-overlay]').waitFor({ state: 'detached', timeout: 5000 });
+  await page.waitForTimeout(600);
+  checks.push([!sentToServer(), 'Escape on the notice cancels: still nothing sent']);
+  log('first-use notice checked');
+
+  // 4b. Saying yes sends the page (Enter presses the focused "Send and continue") and is remembered.
   const gameTab = context.waitForEvent('page', { predicate: (p) => p.url().includes('game.html?round='), timeout: 30_000 });
-  await worker.evaluate(async (url) => {
-    const tabs = await chrome.tabs.query({});
-    const tab = tabs.find((t) => t.url === url) ?? tabs.find((t) => t.url?.startsWith(url.split('#')[0]));
-    await globalThis.sparkTransform(tab.id);
-  }, pageUrl);
+  await trigger();
+  await page.locator('[data-spark-overlay][data-state="consent"]').waitFor({ timeout: 10_000 });
+  await page.keyboard.press('Enter');
   await page.locator('[data-spark-overlay]').waitFor({ state: 'attached', timeout: 10_000 });
   await page.waitForTimeout(1300);
+  const consent = await worker.evaluate(async () => (await chrome.storage.local.get('consent')).consent);
+  checks.push([consent?.v === 1, 'saying yes is remembered: the notice appears once']);
   await page.screenshot({ path: path.join(SHOTS, `${label}-01-overlay.png`) });
   log('overlay mounted, words lifting');
 
@@ -206,7 +229,61 @@ try {
     const roundId = new URL(second.url()).searchParams.get('round');
     const handoff = await worker.evaluate(async (key) => (await chrome.storage.session.get(key))[key], `round:${roundId}`);
     checks.push([handoff?.capture?.source === 'selection' && handoff.capture.text.replace(/\s+/g, ' ').trim() === selected, 'selected text wins over the page']);
+    checks.push([typeof handoff?.at === 'number', 'the stored page text is stamped, so it can be forgotten after two hours']);
   }
+
+  // 8. Cancel really aborts: a server that never answers sees the connection close at once.
+  await page.bringToFront();
+  await page.locator('[data-spark-overlay]').waitFor({ state: 'detached', timeout: 15_000 }); // the last capture's overlay has left
+  let opened = 0;
+  const sink = net.createServer((socket) => {
+    opened++;
+    socket.on('data', () => {});
+    socket.on('error', () => {});
+  });
+  await new Promise((r) => sink.listen(0, '127.0.0.1', r));
+  await worker.evaluate((url) => chrome.storage.local.set({ serverUrl: url }), `http://127.0.0.1:${sink.address().port}`);
+  await trigger();
+  await page.locator('[data-spark-overlay][data-state="working"]').waitFor({ timeout: 10_000 });
+  for (let i = 0; i < 40 && (opened < 1 || (await worker.evaluate(() => globalThis.sparkInflight())) < 1); i++) await page.waitForTimeout(100);
+  const waiting = await worker.evaluate(() => globalThis.sparkInflight());
+  await page.keyboard.press('Escape');
+  // The server never answers, so the request can only end by being aborted (the timeout is 60 s).
+  let left = waiting;
+  for (let i = 0; i < 30 && left > 0; i++) {
+    await page.waitForTimeout(100);
+    left = await worker.evaluate(() => globalThis.sparkInflight());
+  }
+  checks.push([waiting === 1 && opened >= 1 && left === 0, `Cancel aborts the request to a server that never answers (${waiting} in flight → ${left}), not after the 60 s timeout`]);
+  await worker.evaluate(() => chrome.storage.local.remove('serverUrl'));
+  sink.close();
+
+  // 9. Settings: the options page saves the address and token, the token is really sent, and the test names what is wrong.
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${id}/options.html`);
+  await options.fill('#server', 'http://localhost:8787/ignored/path');
+  await options.fill('#token', 'wrong-token');
+  await options.click('#save');
+  await options.locator('#status.ok').waitFor({ timeout: 5000 });
+  const saved = await worker.evaluate(() => chrome.storage.local.get(['serverUrl', 'clientToken']));
+  checks.push([saved.serverUrl === 'http://localhost:8787' && saved.clientToken === 'wrong-token', 'the options page saves the address (cleaned) and the token']);
+  await options.screenshot({ path: path.join(SHOTS, `${label}-05-options.png`) });
+  await options.click('#test');
+  await options.waitForFunction(() => /does not accept this token/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 10_000 });
+  checks.push([true, 'the connection test says the server is there but the token is wrong']);
+  await page.bringToFront();
+  await trigger();
+  await page.locator('[data-spark-overlay][data-state="failed"]').waitFor({ timeout: 15_000 });
+  checks.push([true, 'with a wrong token a capture fails visibly instead of hanging']);
+  await page.keyboard.press('Escape');
+  await options.bringToFront();
+  await options.fill('#token', '');
+  await options.click('#save');
+  await options.click('#test');
+  await options.waitForFunction(() => /^Connected/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 10_000 });
+  const cleared = await worker.evaluate(async () => (await chrome.storage.local.get('clientToken')).clientToken);
+  checks.push([cleared === undefined, 'clearing the token removes it, and the test connects again']);
+  await options.close();
 } catch (err) {
   failed = true;
   console.error(`smoke:ext FAILED: ${err.message}`);

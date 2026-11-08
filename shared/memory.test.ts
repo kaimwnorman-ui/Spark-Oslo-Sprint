@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
-  DAY_MS, MAX_POWER, REFILL_HP, afterRematch, applyRecall, dueCard, dueComebacks, earnPowerUp, emptyMemory, freshness,
-  isDue, lockedScore, nextDueIn, normalizeMemory, planComeback, recallScore, recordCards, spendPowerUps, traitLookNow,
-  upsertComeback, type MemoryCard,
+  DAY_MS, KEYWORDS_CAP, MAX_POWER, OPPOSITE_CAP, RECALL_PASS, REFILL_HP, afterRematch, applyRecall, dueCard, dueComebacks, earnPowerUp,
+  emptyMemory, freshness, gradeRecall, isDue, lockedScore, nextDueIn, normalizeMemory, planComeback, pruneMemory, recallScore, recordCards,
+  spendPowerUps, traitLookNow, upsertComeback, type MemoryCard,
 } from './memory.ts';
-import type { ExamResult, Trait } from './types.ts';
+import type { DemoRound, ExamResult, Trait } from './types.ts';
 
 const T0 = Date.UTC(2026, 10, 1);
 
@@ -149,4 +150,71 @@ test('stored memory is normalised: junk never breaks the game', () => {
   assert.deepEqual(m.powerUps, { refill: MAX_POWER, double: 0 });
   assert.deepEqual(m.comebacks, []);
   assert.equal(m.tamed, 2);
+});
+
+// ---- the offline grader is word matching, and says so: it must not reward the opposite of an idea ----
+
+const tides = JSON.parse(readFileSync(new URL('../demo/rounds/tides.json', import.meta.url), 'utf8')) as DemoRound;
+const bulges = (() => {
+  const i = tides.lesson.ideas.find((x) => x.id === 'i2')!;
+  return { ideaName: i.name, keyPoints: i.keyPoints, modelAnswer: i.modelAnswer };
+})();
+
+test('an answer that denies the idea is flagged and cannot pass (the judge’s false answer scored 63)', () => {
+  for (const answer of [
+    'The Earth never spins and the Moon creates no ocean bulges or high tides.',
+    'There are never two bulges on the ocean',
+  ]) {
+    const g = gradeRecall(bulges, answer);
+    assert.equal(g.flag, 'opposite', answer);
+    assert.ok(g.score <= OPPOSITE_CAP && g.score < RECALL_PASS, `${g.score}: ${answer}`);
+  }
+});
+
+test('honest answers pass, even when they deny something the idea does not claim', () => {
+  for (const answer of [
+    'The ocean is stretched into two bulges, one toward the Moon and one on the far side, and as the Earth spins every coast passes through both bulges, so you get two high tides a day.',
+    'The water does not chase the Moon around. The ocean stretches into two bulges and the spinning Earth carries every beach through both of them, giving two high tides a day.',
+    'Two bulges are not caused by wind, they come from stretching of the ocean, one by the Moon and one on the far side.',
+    bulges.modelAnswer,
+  ]) {
+    const g = gradeRecall(bulges, answer);
+    assert.equal(g.flag, 'ok', answer);
+    assert.ok(g.score >= RECALL_PASS, `${g.score}: ${answer}`);
+  }
+});
+
+test('a list of keywords is not an explanation: capped below a pass', () => {
+  const g = gradeRecall(bulges, 'moon bulges ocean far side earth spins tides high');
+  assert.equal(g.flag, 'keywords');
+  assert.ok(g.score <= KEYWORDS_CAP && g.score < RECALL_PASS);
+});
+
+test('too little to grade, and vague answers, do not pass', () => {
+  assert.deepEqual(gradeRecall(bulges, 'I forgot'), { score: 0, flag: 'empty' });
+  assert.ok(gradeRecall(bulges, 'It is about tides and the moon and stuff really').score < RECALL_PASS);
+});
+
+test('only rounds that ran on the server’s AI are graded there: cards and comebacks remember which', () => {
+  const input = { monster: { name: 'M', color: '#000' }, topic: 'T', language: 'en' as const, ideas, exam: exam([70, 70, 70, 70, 70]) };
+  assert.ok(recordCards(emptyMemory(), { ...input, live: true }, T0).state.cards.every((c) => c.live === true));
+  assert.ok(recordCards(emptyMemory(), input, T0).state.cards.every((c) => c.live === false));
+  const cb = { monster: { name: 'M', shape: 'crab' as const, color: '#000', words: [] }, topic: 'T', language: 'en' as const, demoId: null, ideas, exam: exam([70, 70, 10, 70, 70]), won: false };
+  assert.equal(planComeback({ ...cb, live: true }, T0)!.live, true);
+  assert.equal(planComeback(cb, T0)!.live, false);
+});
+
+test('nothing is kept forever: unused memories are forgotten, and a monster nobody fights stops coming back', () => {
+  const base = { monster: { name: 'M', shape: 'crab' as const, color: '#000', words: [] }, topic: 'T', language: 'en' as const, demoId: null, ideas, exam: exam([70, 70, 10, 70, 70]), won: false };
+  const stale = planComeback({ ...base, monster: { ...base.monster, name: 'Old' } }, T0 - 20 * DAY_MS)!;
+  const recent = planComeback({ ...base, monster: { ...base.monster, name: 'Recent' } }, T0 - 2 * DAY_MS)!;
+  const m = {
+    ...emptyMemory(),
+    cards: [card({ id: 'old', lastAt: T0 - 181 * DAY_MS }), card({ id: 'new', lastAt: T0 - 10 * DAY_MS })],
+    comebacks: [stale, recent],
+  };
+  const kept = pruneMemory(m, T0);
+  assert.deepEqual(kept.cards.map((c) => c.id), ['new']);
+  assert.deepEqual(kept.comebacks.map((c) => c.monsterName), ['Recent']);
+  assert.equal(pruneMemory(m, T0, 365).cards.length, 2, 'the window is a setting');
 });

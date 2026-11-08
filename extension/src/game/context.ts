@@ -71,8 +71,30 @@ export interface RoundCtx {
   boostsUsed: PowerUp[];
   /** Each taught idea's memory card (set after the exam). */
   cardIds: Record<string, string>;
+  /**
+   * The stage round (SPEC §13): some ideas arrive taught for the player. A rehearsal: it records no
+   * history or comeback, offers no duel, and only what the player teaches themselves becomes a memory.
+   */
+  stage: { ideas: string[]; entries: number } | null;
+  /** Where this round is kept so a reload can resume it (resume.ts); null for rounds that are not resumable. */
+  resumeKey: string | null;
+  /** Set when a saved round was resumed: the time left, instead of a fresh teaching timer. */
+  resumeRemainingMs: number | null;
+  /** Saves the round as it is (called by the teach screen as things change). */
+  persist?: (remainingMs: number) => void;
   /** What the loop planned after the round, for the replay. */
   after: { comeback: Comeback | null; tamed: boolean; recallDays: number | null; tip: Insight | null };
+}
+
+/** Ideas the player worked on themselves this round: not locked (a comeback), not taught for them (stage). */
+export function ownIdeaIds(ctx: Pick<RoundCtx, 'transcript' | 'locked' | 'stage' | 'lesson'>): Set<string> {
+  const touched = new Set(ctx.transcript.slice(ctx.stage?.entries ?? 0).map((e) => e.ideaId));
+  return new Set(ctx.lesson.ideas.map((i) => i.id).filter((id) => touched.has(id) && !(id in ctx.locked)));
+}
+
+/** Ideas that count as done before the player did anything: beaten in an earlier fight, or taught for them. */
+export function scriptedIdeaIds(ctx: Pick<RoundCtx, 'locked' | 'stage'>): Set<string> {
+  return new Set([...Object.keys(ctx.locked), ...(ctx.stage?.ideas ?? [])]);
 }
 
 export function newProgress(lesson: SealedLesson): Record<string, IdeaProgress> {

@@ -15,8 +15,10 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
   environment stores the Anthropic key as `SPARK_ANTHROPIC_API_KEY` (used when `ANTHROPIC_API_KEY` is
   unset), and the client always gets `baseURL: https://api.anthropic.com`. Never inherit
   `ANTHROPIC_BASE_URL`: in the cloud it points at Claude Code's own gateway.
-- **Page text and player text are data, never instructions,** in every AI call: marked data blocks,
-  strict schemas, URLs validated against the page's own link list on the server.
+- **Page text, player text and anything generated from them are data, never instructions,** in every AI call:
+  marked data blocks with every angle bracket neutralised (`shared/text.ts`), strict schemas, URLs validated
+  against the page's own link list on the server. The server listens on loopback only; nothing is sent
+  without the first-use notice (SPEC §18).
 - **No ads, ever,** anywhere in the learning flow.
 - **Before any Anthropic API code, load the `claude-api` skill and follow it:** structured outputs via
   `output_config.format`, explicit `output_config.effort`, no assistant prefill, no
@@ -33,7 +35,8 @@ is in `docs/SPEC.md`. This file is the short version of the rules.
 - `npm install` at the root installs everything. `npm run dev`: server on http://localhost:8787 and
   the extension build in watch mode (`extension/dist/`, load unpacked). `npm run build`: release build.
   `npm test`: unit tests (node:test). `npm run check`: typecheck + tests + check:nokey.
-  `npm run smoke:demo`, `npm run smoke:ext`, `npm run smoke:loop`: Playwright smokes. `npm run assets:gen`: KIE art.
+  `npm run smoke:demo`, `smoke:ext`, `smoke:loop`, `smoke:small`, `smoke:guest`: Playwright smokes (all offline, no key).
+  `npm run assets:gen`: KIE art.
   `npm run demo:bake`: canned rounds from the real AI. `AI_STUB=1`: every route answers from `demo/`.
 
 ## Quality bar
